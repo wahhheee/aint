@@ -1,0 +1,126 @@
+# 演义的任务编排（https://taskfile.dev）。`task --list` 查看全部任务。
+# go-task 内置 POSIX shell 解释器，Windows / macOS / Linux 行为一致。
+version: "3"
+
+vars:
+  DATA: ./.devdata # 开发用数据目录（已在 .gitignore 中）
+  PORT: 7860
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
+  PKG: github.com/wahhheee/yanyi/internal/buildinfo
+  LDFLAGS: -s -w -X {{.PKG}}.Version={{.VERSION}} -X {{.PKG}}.Commit={{.COMMIT}}
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: 安装依赖（Go 模块与前端依赖）
+    cmds:
+      - go mod download
+      - task: web
+        vars: { SCRIPT: install }
+
+  # 在 web/ 目录内执行 pnpm（不用 pnpm -C：从仓库根执行时 pnpm 会按上层目录的 packageManager 字段校验）
+  web:
+    internal: true
+    dir: web
+    cmds:
+      - pnpm {{.SCRIPT}}
+
+  # ---------------------------------------------------------------- 开发
+
+  dev:
+    desc: 同时启动后端（假模型）与前端开发服务器，访问 http://localhost:5173
+    deps: [dev:server, dev:web]
+
+  dev:server:
+    desc: 启动后端（假模型、调试日志、模型调用追踪），数据在 .devdata/
+    cmds:
+      - go run ./cmd/yanyi serve --data {{.DATA}} --port {{.PORT}} --no-browser --fake-llm demo --trace-llm --log-level debug {{.CLI_ARGS}}
+
+  dev:server:real:
+    desc: 启动后端（使用设置中配置的真实模型）
+    cmds:
+      - go run ./cmd/yanyi serve --data {{.DATA}} --port {{.PORT}} --no-browser --trace-llm --log-level debug {{.CLI_ARGS}}
+
+  dev:web:
+    desc: 启动前端开发服务器（/api 代理到后端 {{.PORT}} 端口）
+    dir: web
+    cmds:
+      - pnpm dev
+
+  # ---------------------------------------------------------------- 创作者工具（调试提示词组装的利器）
+
+  prompt:
+    desc: 打印作品按需组装后的完整提示词，如 task prompt -- examples/works/misty-harbor --vision
+    cmds:
+      - go run ./cmd/yanyi work prompt {{.CLI_ARGS}}
+
+  validate:
+    desc: 校验作品，如 task validate -- examples/works/misty-harbor
+    cmds:
+      - go run ./cmd/yanyi work validate {{.CLI_ARGS}}
+
+  # ---------------------------------------------------------------- 质量
+
+  test:
+    desc: 运行全部测试
+    cmds:
+      - go test ./...
+      - task: web
+        vars: { SCRIPT: test }
+
+  lint:
+    desc: 静态检查（go vet、gofmt、ESLint、TypeScript）
+    cmds:
+      - go vet ./...
+      - cmd: test -z "$(gofmt -l ./cmd ./internal ./examples ./web/embed.go)" || (echo "以下文件需要 gofmt：" && gofmt -l ./cmd ./internal ./examples ./web/embed.go && exit 1)
+      - task: web
+        vars: { SCRIPT: lint }
+      - task: web
+        vars: { SCRIPT: typecheck }
+
+  fmt:
+    desc: 格式化代码
+    cmds:
+      - gofmt -w ./cmd ./internal ./examples ./web/embed.go
+      - task: web
+        vars: { SCRIPT: format }
+
+  # ---------------------------------------------------------------- 构建
+
+  build:web:
+    desc: 构建前端到 web/dist（会被嵌入可执行文件）
+    dir: web
+    cmds:
+      - pnpm build
+
+  build:
+    desc: 构建单文件可执行程序到 bin/（含前端）
+    deps: [build:web]
+    env:
+      CGO_ENABLED: "0"
+    cmds:
+      - go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/yanyi{{exeExt}} ./cmd/yanyi
+
+  build:cross:
+    desc: 交叉编译六个目标平台（发布前检查；正式发布流程 TODO(M6-8)：GoReleaser）
+    deps: [build:web]
+    env:
+      CGO_ENABLED: "0"
+    cmds:
+      - for: [windows/amd64, windows/arm64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64]
+        cmd: |
+          GOOS=$(echo {{.ITEM}} | cut -d/ -f1) GOARCH=$(echo {{.ITEM}} | cut -d/ -f2) \
+            go build -trimpath -ldflags "{{.LDFLAGS}}" -o "dist/yanyi-$(echo {{.ITEM}} | tr / -)$( [ "$(echo {{.ITEM}} | cut -d/ -f1)" = windows ] && echo .exe)" ./cmd/yanyi
+
+  clean:
+    desc: 清理构建产物与开发数据（不会动 web/dist/.gitkeep）
+    cmds:
+      - rm -rf bin dist {{.DATA}}
+      - find web/dist -mindepth 1 ! -name .gitkeep -exec rm -rf {} +

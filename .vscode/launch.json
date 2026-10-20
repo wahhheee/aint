@@ -1,0 +1,30 @@
+{
+  // 调试后端：断点调试 Go 代码。前端用 `task dev:web` 启动后在浏览器中调试。
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "后端：假模型（调试日志 + 模型调用追踪）",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/yanyi",
+      "args": ["serve", "--data", "${workspaceFolder}/.devdata", "--port", "7860", "--no-browser", "--fake-llm", "demo", "--trace-llm", "--log-level", "debug"]
+    },
+    {
+      "name": "后端：真实模型",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/yanyi",
+      "args": ["serve", "--data", "${workspaceFolder}/.devdata", "--port", "7860", "--no-browser", "--trace-llm", "--log-level", "debug"]
+    },
+    {
+      "name": "打印组装后的提示词（雾港来信）",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/yanyi",
+      "args": ["work", "prompt", "${workspaceFolder}/examples/works/misty-harbor"]
+    }
+  ]
+}

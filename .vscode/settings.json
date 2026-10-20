@@ -1,0 +1,11 @@
+{
+  "editor.formatOnSave": true,
+  "[go]": { "editor.defaultFormatter": "golang.go" },
+  "[typescript][typescriptreact][css][json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "prettier.configPath": "web/.prettierrc.json",
+  "eslint.workingDirectories": ["web"],
+  "typescript.tsdk": "web/node_modules/typescript/lib",
+  "tailwindCSS.experimental.configFile": "web/src/styles/globals.css",
+  "files.eol": "\n",
+  "search.exclude": { "**/node_modules": true, "web/dist": true, ".devdata": true }
+}

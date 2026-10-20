@@ -1,0 +1,7 @@
+# 示例：第一次调用模拟限流（验证重试与错误提示），第二次正常输出并结束（无选项，玩家自由输入）。
+# 用法：go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/error-then-text.yaml
+responses:
+  - error: rate_limited
+  - text: |
+      雨停了。你推开窗，潮湿的风里带着海盐的味道。
+    delay_ms: 20

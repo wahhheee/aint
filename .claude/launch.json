@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "后端（假模型）",
+      "runtimeExecutable": "go",
+      "runtimeArgs": [
+        "run",
+        "./cmd/yanyi",
+        "serve",
+        "--data",
+        "./.devdata",
+        "--fake-llm",
+        "demo",
+        "--no-browser",
+        "--port",
+        "7860",
+        "--log-level",
+        "debug"
+      ],
+      "port": 7860
+    },
+    {
+      "name": "前端（Vite）",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "web/node_modules/vite/bin/vite.js",
+        "web"
+      ],
+      "port": 5173
+    }
+  ]
+}
