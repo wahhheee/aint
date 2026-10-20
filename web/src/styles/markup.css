@@ -1,0 +1,122 @@
+/*
+ * 叙事标记的内置样式（《02-技术方案》16.2）。
+ * 作品样式标签（.mk-<tag>）由 markup/workStyles.ts 根据作品的 markup.yaml 生成并注入。
+ */
+
+/* <say who>：说话人 + 台词。名字用人物颜色，小一号，不打断阅读节奏 */
+.mk-say .mk-speaker {
+  margin-right: 0.35em;
+  font-family: var(--font-ui);
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  vertical-align: 0.12em;
+  color: var(--speaker-color, var(--ink-muted));
+}
+
+/* <aside>：旁白，退后一步 */
+.mk-aside {
+  color: var(--ink-muted);
+  font-size: 0.94em;
+}
+p.mk-aside-block {
+  padding-left: 1em;
+  text-indent: 0;
+  border-left: 1px solid var(--rule);
+}
+
+/* 未知或未启用的标签：按普通文字显示原文（决策 D-21），略淡以示区别 */
+.mk-raw {
+  color: var(--ink-faint);
+}
+
+/* <fx>：文字特效。全部有限次数，尊重"减少动画"设置 */
+.fx-shake {
+  display: inline-block;
+  animation: fx-shake 0.5s ease-in-out 2;
+}
+.fx-glitch {
+  animation: fx-glitch 0.9s steps(2) 1;
+}
+.fx-fade {
+  animation: fx-fade 1.2s ease-out 1;
+}
+.fx-whisper {
+  opacity: 0.72;
+  letter-spacing: 0.05em;
+}
+.fx-flicker {
+  animation: fx-flicker 0.8s linear 3;
+}
+.fx-blur-reveal {
+  animation: fx-blur 1.2s ease-out 1;
+}
+
+@keyframes fx-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+@keyframes fx-glitch {
+  0% {
+    text-shadow:
+      2px 0 var(--cinnabar),
+      -2px 0 var(--info);
+  }
+  100% {
+    text-shadow: none;
+  }
+}
+@keyframes fx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fx-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.35;
+  }
+  60% {
+    opacity: 0.9;
+  }
+}
+@keyframes fx-blur {
+  from {
+    filter: blur(6px);
+    opacity: 0.2;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
+/* 作品标签可引用的内置特效（markup.yaml 的 style.effect） */
+.mk-effect-glow {
+  text-shadow: 0 0 0.6em color-mix(in oklch, currentColor 45%, transparent);
+}
+.mk-effect-whisper {
+  letter-spacing: 0.05em;
+}
+.mk-icon {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.18em;
+  vertical-align: -0.04em;
+  opacity: 0.85;
+}

@@ -1,0 +1,66 @@
+import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import type { DisplayItem } from '@/api/types'
+import { Markup } from '@/markup/render'
+
+import { useReaderContext } from '../ReaderContext'
+import { ChoiceList, PastChoices } from './ChoiceList'
+import { Notice, QuietLine } from './Notice'
+import { PlayerLine } from './PlayerLine'
+
+interface Props {
+  items: DisplayItem[]
+  /** 正文仍在流式生成（最后一段带光标） */
+  drafting?: boolean
+  /** 选项是否可交互（只有最新回合的选项可选） */
+  interactive?: boolean
+  /** 已经选择的选项（等待新回合开始期间高亮） */
+  selected?: string
+  /** 附加在提示条上的操作（如中断回合的"继续"） */
+  noticeActions?: ReactNode
+}
+
+/** 一个回合：玩家输入行 → 正文 → 工具提示 → 选项 / 提示条。已提交回合与草稿回合共用。 */
+export function TurnView({ items, drafting, interactive, selected, noticeActions }: Props) {
+  const { t } = useTranslation()
+  const { reading } = useReaderContext()
+  const lastText = items.findLastIndex((it) => it.t === 'text')
+
+  return (
+    <article className="turn">
+      {items.map((it, i) => {
+        switch (it.t) {
+          case 'input':
+            return <PlayerLine key={i} item={it} />
+          case 'text':
+            return (
+              <div key={i} className="prose-book">
+                <Markup source={it.markup} drafting={drafting && i === lastText} />
+              </div>
+            )
+          case 'tools':
+            return reading?.tool_hints === false ? null : <QuietLine key={i}>{it.summary}</QuietLine>
+          case 'choices':
+            return interactive ? <ChoiceList key={i} item={it} selected={selected} /> : <PastChoices key={i} item={it} />
+          case 'notice':
+            return (
+              <Notice key={i} level={it.level} actions={noticeActions}>
+                {it.text}
+              </Notice>
+            )
+          case 'dice':
+            // TODO(M2-11)：骰子卡片（结果与算式）
+            return (
+              <QuietLine key={i}>
+                {it.expr} = {it.total}
+              </QuietLine>
+            )
+          case 'image':
+            // TODO(M5-2)：插图卡片
+            return <QuietLine key={i}>{t('common.notImplemented')}</QuietLine>
+        }
+      })}
+    </article>
+  )
+}
