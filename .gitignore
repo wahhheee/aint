@@ -1,0 +1,36 @@
+# 项目文档草稿（不入库）
+/.local/
+
+# 运行时数据目录（含 API Key 与存档，绝不能提交）
+yanyi-data/
+/.devdata/
+
+# Go 构建产物
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+/coverage.*
+
+# 前端
+node_modules/
+/web/dist/*
+!/web/dist/.gitkeep
+/web/coverage/
+/web/test-results/
+/web/playwright-report/
+*.tsbuildinfo
+
+# 编辑器与系统
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 任务缓存
+.task/

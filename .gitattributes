@@ -1,0 +1,15 @@
+# 统一 LF：作品格式规范要求 UTF-8 + LF，文件树哈希也依赖字节一致
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.mp3 binary
+*.ogg binary
+*.m4a binary
+*.woff2 binary
+*.zip binary
+*.db binary
