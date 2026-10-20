@@ -44,7 +44,16 @@ func Profile(m *work.Model, st save.Settings, caps llm.Caps, helpersAvailable bo
 		set(prompts.FInputModes, c.HasPresent("mode"))
 	}
 
-	// TODO(M2-10)：素材特征（assets / assets.image / assets.background / assets.audio / pins）需要素材索引。
+	for _, a := range m.Assets {
+		if a.Kind == "font" {
+			continue // 字体只给界面用，不出现在 AI 的资料里
+		}
+		fs[prompts.FAssets] = true
+		set(prompts.FAssetsBG, a.Kind == "image" && a.Role == "background")
+		set(prompts.FAssetsImage, a.Kind == "image" && a.Role != "background")
+		set(prompts.FAssetsAudio, a.Kind == "audio")
+		set(prompts.FPins, a.Pin)
+	}
 	set(prompts.FTagScene, mf.Presentation.Stage && fs.Has(prompts.FAssetsBG))
 	set(prompts.FTagCG, fs.Has(prompts.FAssetsImage))
 	set(prompts.FTagSay, mf.Presentation.Dialogue == "tagged")

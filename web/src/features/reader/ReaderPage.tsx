@@ -37,6 +37,8 @@ import { InputDock, type InputDockHandle } from './input/InputDock'
 import { hasSidebarPanels } from './panels/layout'
 import { FloatPanels, SidebarPanels, TopbarPanels } from './panels/Panels'
 import { ReaderContext, type ReaderContextValue } from './ReaderContext'
+import { lastSceneBackground } from './stage/scene'
+import { StageBackground } from './stage/StageBackground'
 import { Stream } from './stream/Stream'
 import { useReaderSession } from './useReaderSession'
 import { useReadingStyle } from './useReadingStyle'
@@ -89,7 +91,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading }: ViewPro
   const setSidebarOpen = useUI((s) => s.setSidebarOpen)
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const markupCtx = useMarkupContext(ui.builtin_tags, ui.tags, ui.characters)
+  const markupCtx = useMarkupContext(ui.builtin_tags, ui.tags, ui.characters, ui.assets)
   const readingStyle = useReadingStyle(reading)
   useWorkStyles(workTagCSS(ui.tags))
 
@@ -129,6 +131,14 @@ function ReaderView({ saveId, presentation, timeline, panels, reading }: ViewPro
     [saveId, ui, reading, actions, runCommand],
   )
 
+  // 舞台背景：进度线上（含进行中的回合）最近一次 <scene bg>
+  const draft = useReader((s) => s.draft)
+  const sceneBg = useMemo(
+    () => lastSceneBackground([...(timeline?.nodes.map((n) => n.display) ?? []), draft?.items ?? []]),
+    [timeline, draft?.items],
+  )
+  const stageAsset = ui.builtin_tags.includes('scene') ? ui.assets.find((a) => a.id === sceneBg && a.kind === 'image') : undefined
+
   const hasSidebar = hasSidebarPanels(ui.panels, panels)
   const toggleSidebar = () => {
     if (window.matchMedia('(min-width: 1200px)').matches) setSidebarOpen(!sidebarOpen)
@@ -140,6 +150,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading }: ViewPro
       <MarkupProvider value={markupCtx}>
         <div className="work-root flex h-dvh overflow-hidden bg-background" style={readingStyle}>
           <div className="relative flex min-w-0 flex-1 flex-col">
+            <StageBackground asset={stageAsset} intensity={reading?.stage_intensity} />
             {connection === 'reconnecting' && (
               <div role="status" className="absolute inset-x-0 top-0 z-20 bg-warn/15 py-1 text-center text-xs text-warn">
                 连接已断开，正在重连……

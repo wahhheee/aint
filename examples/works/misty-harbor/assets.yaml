@@ -1,0 +1,8 @@
+- path: assets/bg/post-office.webp
+  id: post-office
+  description: 邮局大厅，夜，煤油灯与信件柜
+  role: background
+- path: assets/bg/harbor-night.webp
+  id: harbor-night
+  description: 夜晚的码头，雾中的灯塔
+  role: background

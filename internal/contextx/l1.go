@@ -25,7 +25,7 @@ var l1Sections = []l1Section{
 	{id: "l1.commands", title: "命令", when: prompts.Requires(prompts.FCommands), render: renderCommands},
 	{id: "l1.state", title: "状态说明", when: prompts.Requires(prompts.FState), render: renderStateDesc},
 	{id: "l1.lore", title: "设定索引", when: prompts.Requires(prompts.FLoreIndex), render: renderLoreIndex},
-	// TODO(M2-10)：素材索引（assets）。
+	{id: "l1.assets", title: "素材索引", when: prompts.Requires(prompts.FAssets), render: renderAssets},
 	{id: "l1.memory", title: "记忆约定", when: prompts.Requires(prompts.FMemoryGuide),
 		render: func(m *work.Model, _ prompts.FeatureSet) string { return m.MemoryGuide }},
 	// TODO(待确认)：技术方案 12.3 说"默认记忆约定写入 L1"，但 20.2 与 8.6 的最小作品组装中都没有这一节；
@@ -114,6 +114,46 @@ func renderMarkup(m *work.Model, fs prompts.FeatureSet) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// renderAssets 列出素材（20.2）：背景按 ID 列出（供 <scene bg>），其他图片按路径列出（可 read 查看），音频按 ID。
+func renderAssets(m *work.Model, fs prompts.FeatureSet) string {
+	var bg, images, audio []string
+	for _, a := range m.Assets {
+		desc := ""
+		if a.Description != "" {
+			desc = "（" + a.Description + "）"
+		}
+		switch {
+		case a.Kind == "image" && a.Role == "background":
+			bg = append(bg, a.ID+desc)
+		case a.Kind == "image":
+			line := fmt.Sprintf("/work/%s", a.Path)
+			if a.Description != "" {
+				line += " — " + a.Description
+			}
+			images = append(images, line)
+		case a.Kind == "audio":
+			audio = append(audio, a.ID+desc)
+		}
+	}
+	var lines []string
+	if len(bg) > 0 && fs.Has(prompts.FTagScene) {
+		lines = append(lines, "- 背景（用于 <scene bg>）："+strings.Join(bg, "、"))
+	}
+	if len(images) > 0 {
+		hint := ""
+		if fs.Has(prompts.FVision) {
+			hint = "（可 read 查看）"
+		}
+		lines = append(lines, "- 图片"+hint+"："+nl+"  - "+strings.Join(images, nl+"  - "))
+	}
+	if len(audio) > 0 && fs.Has(prompts.FTagAudio) {
+		lines = append(lines, "- 音乐与音效："+strings.Join(audio, "、"))
+	}
+	return strings.Join(lines, nl)
+}
+
+const nl = "\n"
 
 func renderCommands(m *work.Model, fs prompts.FeatureSet) string {
 	lines := []string{"玩家可以使用以下命令，命令展开后的文字会出现在 <input> 中："}
@@ -253,7 +293,6 @@ func renderLoreIndex(m *work.Model, _ prompts.FeatureSet) string {
 		}
 		return strings.Compare(a.label, b.label)
 	})
-	const nl = "\n"
 	if len(groups) == 1 {
 		return strings.Join(groups[0].lines, nl) // 只有一个分组时不出现分组标题
 	}

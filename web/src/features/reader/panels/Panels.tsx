@@ -33,7 +33,7 @@ export function TopbarPanels({ meta, rendered }: { meta: PanelMeta[]; rendered?:
   const panels = byPlace(meta, rendered, 'topbar')
   if (panels.length === 0) return null
   return (
-    <div className="border-b border-rule/70 px-6 py-2 text-center font-serif text-[13px] text-ink-muted [&_p]:m-0">
+    <div className="relative border-b border-rule/70 px-6 py-2 text-center font-serif text-[13px] text-ink-muted [&_p]:m-0">
       {panels.map(({ meta: m, render }) => (
         <PanelHTML key={m.id} html={render.html} />
       ))}

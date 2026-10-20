@@ -40,6 +40,7 @@ type UI struct {
 	CommandBar  []string       `json:"command_bar"`
 	Commands    []work.Command `json:"commands"`
 	Characters  []Character    `json:"characters"` // <say who> 的说话人样式
+	Assets      []AssetRef     `json:"assets"`     // 素材（舞台背景、插图、头像）
 	Pace        string         `json:"pace"`
 }
 
@@ -58,6 +59,15 @@ type PanelMeta struct {
 	Place     string `json:"place"`
 	Order     int    `json:"order"`
 	Collapsed bool   `json:"collapsed,omitzero"`
+}
+
+// AssetRef 是前端可直接使用的素材引用。
+type AssetRef struct {
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	Role        string `json:"role"`
+	URL         string `json:"url"`
+	Description string `json:"description,omitzero"`
 }
 
 // Character 是人物的显示属性（来自设定文档的 display 字段）。
@@ -100,6 +110,7 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 		CommandBar:  nonNil(w.Layout.CommandBar),
 		Commands:    nonNil(w.Commands),
 		Characters:  []Character{},
+		Assets:      []AssetRef{},
 		Pace:        firstNonEmpty(sv.Settings.Pace, mf.Narrator.Length),
 	}
 	for _, pd := range w.Layout.Panels {
@@ -109,6 +120,9 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 		if d.Kind == "character" || d.Display.Color != "" || d.Display.Avatar != "" {
 			ui.Characters = append(ui.Characters, Character{ID: d.ID, Name: d.Title, Aliases: d.Aliases, Color: d.Display.Color, Avatar: d.Display.Avatar})
 		}
+	}
+	for _, a := range w.Assets {
+		ui.Assets = append(ui.Assets, AssetRef{ID: a.ID, Kind: a.Kind, Role: a.Role, URL: work.AssetURL(a), Description: a.Description})
 	}
 	p.UI = ui
 	return p, nil

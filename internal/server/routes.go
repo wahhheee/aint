@@ -28,7 +28,7 @@ func (s *Server) routes() {
 	m.HandleFunc("DELETE /api/v1/works/{id}", todo("删除作品（M6-5）"))
 	m.HandleFunc("DELETE /api/v1/works/{id}/versions/{vid}", todo("删除版本（M6-5）"))
 	m.HandleFunc("POST /api/v1/works/dev-link", todo("链接开发目录（M6-2）"))
-	m.HandleFunc("GET /api/v1/assets/{hash}", todo("素材（M2-10）"))
+	m.HandleFunc("GET /api/v1/assets/{hash}", s.h(s.asset))
 	m.HandleFunc("POST /api/v1/uploads", todo("上传图片（M2-10）"))
 
 	// 存档

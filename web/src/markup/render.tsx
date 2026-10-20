@@ -25,8 +25,19 @@ function renderBlock(b: Block, key: number, ctx: MarkupContextValue, isDraftTail
           ◇
         </div>
       )
+    case 'cg': {
+      const a = ctx.assets.get(b.attrs.src ?? '')
+      if (!a) return null
+      // TODO(M5-2)：点击全屏查看
+      return (
+        <figure key={key} className="cg-card">
+          <img src={a.url} alt={b.attrs.caption ?? a.description ?? ''} loading="lazy" />
+          {b.attrs.caption && <figcaption>{b.attrs.caption}</figcaption>}
+        </figure>
+      )
+    }
     case 'scene':
-      // TODO(M5-2)：舞台背景切换（attrs.bg → 素材）与转场；目前只显示标题卡。
+      // 背景切换由舞台层负责（features/reader/stage），这里只显示标题卡。TODO(M5-2)：转场（fade / cut / blur）。
       return b.attrs.title ? (
         <h3 key={key} className="scene-title">
           {b.attrs.title}
@@ -95,9 +106,9 @@ function renderTag(n: Extract<Inline, { type: 'tag' }>, ctx: MarkupContextValue)
     case 'bgm': // 音频：TODO(M5-2)
     case 'sfx':
       return null
-    case 'cg':
-      // TODO(M5-2)：插图卡片（素材 → /api/v1/assets/{hash}），点击放大
-      return n.attrs.caption ? <span className="mk-aside">［插图：{n.attrs.caption}］</span> : null
+    case 'cg': // 段落中间的插图按说明文字显示（段首的插图已提升为块级卡片）
+    case 'scene':
+      return n.attrs.caption || n.attrs.title ? <span className="mk-aside">［{n.attrs.caption ?? n.attrs.title}］</span> : null
     default: {
       const def = ctx.workTags.get(n.name)
       if (!def) return children

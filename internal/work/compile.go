@@ -48,9 +48,10 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.commands()
 	c.markup()
 	c.layout()
+	c.assets()
 	c.crossRefs()
 	// TODO(M2-9)：ui/theme.yaml 与 custom.css 校验。
-	// TODO(M2-10)：assets.yaml、素材解码校验（E-ASSET）、常驻图片 token 估算（W-PIN-IMAGE）。
+	// TODO(M2-10)：素材解码校验（E-ASSET）、Git LFS 指针检测（E-LFS）、常驻图片 token 估算（W-PIN-IMAGE）。
 	// TODO(M2-8)：面板与命令中的 Liquid 模板解析（E-TEMPLATE）。
 	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
 	// TODO(M1-4)：engine 版本范围检查（E-ENGINE）。
@@ -340,6 +341,62 @@ func (c *compiler) layout() {
 	slices.SortStableFunc(c.m.Layout.Panels, func(a, b PanelDef) int { return a.Order - b.Order })
 }
 
+// assetKinds 是支持的素材格式（《03-作品格式规范》13.1）。
+var assetKinds = map[string]string{
+	".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image", ".gif": "image",
+	".mp3": "audio", ".ogg": "audio", ".m4a": "audio", ".woff2": "font",
+}
+
+func (c *compiler) assets() {
+	type meta struct {
+		Path        string `yaml:"path"`
+		ID          string `yaml:"id"`
+		Description string `yaml:"description"`
+		Pin         bool   `yaml:"pin"`
+		Role        string `yaml:"role"`
+	}
+	byPath := map[string]meta{}
+	if data, ok := c.fs.Get("assets.yaml"); ok {
+		var list []meta
+		if c.decode("assets.yaml", 0, data, &list, func() any { return &[]meta{} }) {
+			for _, m := range list {
+				if !c.fs.Has(m.Path) {
+					c.r.Errorf(CodeRef, "assets.yaml", 0, "", "素材文件不存在：%s", m.Path)
+					continue
+				}
+				byPath[m.Path] = m
+			}
+		}
+	}
+	seen := map[string]string{}
+	for _, p := range c.fs.Paths() {
+		if !strings.HasPrefix(p, "assets/") {
+			continue
+		}
+		ext := strings.ToLower(path.Ext(p))
+		kind, ok := assetKinds[ext]
+		if !ok {
+			c.r.Warnf(CodeAsset, p, 0, "支持 png、jpg、webp、gif、mp3、ogg、m4a、woff2", "不支持的素材格式，已忽略")
+			continue
+		}
+		m := byPath[p]
+		a := Asset{ID: m.ID, Path: p, Kind: kind, Role: m.Role, Description: m.Description, Pin: m.Pin, Blob: c.m.Files[p].Blob}
+		if a.ID == "" {
+			a.ID = strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
+		}
+		if a.Role == "" {
+			a.Role = map[string]string{"image": "reference", "audio": "bgm", "font": "font"}[kind]
+		}
+		if prev, dup := seen[a.ID]; dup {
+			c.r.Errorf(CodeName, p, 0, "在 assets.yaml 中为其中一个指定 id", "素材 ID %q 与 %s 重复", a.ID, prev)
+			continue
+		}
+		seen[a.ID] = p
+		c.m.Assets = append(c.m.Assets, a)
+	}
+	slices.SortFunc(c.m.Assets, func(a, b Asset) int { return strings.Compare(a.ID, b.ID) })
+}
+
 func (c *compiler) crossRefs() {
 	for _, f := range c.m.Manifest.NewGame.Fields {
 		if !c.statePathExists(f.Key) {
@@ -355,7 +412,12 @@ func (c *compiler) crossRefs() {
 			c.r.Warnf(CodeRef, "ui/layout.yaml", 0, "在命令的 present 中加入 button", "命令 /%s 出现在 command_bar 中，但 present 不含 button", name)
 		}
 	}
-	// TODO(M2)：素材引用（cover、images、display.avatar、<scene bg>）、文档链接 [[id]] 的完整性检查。
+	if cover := c.m.Manifest.Cover; cover != "" {
+		if _, ok := c.m.Asset(cover); !ok {
+			c.r.Errorf(CodeRef, "work.yaml", 0, "", "封面素材不存在：%s", cover)
+		}
+	}
+	// TODO(M2)：其余素材引用（images、display.avatar）与文档链接 [[id]] 的完整性检查。
 }
 
 func (c *compiler) statePathExists(p string) bool {

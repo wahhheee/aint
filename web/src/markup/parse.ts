@@ -28,6 +28,7 @@ export type Block =
   | { type: 'quote'; children: Inline[] }
   | { type: 'divider' }
   | { type: 'scene'; attrs: Record<string, string> }
+  | { type: 'cg'; attrs: Record<string, string> }
 
 export interface ParseOptions {
   /** 可渲染的标签白名单（已启用的内置标签 + 作品样式标签） */
@@ -37,6 +38,7 @@ export interface ParseOptions {
 }
 
 const MAX_DEPTH = 4
+const BLOCK_TAGS = new Set(['scene', 'cg'])
 const TAG_RE = /^<(\/?)([a-z][a-z0-9-]*)((?:\s+[a-zA-Z_-]+="[^"]*")*)\s*(\/?)>/
 const ATTR_RE = /([a-zA-Z_-]+)="([^"]*)"/g
 
@@ -56,9 +58,9 @@ export function parseMarkup(src: string, opts: ParseOptions): Block[] {
       return
     }
     const children = parseInline(line, opts, isLast)
-    // 段首的 <scene/> 提升为块级（舞台切换 + 可选的标题卡）
-    for (let first = children[0]; first?.type === 'tag' && first.name === 'scene'; first = children[0]) {
-      blocks.push({ type: 'scene', attrs: first.attrs })
+    // 段首的 <scene/>、<cg/> 提升为块级（舞台切换与标题卡、插图卡片）
+    for (let first = children[0]; first?.type === 'tag' && BLOCK_TAGS.has(first.name); first = children[0]) {
+      blocks.push({ type: first.name as 'scene' | 'cg', attrs: first.attrs })
       children.shift()
       const next = children[0]
       if (next?.type === 'text' && !next.text.trim()) children.shift()
@@ -165,6 +167,7 @@ export function plainText(blocks: Block[]): string {
     .map((b) => {
       if (b.type === 'divider') return '◇'
       if (b.type === 'scene') return b.attrs.title ?? ''
+      if (b.type === 'cg') return b.attrs.caption ?? ''
       return inline(b.children)
     })
     .filter(Boolean)

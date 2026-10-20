@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/yuin/goldmark"
@@ -291,6 +292,24 @@ func (s *Service) LatestVersionID(ctx context.Context, workID string) (string, e
 		return "", errs.NotFound("作品不存在：%s", workID)
 	}
 	return w.LatestVersionID, err
+}
+
+// AssetData 读取作品素材内容。只返回作品文件引用过的 blob；不存在时返回 nil。
+func (s *Service) AssetData(ctx context.Context, hash string) ([]byte, error) {
+	var one int
+	err := s.db.Read().QueryRowContext(ctx, `SELECT 1 FROM work_files WHERE blob_hash = ? LIMIT 1`, hash).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s.blobs.Get(ctx, s.db.Read(), hash)
+}
+
+// AssetURL 返回素材的访问地址。
+func AssetURL(a Asset) string {
+	return "/api/v1/assets/" + strings.TrimPrefix(a.Blob, "sha256:")
 }
 
 // TODO(M1-4/M6-1)：Import(ctx, ImportRequest) 两段式导入（先解析校验返回报告与任务 ID，确认后写入）：

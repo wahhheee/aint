@@ -273,8 +273,18 @@ export interface Presentation {
     command_bar: string[]
     commands: Command[]
     characters: Character[]
+    assets: AssetRef[]
     pace: Pace
   }
+}
+
+/** runtime.AssetRef：作品素材 */
+export interface AssetRef {
+  id: string
+  kind: 'image' | 'audio' | 'font'
+  role: 'background' | 'cg' | 'avatar' | 'bgm' | 'sfx' | 'font' | 'reference'
+  url: string
+  description?: string
 }
 
 /** runtime.PanelMeta */

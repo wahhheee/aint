@@ -1,6 +1,6 @@
 import { createContext, useMemo } from 'react'
 
-import type { Character, TagDef } from '@/api/types'
+import type { AssetRef, Character, TagDef } from '@/api/types'
 
 /** 渲染所需的作品信息（来自 GET /saves/{id} 的 ui 字段）。 */
 export interface MarkupContextValue {
@@ -9,17 +9,25 @@ export interface MarkupContextValue {
   workTags: ReadonlyMap<string, TagDef>
   /** who 属性 → 人物（按 ID、名字、别名都能找到） */
   characters: ReadonlyMap<string, Character>
+  /** 素材 ID → 素材（<cg src>、<scene bg>） */
+  assets: ReadonlyMap<string, AssetRef>
 }
 
 export const MarkupContext = createContext<MarkupContextValue>({
   tags: new Set(),
   workTags: new Map(),
   characters: new Map(),
+  assets: new Map(),
 })
 
 export const MarkupProvider = MarkupContext.Provider
 
-export function useMarkupContext(builtinTags: string[], workTags: TagDef[], characters: Character[]): MarkupContextValue {
+export function useMarkupContext(
+  builtinTags: string[],
+  workTags: TagDef[],
+  characters: Character[],
+  assets: AssetRef[],
+): MarkupContextValue {
   return useMemo(() => {
     const chars = new Map<string, Character>()
     for (const c of characters) {
@@ -29,6 +37,7 @@ export function useMarkupContext(builtinTags: string[], workTags: TagDef[], char
       tags: new Set([...builtinTags, ...workTags.map((t) => t.name)]),
       workTags: new Map(workTags.map((t) => [t.name, t])),
       characters: chars,
+      assets: new Map(assets.map((a) => [a.id, a])),
     }
-  }, [builtinTags, workTags, characters])
+  }, [builtinTags, workTags, characters, assets])
 }

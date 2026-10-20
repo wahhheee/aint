@@ -20,17 +20,39 @@ type Model struct {
 	Commands []Command     // 按名称排序
 	Tags     []TagDef      // ui/markup.yaml 中的样式标签，按名称排序
 	Layout   Layout        // ui/layout.yaml
+	Assets   []Asset       // assets/ 下的素材（assets.yaml 补充元数据），按 ID 排序
 
 	// Files 是作品文件索引：路径 → blob 引用（VFS /work 读取、素材服务、记忆模板复制时按需取内容）。
 	Files map[string]FileRef
 
-	// TODO(M2)：Theme（ui/theme.yaml）、Assets（assets.yaml + 素材索引）、MemoryTemplates（memory/）。
+	// TODO(M2-9)：Theme（ui/theme.yaml）与 custom.css。
 }
 
 // FileRef 引用作品中的一个文件（内容在 blob 存储中）。
 type FileRef struct {
 	Blob string `json:"blob"`
 	Size int    `json:"size"`
+}
+
+// Asset 是一个素材（《03-作品格式规范》第 13 节）。
+type Asset struct {
+	ID          string `json:"id"`
+	Path        string `json:"path"` // 相对作品根，如 assets/bg/harbor-night.webp
+	Kind        string `json:"kind"` // image | audio | font
+	Role        string `json:"role"` // background | cg | avatar | bgm | sfx | font | reference
+	Description string `json:"description,omitzero"`
+	Pin         bool   `json:"pin,omitzero"` // 常驻 AI 上下文（多模态，TODO(M2-10)）
+	Blob        string `json:"blob"`
+}
+
+// Asset 按 ID 或路径查找素材（规范：含 / 的引用视为路径）。
+func (m *Model) Asset(ref string) (Asset, bool) {
+	for _, a := range m.Assets {
+		if a.ID == ref || a.Path == ref {
+			return a, true
+		}
+	}
+	return Asset{}, false
 }
 
 // Opening 是开场（prompts/opening.md）。
