@@ -57,9 +57,18 @@ const PURIFY_CONFIG = {
   },
 }
 
+/** 渲染为块级元素的 ui-* 组件（不能出现在 <p> 中） */
+const BLOCK_UI = new Set(['ui-stat', 'ui-bar', 'ui-collapse'])
+
 const parserOptions: HTMLReactParserOptions = {
   replace(node) {
-    if (!(node instanceof Element) || !node.name.startsWith('ui-')) return
+    if (!(node instanceof Element)) return
+    // Markdown 会把写在一行里的 <ui-stat …></ui-stat> 包进 <p>（CommonMark 只把单独成行的开标签视为 HTML 块）；
+    // 块级组件放在 <p> 中是非法嵌套，这里把这样的段落换成 <div>。
+    if (node.name === 'p' && node.children.some((c) => c instanceof Element && BLOCK_UI.has(c.name))) {
+      return <div>{domToReact(node.children as DOMNode[], parserOptions)}</div>
+    }
+    if (!node.name.startsWith('ui-')) return
     const Comp = UI_COMPONENTS[node.name]
     if (!Comp) return <></>
     return <Comp attrs={node.attribs}>{domToReact(node.children as DOMNode[], parserOptions)}</Comp>
