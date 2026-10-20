@@ -11,7 +11,7 @@
 
 - `docs/architecture.md`：分层与依赖方向、回合生命周期、前后端契约、**扩展指南（想加 X 改哪里）**
 - `docs/development.md`：开发命令与**调试手册**
-- `docs/notes/open-questions.md`：文档冲突与临时决定
+- `docs/notes/decisions.md`：评审中确认的决策（D-23～D-40）；`docs/notes/open-questions.md`：待确认事项
 - `.local/docs/`（不入库）：需求、技术方案、作品格式规范、交互设计、实施计划。`TODO(M3-6)` 这类编号对应实施计划
 
 ## 约定

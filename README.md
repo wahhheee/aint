@@ -55,9 +55,9 @@ docs/             架构、开发与调试指南、设计决策记录
 
 - [架构](docs/architecture.md)：分层、依赖方向、一个回合的生命周期、前后端契约、扩展指南
 - [开发与调试](docs/development.md)：环境、日常开发、**调试手册**、测试、构建、提交规范
-- [待确认事项](docs/notes/open-questions.md)：实现中发现的文档冲突与临时决定
+- [决策记录](docs/notes/decisions.md)：脚手架评审中确认的决策；[待确认事项](docs/notes/open-questions.md)
 - 需求、技术方案、作品格式规范、交互设计、实施计划：在本地的 `.local/docs/`（不入库）
 
 ## 许可
 
-TODO：确定开源许可证（实施计划建议运行时代码 Apache-2.0 或 MIT，示例作品单独许可）。
+运行时代码以 [Apache License 2.0](LICENSE) 发布。示例作品单独许可，见各作品的 `work.yaml`（《雾港来信》为 CC-BY-NC-4.0）。

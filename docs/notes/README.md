@@ -4,5 +4,6 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| [open-questions.md](open-questions.md) | 文档冲突、未写明的默认值、偏离技术方案的实现选择 |
+| [decisions.md](decisions.md) | 已确认的决策（与 `.local/docs/README.md` 的决策记录编号一致） |
+| [open-questions.md](open-questions.md) | 待确认事项（文档冲突、未写明的默认值、偏离设计的实现选择） |
 | `api-verification.md` | TODO(M0-7)：三家 API 行为的实测结论（核对清单 1–18 项） |
