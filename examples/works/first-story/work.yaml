@@ -1,0 +1,6 @@
+format: 1
+id: yanyi.first-story
+version: 0.1.0
+title: 第一个故事
+description: 最小作品示例：只有 work.yaml 与一段执笔指令。
+tags: [示例, 开放式]

@@ -1,0 +1,12 @@
+tags:
+  gold:
+    description: 被封印的陈述，绝对为真。写出封印陈述时，同时把它追加到 sealed 状态。
+    style: {color: "#a8770e", dark_color: "#f2c14e", weight: bold, effect: glow}
+    icon: stamp
+  hypo:
+    description: 玩家提出的推论。
+    style: {color: "#2f6fbf", dark_color: "#7fb0ff", italic: true}
+    icon: lightbulb
+  whisper:
+    description: 低语、心声或幻听。
+    style: {opacity: 0.75, italic: true, effect: whisper}

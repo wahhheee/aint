@@ -1,0 +1,19 @@
+panels:
+  - id: situation
+    place: topbar
+    template: ui/panels/situation.liquid
+  - id: notebook
+    title: 笔记本
+    place: sidebar
+    template: ui/panels/notebook.liquid
+    order: 1
+  - id: sealed
+    title: 封印
+    place: sidebar
+    template: ui/panels/sealed.liquid
+    format: html
+    order: 2
+  - id: day
+    place: float
+    template: ui/panels/day.liquid
+command_bar: [follow]

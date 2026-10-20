@@ -1,0 +1,15 @@
+<ui-stat label="第几天" value="{{ state.day }}" icon="calendar"></ui-stat>
+<ui-stat label="天气" value="{{ state.weather }}" icon="cloud-fog"></ui-stat>
+<ui-stat label="跟随" value="{{ state.follow }}" icon="eye"></ui-stat>
+
+### 线索（{{ state.clues | size }}）
+{% for c in state.clues %}
+- {{ c }}
+{% else %}
+*尚无线索*
+{% endfor %}
+
+### 信任
+{% for p in state.trust %}
+<ui-bar label="{{ p[0] }}" value="{{ p[1] | plus: 10 }}" max="20"></ui-bar>
+{% endfor %}

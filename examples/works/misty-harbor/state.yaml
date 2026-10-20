@@ -1,0 +1,13 @@
+fields:
+  player:
+    type: object
+    fields:
+      name:  {type: string, default: 沈遥, desc: 玩家角色名}
+      trait: {type: string, default: 观察, desc: 玩家角色的特长（观察、话术或记忆）}
+  day:       {type: number, default: 1, desc: 故事内第几天，过夜时加 1}
+  weather:   {type: string, default: 浓雾, desc: 当前天气，一两个字}
+  follow:    {type: string, default: 沈遥, desc: 当前叙述跟随的人物；玩家用 /follow 切换后更新}
+  clues:     {type: list, desc: 玩家已掌握的线索，每条一句话}
+  sealed:    {type: list, desc: 已封印的陈述（绝对为真）；写出 <gold> 封印陈述时同步追加}
+  trust:     {type: map, values: number, default: {林舟: 2, 老陈: 0}, desc: 人物对玩家的信任，键为人物名，大致在 -10 到 10 之间}
+  situation: {type: string, default: 雾越来越浓，老陈不见了。, desc: 当前局势一句话，显示在顶栏}
