@@ -25,6 +25,9 @@ type Settings struct {
 	Models       ModelRoles `json:"models"`
 	Play         Play       `json:"play"`
 	Onboarded    bool       `json:"onboarded"` // 是否已看过欢迎页
+	// Developer 是"开发者选项"（SET-07，D-31）：显示检查器、回合检查、完整状态与状态编辑。
+	// 默认关闭；从开发目录链接的作品不论此开关如何都显示（Presentation.DevWork）。
+	Developer bool `json:"developer"`
 }
 
 // Reading 是阅读设置（SET-02）。

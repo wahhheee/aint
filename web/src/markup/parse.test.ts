@@ -43,4 +43,25 @@ describe('parseMarkup', () => {
     const [p] = parseMarkup('这是**很重要**的*线索*', { tags })
     expect(p.type === 'p' && p.children.map((c) => c.type)).toEqual(['text', 'strong', 'text', 'em'])
   })
+
+  describe('场外块 <ooc>（D-30）', () => {
+    const withOOC = new Set([...tags, 'ooc'])
+
+    it('可以跨行，内部按正文规则分段；块后的正文照常解析', () => {
+      const blocks = parseMarkup('<ooc>好的，节奏放慢一些。\n\n<gold>线索</gold>会更隐蔽。</ooc>\n雾又浓了。', { tags: withOOC })
+      expect(blocks.map((b) => b.type)).toEqual(['ooc', 'p'])
+      const ooc = blocks[0]
+      expect(ooc.type === 'ooc' && ooc.children.map((b) => b.type)).toEqual(['p', 'p'])
+    })
+
+    it('流式中尚未写到 </ooc> 时，到文末都算场外块', () => {
+      const blocks = parseMarkup('前文。\n<ooc>我想想', { tags: withOOC, drafting: true })
+      expect(blocks.map((b) => b.type)).toEqual(['p', 'ooc'])
+    })
+
+    it('未启用时按原文显示', () => {
+      const [p] = parseMarkup('<ooc>场外</ooc>', { tags })
+      expect(p.type === 'p' && p.children[0]).toEqual({ type: 'raw', text: '<ooc>' })
+    })
+  })
 })

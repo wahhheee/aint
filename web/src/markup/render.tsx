@@ -2,6 +2,7 @@
  * 叙事标记 AST → React（《02-技术方案》16.2，《04-交互与界面设计》8.4）。
  */
 import { Fragment, useContext, useMemo, type CSSProperties, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { WorkIcon } from '@/components/common/WorkIcon'
 
@@ -61,7 +62,20 @@ function renderBlock(b: Block, key: number, ctx: MarkupContextValue, isDraftTail
           {renderInline(b.children, ctx)}
         </p>
       )
+    case 'ooc':
+      return <OOCBlock key={key}>{b.children.map((c, i) => renderBlock(c, i, ctx, isDraftTail && i === b.children.length - 1))}</OOCBlock>
   }
+}
+
+/** 执笔者的场外回应（D-30）：与玩家的场外发言同一视觉语汇，表明它不属于故事。 */
+function OOCBlock({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
+  return (
+    <aside className="mk-ooc-block" aria-label={t('reader.oocReply')}>
+      <span className="mk-ooc-label">{t('reader.oocReply')}</span>
+      <div className="min-w-0">{children}</div>
+    </aside>
+  )
 }
 
 function renderInline(nodes: Inline[], ctx: MarkupContextValue): ReactNode {
@@ -100,6 +114,8 @@ function renderTag(n: Extract<Inline, { type: 'tag' }>, ctx: MarkupContextValue)
     }
     case 'aside':
       return <span className="mk-aside">{children}</span>
+    case 'ooc': // 段落中间的场外回应（行首的已提升为场外块）
+      return <span className="mk-ooc">{children}</span>
     case 'fx':
       return <span className={`fx-${(n.attrs.type ?? '').replace(/[^a-z-]/g, '')}`}>{children}</span>
     case 'pause': // 打字机停顿：TODO(M5-1)

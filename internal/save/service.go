@@ -12,6 +12,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
+	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/store"
 	"github.com/wahhheee/yanyi/internal/tmpl"
@@ -148,7 +149,11 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 			}
 			text += "\n\n（可选行动：" + strings.Join(parts, "；") + "）"
 		}
-		messages := []llm.Message{{Role: llm.RoleAssistant, Parts: []llm.Part{llm.Text(text)}}}
+		// 先放一条合成的 user 消息：历史始终以 user 开头，与生成式开场的结构一致（D-33）
+		messages := []llm.Message{
+			{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.StaticOpeningInput)}},
+			{Role: llm.RoleAssistant, Parts: []llm.Part{llm.Text(text)}},
+		}
 		node, err := s.commitTx(ctx, tx, TurnCommit{
 			SaveID: sv.ID, Parent: root, TurnNo: 1, Input: TurnInput{Kind: InputOpening},
 			Messages: messages, Display: display, StateHash: stateHash, MemoryHash: memHash,
@@ -196,7 +201,7 @@ func (s *Service) Rename(ctx context.Context, id, title string) error {
 	}
 	return s.db.Tx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `UPDATE saves SET title = ?, title_source = ?, updated_at = ? WHERE id = ?`,
-			nullable(title), nullable(source), store.NowMillis(), id)
+			store.NullString(title), store.NullString(source), store.NowMillis(), id)
 		if err != nil {
 			return err
 		}

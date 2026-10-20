@@ -118,3 +118,11 @@ func (db *DB) Close() error {
 
 // NowMillis 返回当前 Unix 毫秒时间戳。库中所有时间列统一使用 Unix 毫秒。
 func NowMillis() int64 { return time.Now().UnixMilli() }
+
+// NullString 把空字符串写成 NULL（可空的 TEXT 列统一用它）。
+func NullString(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}

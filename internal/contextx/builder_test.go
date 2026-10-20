@@ -71,12 +71,14 @@ func TestMinimalWorkAssembly(t *testing.T) {
 		t.Fatalf("最小作品的工具应为 %v，得到 %v", want, got)
 	}
 	sys := systemText(built.Request)
-	// 注：presentation.text_effects 与 features.ooc 默认开启（规范 5.1），所以"叙事标记"（pause/fx/aside）
-	// 与 <ooc> 说明仍会出现。技术方案 8.6 对最小作品的描述与此矛盾，待确认（见 docs/notes/open-questions.md）。
-	for _, absent := range []string{"## 状态", "update_state", "/work", "命令", "/uploads", "设定索引"} {
+	// 特效默认关闭、场外默认开启（D-23）：没有"叙事标记"一节，但有 <ooc> 的说明。
+	for _, absent := range []string{"## 状态", "update_state", "/work", "命令", "/uploads", "设定索引", "叙事标记"} {
 		if strings.Contains(sys, absent) {
 			t.Errorf("最小作品的提示词不应包含 %q", absent)
 		}
+	}
+	if !strings.Contains(sys, "<ooc>") || !strings.Contains(sys, "/memory/index.md 是总索引") {
+		t.Error("应包含场外发言说明与平台默认的记忆目录约定（D-24）")
 	}
 	if !strings.Contains(sys, "# 作品：第一个故事") || !strings.Contains(sys, "海边小镇") {
 		t.Error("应包含作品标题与执笔指令")

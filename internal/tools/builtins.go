@@ -140,8 +140,9 @@ func specOfferChoices(fs prompts.FeatureSet, m *work.Model) (string, map[string]
 		"label":  str("选项文字"),
 		"detail": str("补充说明（可选）"),
 	}
+	// style 只取作品样式标签，平台不内置选项样式（D-27）
 	if fs.Has(prompts.FWorkTags) {
-		styles := []string{"danger", "subtle"}
+		var styles []string
 		for _, t := range m.Tags {
 			styles = append(styles, t.Name)
 		}

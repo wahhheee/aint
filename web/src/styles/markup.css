@@ -25,6 +25,39 @@ p.mk-aside-block {
   border-left: 1px solid var(--rule);
 }
 
+/* <ooc>：执笔者的场外回应（D-30）。与玩家的场外发言同一视觉语汇——淡色细线、界面字体、小一号——
+   一眼可知它不属于故事 */
+.mk-ooc-block {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin: 0 0 var(--reading-gap, 1.5rem);
+  padding: 0.125rem 0 0.125rem 0.875rem;
+  border-left: 2px solid color-mix(in oklab, var(--ink-faint) 40%, transparent);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  line-height: 1.75;
+  text-align: start;
+  color: var(--ink-muted);
+}
+.mk-ooc-block p,
+.mk-ooc-block blockquote {
+  margin: 0 0 0.5em;
+  text-indent: 0;
+}
+.mk-ooc-block p:last-child {
+  margin-bottom: 0;
+}
+.mk-ooc-label {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+}
+.mk-ooc {
+  font-family: var(--font-ui);
+  font-size: 0.85em;
+  color: var(--ink-muted);
+}
+
 /* 未知或未启用的标签：按普通文字显示原文（决策 D-21），略淡以示区别 */
 .mk-raw {
   color: var(--ink-faint);

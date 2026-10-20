@@ -68,7 +68,7 @@ func (e Envelope) answer() (string, bool) {
 	case save.InputFree:
 		return "玩家自由输入：" + e.Text, true
 	}
-	return "（玩家没有从选项中作答，而是另有输入，见下方）", false
+	return prompts.ChoiceNotAnswered, false // D-29
 }
 
 func (e Envelope) inputText() string {

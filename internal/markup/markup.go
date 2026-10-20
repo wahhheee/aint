@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	reOOC      = regexp.MustCompile(`(?s)<ooc>.*?(</ooc>|$)`) // 未闭合时延续到结尾，与前端一致
 	reSay      = regexp.MustCompile(`(?s)<say\s+who="([^"]*)"[^>]*>(.*?)</say>`)
 	reSelfTag  = regexp.MustCompile(`<[a-z][a-z0-9-]*(\s+[a-z_-]+="[^"]*")*\s*/>`)
 	reOpenTag  = regexp.MustCompile(`<[a-z][a-z0-9-]*(\s+[a-z_-]+="[^"]*")*\s*>`)
@@ -23,12 +24,14 @@ var (
 	reBlank    = regexp.MustCompile(`\n{3,}`)
 )
 
-// PlainText 把叙事标记转为纯文本：去掉标签，<say who="林舟">台词</say> 转为"林舟：台词"。
+// PlainText 把叙事标记转为故事原文的纯文本：去掉标签，<say who="林舟">台词</say> 转为"林舟：台词"；
+// <ooc> 中的场外内容不属于故事，整段去掉（D-30）。
 //
 // TODO(M0-5/M2-7)：改为基于正式解析器的实现（标签白名单、嵌套、未闭合容错），与前端共用测试向量；
 // 目前用正则做近似处理，足以支撑原文检索。
 func PlainText(src string) string {
-	s := reSay.ReplaceAllString(src, "$1：$2")
+	s := reOOC.ReplaceAllString(src, "")
+	s = reSay.ReplaceAllString(s, "$1：$2")
 	s = reSelfTag.ReplaceAllString(s, "")
 	s = reOpenTag.ReplaceAllString(s, "")
 	s = reCloseTag.ReplaceAllString(s, "")

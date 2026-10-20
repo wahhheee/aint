@@ -1,5 +1,5 @@
 # 内置演示脚本（yanyi --fake-llm demo）。
-# 内容配合内置示例《雾港来信》，覆盖：场景标记、台词、作品样式标签、场景分隔、选项。
+# 内容配合内置示例《雾港来信》，覆盖：场景标记、台词、作品样式标签、场景分隔、选项、场外回应。
 responses:
   - first_delay_ms: 700
     chunk_runes: 3
@@ -73,3 +73,13 @@ responses:
             - {id: a, label: 收起邮票，什么也不说}
             - {id: b, label: 把发现告诉林舟}
             - {id: c, label: 去灯塔, detail: 那道光扫过的间隔似乎变了}
+
+# 玩家场外发言（/ooc）时的回应，不计入上面的循环。
+ooc:
+  first_delay_ms: 400
+  chunk_runes: 3
+  delay_ms: 22
+  text: |
+    <ooc>收到：「{{input}}」。
+
+    接下来我会放慢节奏，把线索藏得更深一些。想回到故事里，直接写下你的行动就好。</ooc>

@@ -103,7 +103,8 @@ type Hit struct {
 
 // FS 是主笔看到的文件系统（每个回合草稿一个实例）。
 //
-// TODO(M3-1/M3-3/M3-4)：实现（挂载作品文件、记忆覆盖层、原文虚拟文件、上传图片；检索排序：
+// TODO(M3-1/M3-3/M3-4)：实现（挂载作品文件——读取 /work/lore 时经 work.Model.LinkDocs 补全 [[id]] 链接（D-35）；
+// 记忆覆盖层、原文虚拟文件、上传图片；检索排序：
 // 记忆 > 作品资料 > 原文（新→旧），每个文件最多 5 条，总计 ≤ 50 条 / 约 6,000 字符；别名扩展）。
 type FS interface {
 	List(ctx context.Context, p string, depth int) ([]Entry, error)

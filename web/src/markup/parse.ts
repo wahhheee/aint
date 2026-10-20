@@ -9,8 +9,9 @@
  *   - 行内标签在段落结束时自动闭合；嵌套最多 4 层；属性非法时忽略该属性；
  *   - 流式草稿态（drafting）下，段尾尚未写完的 "<sce…" 先不显示，避免一闪而过的原文。
  *
- * 分段：每个非空行是一个段落。规范写的是"空行分隔"，但模型常用单个换行分段，
- * 按行切分对两种写法都正确（TODO(待确认)：与 Go 端 internal/markup 保持一致，并共用 testdata/markup 测试向量）。
+ * 分段：每个非空行是一个段落（D-26）——空行分隔与单换行分段两种写法都能正确显示。
+ * 例外：<ooc>…</ooc> 可以跨行，整体作为一个场外块（D-30）。
+ * TODO(M0-5)：与 Go 端 internal/markup 共用 testdata/markup 测试向量。
  *
  * TODO(M0-5)：改为真正的增量解析（只解析新增文本），一万字长回合时避免每帧全量重解析。
  */
@@ -29,6 +30,8 @@ export type Block =
   | { type: 'divider' }
   | { type: 'scene'; attrs: Record<string, string> }
   | { type: 'cg'; attrs: Record<string, string> }
+  /** 执笔者的场外回应（D-30）：内部按正文规则解析，不含嵌套的 <ooc> */
+  | { type: 'ooc'; children: Block[] }
 
 export interface ParseOptions {
   /** 可渲染的标签白名单（已启用的内置标签 + 作品样式标签） */
@@ -41,9 +44,33 @@ const MAX_DEPTH = 4
 const BLOCK_TAGS = new Set(['scene', 'cg'])
 const TAG_RE = /^<(\/?)([a-z][a-z0-9-]*)((?:\s+[a-zA-Z_-]+="[^"]*")*)\s*(\/?)>/
 const ATTR_RE = /([a-zA-Z_-]+)="([^"]*)"/g
+const OOC_OPEN_RE = /^[ \t]*<ooc>/m
+const OOC_CLOSE = '</ooc>'
 
 export function parseMarkup(src: string, opts: ParseOptions): Block[] {
-  const lines = src.replace(/\r\n/g, '\n').split('\n')
+  src = src.replace(/\r\n/g, '\n')
+  if (!opts.tags.has('ooc')) return parseLines(src, opts)
+
+  // 行首的 <ooc> 开始一个场外块，直到 </ooc>（流式中尚未写到 </ooc> 时到文末为止）
+  const inner: ParseOptions = { ...opts, tags: new Set([...opts.tags].filter((t) => t !== 'ooc')) }
+  const blocks: Block[] = []
+  let rest = src
+  for (let m = OOC_OPEN_RE.exec(rest); m; m = OOC_OPEN_RE.exec(rest)) {
+    blocks.push(...parseLines(rest.slice(0, m.index), { ...opts, drafting: false }))
+    const start = m.index + m[0].length
+    const end = rest.indexOf(OOC_CLOSE, start)
+    const body = end < 0 ? rest.slice(start) : rest.slice(start, end)
+    const children = parseLines(body, { ...inner, drafting: opts.drafting && end < 0 })
+    if (children.length > 0 || end < 0) blocks.push({ type: 'ooc', children })
+    if (end < 0) return blocks
+    rest = rest.slice(end + OOC_CLOSE.length)
+  }
+  blocks.push(...parseLines(rest, opts))
+  return blocks
+}
+
+function parseLines(src: string, opts: ParseOptions): Block[] {
+  const lines = src.split('\n')
   const blocks: Block[] = []
   lines.forEach((raw, i) => {
     const line = raw.trim()
@@ -168,6 +195,7 @@ export function plainText(blocks: Block[]): string {
       if (b.type === 'divider') return '◇'
       if (b.type === 'scene') return b.attrs.title ?? ''
       if (b.type === 'cg') return b.attrs.caption ?? ''
+      if (b.type === 'ooc') return '' // 场外回应不属于故事原文（与 Go 端 markup.PlainText 一致）
       return inline(b.children)
     })
     .filter(Boolean)

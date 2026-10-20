@@ -27,7 +27,7 @@ const (
 
 	// 全局主题（GlobalTopic）
 
-	WorkReloaded = "work.reloaded" // WorkReloadedData：开发模式下作品重新加载
+	WorkReloaded = "work.reloaded" // WorkReloadedData：开发目录中的作品重新加载
 	SaveTitled   = "save.titled"   // SaveTitledData：存档标题生成完成
 
 	// Resync 不经过总线，由 SSE 端点在无法补发时直接发出，客户端应重新拉取时间线。

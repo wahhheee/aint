@@ -23,10 +23,13 @@ import (
 //	        args: {choices: [{id: a, label: 推开门}]}
 //	    stop: tool_use       # 缺省：有工具调用为 tool_use，否则 end；可设 max_tokens 测续写
 //	  - error: rate_limited  # 模拟错误（llm.ErrorKind），用于测试重试与错误提示
+//	ooc:                     # 可选：玩家场外发言（<ooc>）时使用，不计入 responses 的循环
+//	  text: "<ooc>收到。</ooc>"
 //
 // 每个存档独立计数，依次循环使用 responses。
 type Script struct {
 	Responses []Response `yaml:"responses"`
+	OOC       *Response  `yaml:"ooc"`
 }
 
 // Response 是一次调用的脚本。

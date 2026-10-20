@@ -53,7 +53,12 @@ type ImportResult struct {
 }
 
 // ImportFileSet 是所有导入来源的公共后半段：编译 → 校验 → 去重 → 入库。
+//
+// 开发目录不走这里：它的版本是"树哈希即版本身份"的例外，每部作品至多一个、原地更新（D-37，TODO(M6-2)）。
 func (s *Service) ImportFileSet(ctx context.Context, set *FileSet, src Source) (*ImportResult, error) {
+	if src.Type == "dev" {
+		return nil, errs.NotImplemented("开发目录")
+	}
 	m, rep := Compile(set)
 	if rep.HasErrors() {
 		n, _ := rep.Count()
@@ -77,7 +82,7 @@ func (s *Service) ImportFileSet(ctx context.Context, set *FileSet, src Source) (
 		}
 		if err := insertVersion(ctx, tx, versionRow{
 			ID: res.VersionID, WorkID: m.Manifest.ID, Version: m.Manifest.Version, TreeHash: m.TreeHash,
-			IsDev: src.Type == "dev", Source: src, Manifest: m.Manifest, Report: *rep, ImportedAt: store.NowMillis(),
+			Source: src, Manifest: m.Manifest, Report: *rep, ImportedAt: store.NowMillis(),
 		}); err != nil {
 			return err
 		}
@@ -277,7 +282,8 @@ func (s *Service) Model(ctx context.Context, versionID string) (*Model, error) {
 		// 入库时校验通过，此处仍报错说明编译器规则变严了（程序升级）；带上报告便于排查。
 		return nil, errs.New(errs.CodeWorkInvalid, "作品版本无法加载").WithDetails(rep)
 	}
-	m.VersionID, m.WorkID = v.ID, v.WorkID
+	m.VersionID, m.WorkID, m.IsDev = v.ID, v.WorkID, v.IsDev
+	// TODO(M6-2)：开发版本原地更新后需使这里的缓存失效。
 
 	s.mu.Lock()
 	s.cache[versionID] = m
@@ -317,7 +323,8 @@ func AssetURL(a Asset) string {
 //   - 目录：os.DirFS(path) → LocateRoot → FromFS；
 //   - GitHub：链接解析、ref 歧义处理、codeload 归档下载、LFS 检测（技术方案 5.4）；
 //   - URL：下载大小上限、超时（P1）。
-// TODO(M6-2)：开发模式（dev_path 原地更新 + fsnotify 去抖 400ms + 推送 work.reloaded）。
+// TODO(M6-2)：开发目录（WRK-10）：每部作品至多一个开发版本（is_dev = 1），重载时原地替换 work_files 并更新
+// tree_hash（D-37）；fsnotify 去抖 400ms，推送 work.reloaded；已有存档始终使用最新内容。
 // TODO(M6-5)：Export（确定性 zip）、Delete（有存档引用时提示）。
 
 func nonNil[T any](s []T) []T {

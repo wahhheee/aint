@@ -18,10 +18,13 @@ export function ReaderTopBar({
   save,
   onToggleSidebar,
   sidebarAvailable,
+  devTools,
 }: {
   save?: Save
   onToggleSidebar: () => void
   sidebarAvailable: boolean
+  /** 开发者工具（D-31）：普通玩家看不到调试入口 */
+  devTools: boolean
 }) {
   const { t } = useTranslation()
   const context = useReader((s) => s.context)
@@ -49,9 +52,11 @@ export function ReaderTopBar({
         </IconButton>
         <ReadingSettingsPopover />
         {/* TODO(M5-9)：检查器（概览 / 上下文 / 工具 / 状态 / 记忆 / 原始） */}
-        <IconButton label={t('reader.inspector')} onClick={todo}>
-          <ScanSearch />
-        </IconButton>
+        {devTools && (
+          <IconButton label={t('reader.inspector')} onClick={todo}>
+            <ScanSearch />
+          </IconButton>
+        )}
         {sidebarAvailable && (
           <IconButton label={t('reader.panels')} onClick={onToggleSidebar}>
             <PanelRight />

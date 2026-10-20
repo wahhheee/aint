@@ -28,8 +28,7 @@ var l1Sections = []l1Section{
 	{id: "l1.assets", title: "素材索引", when: prompts.Requires(prompts.FAssets), render: renderAssets},
 	{id: "l1.memory", title: "记忆约定", when: prompts.Requires(prompts.FMemoryGuide),
 		render: func(m *work.Model, _ prompts.FeatureSet) string { return m.MemoryGuide }},
-	// TODO(待确认)：技术方案 12.3 说"默认记忆约定写入 L1"，但 20.2 与 8.6 的最小作品组装中都没有这一节；
-	// 暂按 20.2（仅当作品提供 memory.md 时出现）。
+	// 平台默认的记忆目录约定在 L0"记忆"节（D-24）；这里只放作品自己的补充约定。
 }
 
 // assembleL1 组装作品指令。narrator 是已用初始状态渲染好的执笔指令。

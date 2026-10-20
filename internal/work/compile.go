@@ -24,7 +24,7 @@ var (
 
 // Compile 把文件集编译为 Model 并给出校验报告。
 //
-// 报告有 error 时仍尽量返回 Model（开发模式需要展示"哪里错了"），调用方据 Report.HasErrors 决定是否接受。
+// 报告有 error 时仍尽量返回 Model（开发目录需要展示"哪里错了"），调用方据 Report.HasErrors 决定是否接受。
 // 编译是纯函数：不读写数据库与磁盘，便于测试与 `yanyi work validate`。
 func Compile(fs *FileSet) (*Model, *Report) {
 	c := &compiler{
@@ -54,7 +54,6 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	// TODO(M2-10)：素材解码校验（E-ASSET）、Git LFS 指针检测（E-LFS）、常驻图片 token 估算（W-PIN-IMAGE）。
 	// TODO(M2-8)：面板与命令中的 Liquid 模板解析（E-TEMPLATE）。
 	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
-	// TODO(M1-4)：engine 版本范围检查（E-ENGINE）。
 	return c.m, c.r
 }
 
@@ -114,6 +113,16 @@ func (c *compiler) manifest() bool {
 	if strings.TrimSpace(mf.Title) == "" {
 		c.r.Errorf(CodeManifest, file, 0, "", "缺少 title")
 	}
+	if mf.Engine != "" {
+		ok, err := engineSatisfies(mf.Engine, EngineVersion)
+		switch {
+		case err != nil:
+			c.r.Errorf(CodeEngine, file, 0, `写法如 ">=1.0 <2.0" 或 "^1.0"`, "engine 范围不合法：%v", err)
+		case !ok:
+			c.r.Errorf(CodeEngine, file, 0, "请升级演义，或调整 engine 范围",
+				"作品需要的能力版本为 %s，当前程序为 %s", mf.Engine, EngineVersion)
+		}
+	}
 	return !c.r.HasErrors()
 }
 
@@ -132,8 +141,7 @@ func (c *compiler) prompts() {
 	if b, ok := c.fs.Get(openingFile); ok {
 		front, body, _ := splitFrontmatter(b)
 		op := &Opening{Mode: mf.Opening.Mode, Body: strings.TrimSpace(body)}
-		// TODO(待确认)：规范未写明有 opening.md 但未设 mode 时的默认值，暂按 static（直接展示作者写好的开场）。
-		if op.Mode == "" {
+		if op.Mode == "" { // 有 opening.md 未写 mode 时为 static（D-25）
 			op.Mode = "static"
 		}
 		if front != nil {
@@ -193,7 +201,7 @@ func (c *compiler) lore() {
 	seen := map[string]string{}
 	for _, p := range c.fs.Glob("lore", ".md") {
 		data, _ := c.fs.Get(p)
-		front, body, _ := splitFrontmatter(data)
+		front, body, bodyLine := splitFrontmatter(data)
 		var fm docFront
 		if front != nil && !c.decode(p, 1, front, &fm, func() any { return &docFront{} }) {
 			continue
@@ -202,7 +210,7 @@ func (c *compiler) lore() {
 		d := Doc{
 			Path: p, ID: fm.ID, Title: fm.Title, Kind: fm.Kind, Aliases: fm.Aliases, Summary: fm.Summary,
 			Load: fm.Load, Images: fm.Images, PinImages: fm.PinImages, Display: fm.Display,
-			IsIndex: base == "_index", Body: body,
+			IsIndex: base == "_index", Body: body, bodyLine: bodyLine,
 		}
 		if d.IsIndex {
 			base = path.Base(path.Dir(p))
@@ -267,7 +275,7 @@ func (c *compiler) commands() {
 			cmd.Title = name
 		}
 		if len(cmd.Present) == 0 {
-			cmd.Present = []string{"slash"} // TODO(待确认)：规范未写 present 的默认值，暂按斜杠命令
+			cmd.Present = []string{"slash"} // 未写 present 时默认斜杠命令（D-25）
 		}
 		if cmd.Description == "" {
 			c.r.Warnf(CodeNoDesc, p, 1, "description 同时给玩家和 AI 看", "命令 /%s 缺少 description", name)
@@ -417,7 +425,8 @@ func (c *compiler) crossRefs() {
 			c.r.Errorf(CodeRef, "work.yaml", 0, "", "封面素材不存在：%s", cover)
 		}
 	}
-	// TODO(M2)：其余素材引用（images、display.avatar）与文档链接 [[id]] 的完整性检查。
+	c.checkDocLinks()
+	// TODO(M2)：其余素材引用（images、display.avatar）与相对链接的完整性检查。
 }
 
 func (c *compiler) statePathExists(p string) bool {

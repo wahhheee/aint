@@ -68,6 +68,7 @@ export function ReaderPage() {
       timeline={timeline.data}
       panels={panels.data?.panels}
       reading={settings.data?.reading}
+      devTools={!!settings.data?.developer || presentation.data.dev_work}
     />
   )
 }
@@ -78,9 +79,11 @@ type ViewProps = {
   timeline: ReturnType<typeof useTimeline>['data']
   panels: NonNullable<ReturnType<typeof usePanels>['data']>['panels'] | undefined
   reading: ReaderContextValue['reading']
+  /** 显示开发者工具（检查器等）：开发者选项开启，或作品来自开发目录 */
+  devTools: boolean
 }
 
-function ReaderView({ saveId, presentation, timeline, panels, reading }: ViewProps) {
+function ReaderView({ saveId, presentation, timeline, panels, reading, devTools }: ViewProps) {
   const { ui, save } = presentation
   const actions = useTurnActions(saveId, ui.commands)
   const busy = useReader(selectBusy)
@@ -156,7 +159,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading }: ViewPro
                 连接已断开，正在重连……
               </div>
             )}
-            <ReaderTopBar save={save} onToggleSidebar={toggleSidebar} sidebarAvailable={hasSidebar} />
+            <ReaderTopBar save={save} onToggleSidebar={toggleSidebar} sidebarAvailable={hasSidebar} devTools={devTools} />
             <TopbarPanels meta={ui.panels} rendered={panels} />
             <Stream timeline={timeline} onRetry={() => void actions.retry()} onContinue={() => void actions.submit({ kind: 'continue' })} />
             <FloatPanels meta={ui.panels} rendered={panels} />

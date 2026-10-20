@@ -19,7 +19,7 @@ func insertSave(ctx context.Context, q store.Querier, s *Save) error {
 		INSERT INTO saves (id, work_id, work_version_id, title, title_source, head_node_id, settings,
 		                   created_at, updated_at, last_played_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.WorkID, s.WorkVersionID, nullable(s.Title), nullable(s.TitleSource), nullable(s.HeadNodeID),
+		s.ID, s.WorkID, s.WorkVersionID, store.NullString(s.Title), store.NullString(s.TitleSource), store.NullString(s.HeadNodeID),
 		string(settings), s.CreatedAt, s.UpdatedAt, s.LastPlayedAt)
 	return err
 }
@@ -99,8 +99,8 @@ func insertNode(ctx context.Context, q store.Querier, n *Node) error {
 		INSERT INTO nodes (id, save_id, parent_id, depth, kind, status, turn_no, input, messages, display, epoch_block,
 		                   keep_from, state_hash, memory_hash, work_version_id, notes, usage, meta, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		n.ID, n.SaveID, nullable(n.ParentID), n.Depth, n.Kind, n.Status, turnNo, input,
-		nullable(n.MessagesHash), nullable(n.DisplayHash), nullable(n.EpochHash), nullable(n.KeepFrom),
+		n.ID, n.SaveID, store.NullString(n.ParentID), n.Depth, n.Kind, n.Status, turnNo, input,
+		store.NullString(n.MessagesHash), store.NullString(n.DisplayHash), store.NullString(n.EpochHash), store.NullString(n.KeepFrom),
 		n.StateHash, n.MemoryHash, n.WorkVersionID, notes, usage, meta, n.CreatedAt)
 	return err
 }
@@ -174,11 +174,4 @@ func insertTranscript(ctx context.Context, q store.Querier, saveID, nodeID, text
 	}
 	_, err := q.ExecContext(ctx, `INSERT INTO transcript_fts (text, node_id, save_id) VALUES (?, ?, ?)`, text, nodeID, saveID)
 	return err
-}
-
-func nullable(s string) any {
-	if s == "" {
-		return nil
-	}
-	return s
 }

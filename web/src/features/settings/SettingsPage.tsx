@@ -7,11 +7,12 @@ import { NavLink, useParams } from 'react-router'
 import { cn } from '@/lib/utils'
 
 import { AboutSection } from './sections/AboutSection'
+import { DeveloperSection } from './sections/DeveloperSection'
 import { ProvidersSection } from './sections/ProvidersSection'
 import { ReadingSection } from './sections/ReadingSection'
 import { StorageSection } from './sections/StorageSection'
 
-const SECTIONS = ['providers', 'reading', 'storage', 'about'] as const
+const SECTIONS = ['providers', 'reading', 'storage', 'developer', 'about'] as const
 type Section = (typeof SECTIONS)[number]
 
 export function SettingsPage() {
@@ -43,6 +44,7 @@ export function SettingsPage() {
         {current === 'providers' && <ProvidersSection />}
         {current === 'reading' && <ReadingSection />}
         {current === 'storage' && <StorageSection />}
+        {current === 'developer' && <DeveloperSection />}
         {current === 'about' && <AboutSection />}
       </div>
     </div>

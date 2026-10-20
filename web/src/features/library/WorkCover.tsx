@@ -23,7 +23,7 @@ interface Props {
   id: string
   title: string
   className?: string
-  /** 开发模式作品：右下角一枚小印"开发" */
+  /** 开发目录中的作品：右下角一枚小印"开发" */
   dev?: boolean
 }
 

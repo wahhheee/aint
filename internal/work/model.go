@@ -7,6 +7,7 @@ type Model struct {
 	WorkID    string
 	VersionID string
 	TreeHash  string
+	IsDev     bool // 来自开发目录（D-37）；阅读页据此默认显示开发者工具（D-31）
 	Manifest  Manifest
 
 	Narrator        string   // 执笔指令原文（prompts/narrator.md）
@@ -83,6 +84,7 @@ type Doc struct {
 	Display   DocDisplay `json:"display,omitzero"`
 	IsIndex   bool       `json:"is_index,omitzero"` // 目录摘要 _index.md
 	Body      string     `json:"-"`
+	bodyLine  int        // 正文在文件中的起始行号（校验报告定位用）
 }
 
 type DocDisplay struct {
@@ -166,5 +168,5 @@ type PanelDef struct {
 // 保留名（《03-作品格式规范》第 4 节）。
 var (
 	BuiltinCommands = []string{"ooc", "continue", "compact", "help"}
-	BuiltinTags     = []string{"scene", "cg", "say", "bgm", "sfx", "pause", "fx", "aside", "act"}
+	BuiltinTags     = []string{"scene", "cg", "say", "bgm", "sfx", "pause", "fx", "aside", "act", "ooc"}
 )

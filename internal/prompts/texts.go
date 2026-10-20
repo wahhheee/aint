@@ -8,6 +8,10 @@ const (
 	CompactionPendingChoice = "（玩家还没有作答，系统先整理上下文）"
 	// CompactionToolUnavailable 整理阶段调用了不使用的工具（13.3）。
 	CompactionToolUnavailable = "整理阶段暂不使用这个工具。"
+	// ChoiceNotAnswered 选项待答时玩家用了命令 / 场外 / 继续：offer_choices 的工具结果（8.3，D-29）。
+	ChoiceNotAnswered = "（玩家没有从选项中作答，而是另有输入，见下方）"
+	// StaticOpeningInput 静态开场节点中合成的 user 消息，保证历史以 user 开头（9.8，D-33）。
+	StaticOpeningInput = "<input kind=\"opening\">（开场）</input>"
 )
 
 // Pace 是篇幅档位的默认字数（8.3）。字数是给模型的目标，平台不截断。

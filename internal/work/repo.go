@@ -23,9 +23,11 @@ type versionRow struct {
 	ImportedAt int64
 }
 
+// findVersionByHash 按文件树哈希查找已导入的版本。开发版本不参与去重（D-37）。
 func findVersionByHash(ctx context.Context, q store.Querier, workID, treeHash string) (string, error) {
 	var id string
-	err := q.QueryRowContext(ctx, `SELECT id FROM work_versions WHERE work_id = ? AND tree_hash = ?`, workID, treeHash).Scan(&id)
+	err := q.QueryRowContext(ctx, `SELECT id FROM work_versions WHERE work_id = ? AND tree_hash = ? AND is_dev = 0`,
+		workID, treeHash).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}

@@ -18,6 +18,7 @@ type Presentation struct {
 	Save          *save.Save `json:"save"`
 	RunningTurnID string     `json:"running_turn_id,omitzero"`
 	NeedsOpening  bool       `json:"needs_opening"` // 还没有任何回合：前端应提交 kind=opening 的输入
+	DevWork       bool       `json:"dev_work"`      // 作品来自开发目录：默认显示开发者工具（D-31）
 	Model         ModelBrief `json:"model"`
 	UI            UI         `json:"ui"`
 }
@@ -90,7 +91,7 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 	if err != nil {
 		return nil, err
 	}
-	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: head.Kind == save.KindRoot}
+	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: head.Kind == save.KindRoot, DevWork: w.IsDev}
 
 	features := prompts.FeatureSet{}
 	if _, model, err := m.d.Models.Resolve(ctx, sv.Settings.NarratorModel); err == nil {

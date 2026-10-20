@@ -89,6 +89,7 @@ func EnabledBuiltinTags(fs prompts.FeatureSet) []string {
 	add(prompts.FTagSay, "say")
 	add(prompts.FTagAudio, "bgm", "sfx")
 	add(prompts.FTagEffects, "pause", "fx", "aside")
+	add(prompts.FOOC, "ooc") // AI 的场外回应（D-30）；在"消息格式"中说明，不计入 tags 特征
 	// TODO(P1)：act（有命令时启用）
 	return out
 }

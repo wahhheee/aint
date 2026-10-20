@@ -12,6 +12,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/markup"
+	"github.com/wahhheee/yanyi/internal/panel"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
@@ -336,7 +337,7 @@ func (m *Manager) recordUsage(d *draft, purpose string, u llm.Usage, start time.
 	d.usage = d.usage.Add(u)
 	rec := usage.Record{CallKind: purpose, ModelID: d.model.ID, Usage: u, LatencyMS: time.Since(start).Milliseconds(), Stop: stop}
 	if cost, ok := d.model.Price.CostMicros(u, d.save.Settings.CacheTTL); ok {
-		rec.CostMicros = &cost
+		rec.CostMicros, rec.Currency = &cost, d.model.Price.CurrencyOrDefault()
 	}
 	d.records = append(d.records, rec)
 	// TODO(M3-8)：上下文用量（已用 / 整理阈值）需要 token 估算与校准，目前以本次输入总量近似。
@@ -424,7 +425,7 @@ func (m *Manager) expandCommand(w *work.Model, name string, args map[string]stri
 		argVars[k] = v
 	}
 	text, err = m.d.Tmpl.Render("commands/"+name+".md", cmd.Template,
-		map[string]any{"args": argVars, "input": input, "state": st, "turn": turn})
+		map[string]any{"args": argVars, "input": input, "state": st, "turn": panel.TurnVar(turn)})
 	if err != nil {
 		return "", "", errs.Wrap(err, errs.CodeWorkInvalid, "命令 /%s 的模板渲染失败", name)
 	}

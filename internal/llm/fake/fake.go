@@ -64,12 +64,17 @@ func (p *Provider) Stream(ctx context.Context, _ *llm.Model, req *llm.Request) (
 	if len(p.script.Responses) == 0 {
 		return nil, errs.Invalid("假模型脚本没有任何响应")
 	}
-	p.mu.Lock()
-	n := p.calls[req.CacheKey]
-	p.calls[req.CacheKey] = n + 1
-	p.mu.Unlock()
-
-	resp := p.script.Responses[n%len(p.script.Responses)]
+	var resp Response
+	n := 0
+	if p.script.OOC != nil && lastPlayerIsOOC(req) {
+		resp = *p.script.OOC
+	} else {
+		p.mu.Lock()
+		n = p.calls[req.CacheKey]
+		p.calls[req.CacheKey] = n + 1
+		p.mu.Unlock()
+		resp = p.script.Responses[n%len(p.script.Responses)]
+	}
 	if resp.Error != "" {
 		return nil, &llm.APIError{Kind: llm.ErrorKind(resp.Error), Message: "假模型按脚本模拟的错误"}
 	}
@@ -170,7 +175,20 @@ func sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
-var inputTag = regexp.MustCompile(`(?s)<input[^>]*>(.*?)</input>`)
+var (
+	inputTag = regexp.MustCompile(`(?s)<input[^>]*>(.*?)</input>`)
+	oocTag   = regexp.MustCompile(`(?s)<ooc>(.*?)</ooc>`)
+)
+
+// lastPlayerIsOOC 判断最后一条玩家消息是否是场外发言。
+func lastPlayerIsOOC(req *llm.Request) bool {
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		if m := req.Messages[i]; m.Role == llm.RoleUser {
+			return oocTag.MatchString(m.TextOf())
+		}
+	}
+	return false
+}
 
 // lastPlayerText 取最后一条玩家消息中的玩家原文（<input> 内容或选项结果），供脚本中的 {{input}} 使用。
 func lastPlayerText(req *llm.Request) string {
@@ -180,6 +198,9 @@ func lastPlayerText(req *llm.Request) string {
 			continue
 		}
 		if sub := inputTag.FindStringSubmatch(m.TextOf()); sub != nil {
+			return strings.TrimSpace(sub[1])
+		}
+		if sub := oocTag.FindStringSubmatch(m.TextOf()); sub != nil {
 			return strings.TrimSpace(sub[1])
 		}
 		for _, p := range m.Parts {

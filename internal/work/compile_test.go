@@ -67,3 +67,20 @@ func TestCompileReportsManifestErrors(t *testing.T) {
 		t.Fatalf("应报告 format/id/version/title 错误与未知字段，得到 %+v", rep.Issues)
 	}
 }
+
+func TestDocLinks(t *testing.T) {
+	m, _ := compileExample(t, "misty-harbor")
+	got := m.LinkDocs("- [[old-chen]]：师徒；[[lin]](已有链接)；[[nobody]]")
+	want := "- [[old-chen]](/work/lore/characters/old-chen.md)：师徒；[[lin]](已有链接)；[[nobody]]"
+	if got != want {
+		t.Fatalf("链接补全不对：\n%s", got)
+	}
+
+	set := NewFileSet()
+	_ = set.Add("work.yaml", []byte("format: 1\nid: test.links\nversion: 0.1.0\ntitle: 链接\n"))
+	_ = set.Add("lore/a.md", []byte("---\ntitle: 甲\n---\n第一行\n见 [[b-missing]]\n"))
+	_, rep := Compile(set)
+	if len(rep.Issues) == 0 || rep.Issues[0].Code != CodeRef || rep.Issues[0].Line != 5 {
+		t.Fatalf("应报告不存在的文档链接并定位到第 5 行：%+v", rep.Issues)
+	}
+}

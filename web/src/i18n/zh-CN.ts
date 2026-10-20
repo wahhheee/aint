@@ -110,6 +110,7 @@ const zhCN = {
     discard: '丢弃',
     you: '你',
     ooc: '场外',
+    oocReply: '执笔者',
     placeholder: '写下你的行动……',
     placeholderMode: '以「{{mode}}」写下……',
     placeholderChoicesOnly: '从上面的选项中选择，或输入 / 使用命令',
@@ -142,6 +143,7 @@ const zhCN = {
       providers: '模型',
       reading: '阅读与外观',
       storage: '存储',
+      developer: '开发者选项',
       about: '关于',
     },
     providers: {
@@ -178,6 +180,11 @@ const zhCN = {
         '迁移或备份时，整体拷贝程序所在的文件夹即可。把程序分享给别人时，不要附带 yanyi-data 文件夹——里面有你的 API Key 与存档。',
       logDir: '日志目录',
       cleanup: '清理未使用的数据',
+    },
+    developer: {
+      intro: '给创作者和排查问题时使用的调试功能。从开发目录链接的作品不论这里如何设置都会显示。',
+      enable: '显示开发者工具',
+      enableHint: '阅读页显示检查器、回合检查与完整状态，并可以直接编辑状态。',
     },
     about: {
       version: '版本',

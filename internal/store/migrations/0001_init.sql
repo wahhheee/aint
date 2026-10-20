@@ -15,7 +15,7 @@ CREATE TABLE works (
   id                TEXT PRIMARY KEY,    -- work.yaml 中的 id
   title             TEXT NOT NULL,
   latest_version_id TEXT,
-  dev_path          TEXT,                -- 开发模式链接的本地目录
+  dev_path          TEXT,                -- 开发目录：链接的本地目录（WRK-10）
   created_at        INTEGER NOT NULL,
   updated_at        INTEGER NOT NULL
 );
@@ -29,9 +29,11 @@ CREATE TABLE work_versions (
   source      TEXT NOT NULL,             -- JSON：{type: zip|dir|github|url|dev|builtin, ...}
   manifest    TEXT NOT NULL,             -- 解析后的 work.yaml（JSON）
   report      TEXT,                      -- 校验报告（JSON）
-  imported_at INTEGER NOT NULL,
-  UNIQUE (work_id, tree_hash)
+  imported_at INTEGER NOT NULL
 );
+-- 文件树哈希即版本身份；开发目录的版本是例外：每部作品至多一个，原地更新，不参与去重（D-37）。
+CREATE UNIQUE INDEX idx_work_versions_hash ON work_versions(work_id, tree_hash) WHERE is_dev = 0;
+CREATE UNIQUE INDEX idx_work_versions_dev  ON work_versions(work_id) WHERE is_dev = 1;
 
 CREATE TABLE work_files (
   version_id TEXT NOT NULL REFERENCES work_versions(id) ON DELETE CASCADE,
@@ -121,7 +123,8 @@ CREATE TABLE usage_log (
   cache_write    INTEGER,
   output         INTEGER,
   reasoning      INTEGER,
-  cost_micros    INTEGER,                -- NULL = 无法估算
+  cost_micros    INTEGER,                -- NULL = 无法估算；单位为 currency 的百万分之一
+  currency       TEXT,                   -- 计费货币（来自模型价格，D-34）
   latency_ms     INTEGER,
   stop           TEXT,
   created_at     INTEGER NOT NULL

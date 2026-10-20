@@ -39,6 +39,8 @@ export interface Settings {
   models: { narrator: string; light: string }
   play: { pace: Pace; reasoning: Reasoning; cache_ttl: '5m' | '1h'; title_on_exit: 'auto' | 'ask' | 'off'; helpers: boolean }
   onboarded: boolean
+  /** 开发者选项（SET-07，D-31）：显示检查器、回合检查、完整状态与状态编辑 */
+  developer: boolean
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark'
@@ -264,6 +266,8 @@ export interface Presentation {
   save: Save
   running_turn_id?: string
   needs_opening: boolean
+  /** 作品来自开发目录：不论开发者选项如何都显示开发者工具（D-31） */
+  dev_work: boolean
   model: { id: string; name: string; display_name: string; vision: boolean; context_window: number }
   ui: {
     features: { free_input: boolean; ooc: boolean; dice: boolean; timed_choices: boolean }

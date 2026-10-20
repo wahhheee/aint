@@ -20,6 +20,7 @@ type Record struct {
 	ModelID    string
 	Usage      llm.Usage
 	CostMicros *int64 // nil = 无法估算
+	Currency   string // CostMicros 的货币（D-34）
 	LatencyMS  int64
 	Stop       string
 }
@@ -28,18 +29,21 @@ type Record struct {
 func Insert(ctx context.Context, q store.Querier, r Record) error {
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO usage_log (save_id, node_id, call_kind, model_id, input_uncached, cache_read, cache_write,
-		                       output, reasoning, cost_micros, latency_ms, stop, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                       output, reasoning, cost_micros, currency, latency_ms, stop, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		r.SaveID, r.NodeID, r.CallKind, r.ModelID, r.Usage.InputUncached, r.Usage.CacheRead, r.Usage.CacheWrite,
-		r.Usage.Output, r.Usage.Reasoning, r.CostMicros, r.LatencyMS, r.Stop, store.NowMillis())
+		r.Usage.Output, r.Usage.Reasoning, r.CostMicros, store.NullString(r.Currency), r.LatencyMS, r.Stop, store.NowMillis())
 	return err
 }
 
 // Stats 是累计用量（存档 / 作品 / 全局）。
 type Stats struct {
-	Usage      llm.Usage `json:"usage"`
-	CostMicros *int64    `json:"cost_micros"` // 任一记录无法估算时为 nil
-	Calls      int       `json:"calls"`
+	Usage llm.Usage `json:"usage"`
+	// Costs 按货币分别累计（D-34），如 {"USD": 210000, "CNY": 100000}；不做汇率换算。
+	Costs map[string]int64 `json:"costs"`
+	// Unpriced 是无法估算费用的调用次数（界面提示"部分调用无法估算"）。
+	Unpriced int `json:"unpriced"`
+	Calls    int `json:"calls"`
 }
 
 // Summarize 统计累计用量。

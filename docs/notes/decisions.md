@@ -13,7 +13,7 @@
 | D-28 | `<cg>` 只在有非背景图片素材时启用；背景图只用于 `<scene bg>` | `internal/contextx/profile.go` |
 | D-29 | 选项待答时玩家另有输入（命令 / 场外 / 继续）：工具结果如实写"没有从选项中作答"，输入照常跟在后面 | `internal/contextx/envelope.go` |
 | D-30 | 内置标签 `<ooc>`（随 `features.ooc`）：AI 的场外回应写在其中，浅色块显示，不进入原文检索 | `prompts/l0.go`、`markup/`、`web/src/markup/` |
-| D-31 | "开发模式"拆为**开发目录**（作品链接本地目录）与**开发者选项**（设置开关，默认关；显示检查器、回合检查、完整状态与状态编辑；开发目录作品默认显示）。状态编辑仅开发者选项开启时可用 | `internal/settings`、阅读页 |
+| D-31 | "开发模式"拆为**开发目录**（作品链接本地目录）与**开发者选项**（设置开关，默认关；显示检查器、回合检查、完整状态与状态编辑；开发目录作品默认显示）。状态编辑属于开发者工具，只在显示开发者工具时可用 | `internal/settings`、阅读页 |
 | D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.0`），与程序发布版本解耦 | `internal/work/engine.go` |
 | D-33 | 静态开场节点存两条消息：合成的 user `<input kind="opening">（开场）</input>` + 助手开场正文，历史始终以 user 开头 | `internal/save/service.go` |
 | D-34 | 模型价格带货币；费用按货币分别汇总，不做汇率换算 | `internal/llm/usage.go`、`usage_log.currency` |

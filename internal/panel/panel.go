@@ -18,7 +18,7 @@ import (
 // Vars 是面板模板可用的变量（《03-作品格式规范》11.2）。
 type Vars struct {
 	State     map[string]any
-	Turn      int
+	Turn      int // 当前所在回合的序号（模板中为 turn.no）
 	WorkTitle string
 	SaveTitle string
 }
@@ -27,7 +27,7 @@ type Vars struct {
 func Render(eng *tmpl.Engine, m *work.Model, v Vars) []event.PanelRender {
 	vars := map[string]any{
 		"state": v.State,
-		"turn":  v.Turn,
+		"turn":  TurnVar(v.Turn),
 		"work":  map[string]any{"title": v.WorkTitle},
 		"save":  map[string]any{"title": v.SaveTitle},
 	}
@@ -48,6 +48,12 @@ func Render(eng *tmpl.Engine, m *work.Model, v Vars) []event.PanelRender {
 		out = append(out, event.PanelRender{ID: p.ID, HTML: html, Hash: store.HashBytes([]byte(html))})
 	}
 	return out
+}
+
+// TurnVar 构造作者模板中的 turn 变量（D-36）：对象形式，turn.no 为回合序号，以后在这里扩展字段。
+// 面板与命令模板共用，保证两处字段一致。
+func TurnVar(no int) map[string]any {
+	return map[string]any{"no": no}
 }
 
 func escape(s string) string {

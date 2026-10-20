@@ -91,7 +91,7 @@ func defaultManifest() Manifest {
 		Requires:     Requires{Vision: "none"},
 		Narrator:     NarratorConf{Instructions: "prompts/narrator.md", Length: "medium"},
 		Features:     Features{FreeInput: true, OOC: true},
-		Presentation: Presentation{Dialogue: "plain", Stage: true, TextEffects: true},
+		Presentation: Presentation{Dialogue: "plain", Stage: true, TextEffects: false}, // 特效默认关闭（D-23）
 		Docs:         DocsConf{DefaultLoad: "index"},
 	}
 }
