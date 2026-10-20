@@ -1,7 +1,7 @@
 /**
  * 回合操作：提交输入、选择选项、停止。所有提交都经过这里（统一的等待态与错误提示）。
  */
-import { useCallback, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -80,5 +80,6 @@ export function useTurnActions(saveId: string, commands: Command[]) {
 
   const retry = useCallback(() => (lastInput.current ? submit(lastInput.current) : Promise.resolve(false)), [submit])
 
-  return { submit, submitText, choose, stop, retry }
+  // 返回稳定的对象：阅读页的副作用（快捷键、自动开场）依赖它，不应每次渲染都重新订阅
+  return useMemo(() => ({ submit, submitText, choose, stop, retry }), [submit, submitText, choose, stop, retry])
 }
