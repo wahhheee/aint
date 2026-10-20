@@ -21,11 +21,12 @@ import (
 )
 
 // runTurn 是一个回合的完整生命周期（在独立 goroutine 中运行）。
-func (m *Manager) runTurn(ctx context.Context, saveID, turnID string, in save.TurnInput) {
+func (m *Manager) runTurn(ctx context.Context, saveID, turnID string, in save.TurnInput, release func()) {
 	d, err := m.prepare(ctx, saveID, turnID, in)
 	if err != nil {
 		code, msg, recoverable := describeError(err)
 		slog.WarnContext(ctx, "回合准备失败", "err", err)
+		release()
 		m.publish(saveID, event.TurnFailed, event.TurnFailedData{TurnID: turnID, Code: code, Message: msg, Recoverable: recoverable})
 		return
 	}
@@ -33,6 +34,7 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID string, in save.Tu
 		"prefix_hash", short(d.built.PrefixHash))
 	m.publish(saveID, event.TurnStarted, event.TurnStartedData{TurnID: turnID, ParentID: d.parent.ID, Input: d.input})
 
+	d.release = release
 	m.loop(ctx, d)
 	m.commit(ctx, d)
 }
@@ -357,6 +359,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 			code, msg, recoverable = describeError(errors.New(d.errMsg))
 		}
 		slog.InfoContext(ctx, "回合未产生内容，不提交", "stop", d.stop, "err", d.errMsg)
+		d.release()
 		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: code, Message: msg, Recoverable: recoverable})
 		return
 	}
@@ -375,6 +378,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 			PrefixHash: d.built.PrefixHash, PromptVersion: prompts.Version,
 		},
 	})
+	d.release() // 已提交（或提交失败）：先让出写者槽位，再发布终态事件
 	if err != nil {
 		slog.ErrorContext(ctx, "回合提交失败", "err", err)
 		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: string(errs.CodeInternal), Message: "保存回合失败（详见日志）", Recoverable: true})

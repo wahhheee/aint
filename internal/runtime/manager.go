@@ -119,23 +119,29 @@ func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) 
 	turnCtx = logx.With(turnCtx, "save_id", saveID, "turn_id", turnID)
 	s.running = &turnHandle{id: turnID, cancel: cancel, started: time.Now()}
 
+	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
+	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
+	release := sync.OnceFunc(func() {
+		s.mu.Lock()
+		s.running = nil
+		s.mu.Unlock()
+	})
 	m.wg.Go(func() {
 		defer func() {
 			stop()
 			cancel()
-			s.mu.Lock()
-			s.running = nil
-			s.mu.Unlock()
+			release()
 		}()
 		defer func() {
 			if p := recover(); p != nil {
 				slog.ErrorContext(turnCtx, "回合运行 panic", "panic", p)
+				release()
 				m.publish(saveID, event.TurnFailed, event.TurnFailedData{
 					TurnID: turnID, Code: string(errs.CodeInternal), Message: "回合运行出错（详见日志）", Recoverable: true,
 				})
 			}
 		}()
-		m.runTurn(turnCtx, saveID, turnID, in)
+		m.runTurn(turnCtx, saveID, turnID, in, release)
 	})
 	return turnID, nil
 }

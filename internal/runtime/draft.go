@@ -19,6 +19,7 @@ import (
 type draft struct {
 	id      string
 	started time.Time
+	release func() // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
 
 	// 只读上下文（prepare 阶段确定）
 	save     *save.Save
