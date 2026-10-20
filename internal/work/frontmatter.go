@@ -8,7 +8,7 @@ import (
 // splitFrontmatter 把 Markdown 拆成 frontmatter（YAML）与正文。
 // bodyLine 是正文在原文件中的起始行号（1 起），用于让正文中的问题定位到正确行号。
 func splitFrontmatter(data []byte) (front []byte, body string, bodyLine int) {
-	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF}) // 容忍 UTF-8 BOM（规范要求无 BOM，TODO：校验时提示）
+	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF}) // 容忍 UTF-8 BOM（规范要求无 BOM，TODO(M2-12)：校验时提示）
 	s := strings.ReplaceAll(string(data), "\r\n", "\n")
 	if !strings.HasPrefix(s, "---\n") {
 		return nil, s, 1

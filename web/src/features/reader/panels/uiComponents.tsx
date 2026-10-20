@@ -63,7 +63,7 @@ const UiButton: UIComponent = ({ attrs, children }) => {
       className="my-1"
       disabled={!command}
       onClick={() => {
-        if (attrs.confirm && !window.confirm(attrs.confirm)) return // TODO：改用应用内确认框
+        if (attrs.confirm && !window.confirm(attrs.confirm)) return // TODO(M2-8)：改用应用内确认框
         runCommand([command, attrs.args].filter(Boolean).join(' '))
       }}
     >

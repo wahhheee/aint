@@ -34,8 +34,7 @@ func builtins() []*Def {
 // notYet 是尚未实现的工具：返回事实性说明，模型可以据此继续写作。
 func notYet(name, task string) func(context.Context, Env, jsonx.Value) Result {
 	return func(context.Context, Env, jsonx.Value) Result {
-		// TODO：实现见实施计划对应任务（task）。
-		_ = task
+		_ = task // 对应的实施计划任务编号；git grep 该编号可找到全部相关位置
 		return NotExecuted("%s 暂时不可用，可以先依据上下文中已有的信息继续写。", name)
 	}
 }

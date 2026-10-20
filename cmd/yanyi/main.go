@@ -3,9 +3,9 @@
 //	yanyi [serve] [选项]           启动服务并打开浏览器（默认命令）
 //	yanyi work validate <目录>     校验作品
 //	yanyi work prompt <目录>       打印按需组装后的完整提示词与工具定义
-//	yanyi work init <目录>         生成作品模板（TODO）
-//	yanyi work pack <目录>         确定性打包（TODO）
-//	yanyi password set|clear       访问密码（TODO）
+//	yanyi work init <目录>         生成作品模板（TODO(M6-3)）
+//	yanyi work pack <目录>         确定性打包（TODO(M6-3)）
+//	yanyi password set|clear       访问密码（TODO(M6-9)）
 //	yanyi version                  版本信息
 package main
 

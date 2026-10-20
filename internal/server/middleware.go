@@ -16,7 +16,7 @@ import (
 
 // middleware 组装中间件链（外层先执行）：
 //
-//	recover → 请求 ID 与访问日志 → Host 校验 → 跨站校验 → 访问密码（TODO）→ 路由
+//	recover → 请求 ID 与访问日志 → Host 校验 → 跨站校验 → 访问密码（TODO(M6-9)）→ 路由
 func (s *Server) middleware(next http.Handler) http.Handler {
 	h := next
 	h = s.auth(h)

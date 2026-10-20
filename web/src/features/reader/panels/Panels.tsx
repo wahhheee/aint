@@ -1,5 +1,5 @@
 /**
- * 面板布局（《03-作品格式规范》11.1）：sidebar 右侧栏、topbar 正文上方细条、float 角落小卡、drawer 抽屉（TODO）。
+ * 面板布局（《03-作品格式规范》11.1）：sidebar 右侧栏、topbar 正文上方细条、float 角落小卡、drawer 抽屉（TODO(M2-8)）。
  * 面板的静态布局来自 GET /saves/{id}（ui.panels），内容来自 /panels 与 SSE panels 事件，按 id 对应。
  */
 import type { PanelMeta, PanelRender } from '@/api/types'

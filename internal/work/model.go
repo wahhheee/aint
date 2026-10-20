@@ -59,7 +59,7 @@ func (m *Model) Asset(ref string) (Asset, bool) {
 // Opening 是开场（prompts/opening.md）。
 type Opening struct {
 	Mode    string   `json:"mode"` // static | generate
-	Body    string   `json:"body"` // Liquid 模板，建档时以初始状态渲染一次（TODO(M2-11)）
+	Body    string   `json:"body"` // Liquid 模板，建档时以初始状态渲染一次（save.Service.Create）
 	Choices []Choice `json:"choices,omitzero"`
 }
 

@@ -25,7 +25,7 @@ var ErrBlobNotFound = errors.New("blob 不存在")
 //
 // 用途：作品文件、状态快照、记忆清单与记忆文件、LLM 消息、显示项、阶段块、上传图片。
 // 写入顺序（崩溃安全）：先写文件 blob（原子写），再在事务中插入记录；
-// 崩溃最多留下未被引用的 blob，由 GC 回收（TODO：GC，见技术方案 4.4）。
+// 崩溃最多留下未被引用的 blob，由 GC 回收（TODO(M6-5)：GC，见技术方案 4.4）。
 type Blobs struct {
 	dir string // <数据目录>/blobs
 }
