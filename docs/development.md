@@ -60,7 +60,8 @@ task dev
 go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 ```
 
-脚本可以模拟：任意正文与叙事标记、工具调用、截断（`stop: max_tokens`）、错误（`error: rate_limited`）、首字延迟。
+脚本可以模拟：任意正文与叙事标记、工具调用、截断（`stop: max_tokens`）、错误（`error: rate_limited`）、首字延迟；
+`ooc:` 段是玩家场外发言时的回应（内置的 `demo` 脚本有示例）。
 
 ### 3.4 前端
 
@@ -86,6 +87,8 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 | 请求返回 403"跨站请求已被拒绝" | 有副作用的请求 Origin 与 Host 不一致；Vite 代理需保持 `changeOrigin: false` |
 | 从仓库根执行 `pnpm -C web …` 报"configured to use yarn" | 上层目录的 `package.json` 声明了别的包管理器：进入 `web/` 再执行，或用 `task` |
 | 回合返回"功能尚未实现：…适配器" | 真实模型适配器尚未实现（M0/M4），请用 `--fake-llm` |
+| 拉取新代码后启动报迁移错误，或数据表缺列 | 首次发布前 `0001_init.sql` 会被直接修改：删除 `.devdata/` 重建 |
+| 接口返回 501，或 AI 说"…暂时不可用" | 功能尚未实现。501 的错误信息里带任务编号；工具的编号写在 `tools/builtins.go` 的 `notYet` 调用中。到 [progress.md](progress.md) 查状态 |
 
 ## 4. 测试
 
@@ -95,7 +98,7 @@ task test
 
 - Go：单元测试与竖切测试（`internal/runtime/runtime_test.go` 用假模型跑完整回合）。测试使用 `t.TempDir()` 中的独立数据库。
 - 前端：Vitest（解析器、事件 reducer、命令解析）。
-- TODO：前缀稳定性跨回合测试、分支隔离、杀进程、Playwright 端到端（`--fake-llm`）。
+- 尚缺：跨回合前缀稳定性（M0-6）、杀进程（M1-12）、分支隔离（M3-10）、Playwright 端到端（M5-12）。完整情况见 [progress.md](progress.md) 第 6 节。
 
 ## 5. 构建与发布
 
@@ -108,6 +111,9 @@ task build
 - TODO(M6-8)：GoReleaser 与发布说明。
 
 ## 6. 代码约定
+
+- 开始一个任务前先看 [progress.md](progress.md) 中该任务的"已有 / 缺口"，再用 `git grep -nE "M3-1([^0-9]|$)"` 列出代码中的全部相关位置；
+  做完按该文档顶部的"更新规则"更新进度。
 
 - 注释使用简体中文；尚未完成的地方写 `TODO(任务编号)：说明`，编号对应实施计划（如 `TODO(M3-6)`），文档冲突写 `TODO(待确认)`。
 - 提交信息：Conventional Commits + 简体中文，例如 `feat(runtime): 回合截断续写`、`fix(web): 选项键盘快捷键冲突`。

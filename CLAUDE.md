@@ -9,6 +9,7 @@
 
 ## 先读这些
 
+- `docs/progress.md`：**进度**——每个任务的状态、已有与缺口、建议的下一步、按功能找任务；搜任务编号找代码
 - `docs/architecture.md`：分层与依赖方向、回合生命周期、前后端契约、**扩展指南（想加 X 改哪里）**
 - `docs/development.md`：开发命令与**调试手册**
 - `docs/notes/decisions.md`：评审中确认的决策（D-23～D-40）；`docs/notes/open-questions.md`：待确认事项
@@ -17,6 +18,7 @@
 ## 约定
 
 - 注释、文案、提交信息使用**简体中文**；提交遵循 Conventional Commits，如 `feat(runtime): …`
+- 推进或完成任务后按 `docs/progress.md` 顶部的"更新规则"更新它（任务状态、总览计数、进度日志）
 - 未完成处写 `TODO(任务编号)：说明`；文档冲突或需要用户拍板的写 `TODO(待确认)` 并记入 open-questions.md
 - 文档只是设计讨论，遇到不合理或需要抉择的地方先与用户确认，不要死磕文档
 - 后端只允许向下依赖（见 architecture.md 第 2 节）；JSON 经 `internal/pkg/jsonx`；业务错误用 `internal/pkg/errs`

@@ -8,6 +8,7 @@
 
 > **当前状态：脚手架阶段。** 整体架构与各层骨架已就位，用假模型打通了"内置示例 → 开局 → 流式正文 → 选项 → 提交"的竖切；
 > 三家真实模型适配器、记忆与整理、分支操作、作品导入等大量功能尚未实现（代码中以 `TODO(任务编号)` 标注，编号对应实施计划）。
+> 每个任务的状态与下一步见 [进度](docs/progress.md)。
 
 ## 快速开始
 
@@ -46,13 +47,14 @@ cmd/yanyi/        命令行入口：serve | work validate|prompt | version
 internal/         后端（分层见 docs/architecture.md）
 web/              前端（React + Vite），构建产物嵌入二进制
 examples/works/   内置示例作品（同时是测试夹具）
-schemas/          作品格式 JSON Schema（TODO）
+schemas/          作品格式 JSON Schema（TODO(M6-4)）
 testdata/         测试数据（假模型脚本、标记解析向量等）
 docs/             架构、开发与调试指南、设计决策记录
 ```
 
 ## 文档
 
+- [进度](docs/progress.md)：里程碑与任务状态、现在能用什么、建议的下一步、按功能找任务
 - [架构](docs/architecture.md)：分层、依赖方向、一个回合的生命周期、前后端契约、扩展指南
 - [开发与调试](docs/development.md)：环境、日常开发、**调试手册**、测试、构建、提交规范
 - [决策记录](docs/notes/decisions.md)：脚手架评审中确认的决策；[待确认事项](docs/notes/open-questions.md)
