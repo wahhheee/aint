@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wahhheee/yanyi/internal/pkg/fsx"
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 )
 
@@ -100,10 +101,10 @@ func (t *traceProvider) write(ctx context.Context, rec *traceRecord) {
 		rec.Time.Format("20060102-150405.000"), rec.Request.Purpose, unsafeName.ReplaceAllString(model, "_"))
 	b, err := jsonx.MarshalIndent(rec)
 	if err == nil {
-		err = os.MkdirAll(t.dir, 0o755)
+		err = os.MkdirAll(t.dir, fsx.DirPerm)
 	}
 	if err == nil {
-		err = os.WriteFile(filepath.Join(t.dir, name), b, 0o644)
+		err = os.WriteFile(filepath.Join(t.dir, name), b, fsx.PrivateFilePerm)
 	}
 	if err != nil {
 		slog.WarnContext(ctx, "写入 LLM 追踪文件失败", "err", err)

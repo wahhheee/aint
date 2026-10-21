@@ -136,7 +136,10 @@ func (b *Bus) Subscribe(topicName string, lastID uint64) (sub *Subscription, rep
 	t := b.topicLocked(topicName)
 
 	if lastID > 0 {
-		oldest := t.lastID - uint64(t.count) + 1 // 缓冲中最早一条的 ID
+		oldest := t.lastID + 1 // 缓冲中最早一条的 ID（缓冲为空时视为下一条）
+		if t.count > 0 {
+			oldest = t.ring[(t.head-t.count+len(t.ring))%len(t.ring)].ID
+		}
 		switch {
 		case lastID > t.lastID:
 			resync = true // 客户端的 ID 比当前还新：进程重启过

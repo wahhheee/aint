@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -59,12 +60,16 @@ func Run(ctx context.Context, opts Options) error {
 	if err != nil {
 		return fmt.Errorf("初始化日志失败: %w", err)
 	}
-	defer closeLog()
+	defer func() {
+		if err := closeLog(); err != nil {
+			fmt.Fprintln(os.Stderr, "关闭日志文件失败:", err) // 日志已关闭，只能写到标准错误
+		}
+	}()
 
-	if url := runningInstance(dirs.Instance); url != "" {
+	if url := runningInstance(ctx, dirs.Instance); url != "" {
 		slog.Info("该数据目录已有实例在运行，直接打开它的页面", "url", url, "data", dirs.Root)
 		if !opts.NoBrowser {
-			openBrowser(url)
+			openBrowser(ctx, url)
 		}
 		return nil
 	}
@@ -76,12 +81,16 @@ func Run(ctx context.Context, opts Options) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("关闭数据库失败", "err", err)
+		}
+	}()
 	if err := db.Migrate(ctx, dirs.Backup); err != nil {
 		return err
 	}
 
-	ln, err := listen(opts)
+	ln, err := listen(ctx, opts)
 	if err != nil {
 		return err
 	}
@@ -109,14 +118,18 @@ func Run(ctx context.Context, opts Options) error {
 	if err := writeInstance(dirs.Instance, instanceInfo{InstanceID: info.InstanceID, PID: os.Getpid(), URL: url, StartedAt: info.StartedAt}); err != nil {
 		slog.Warn("写入 instance.json 失败（单实例检测将不可用）", "err", err)
 	}
-	defer os.Remove(dirs.Instance)
+	defer func() {
+		if err := os.Remove(dirs.Instance); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("删除 instance.json 失败（下次启动会识别并覆盖）", "err", err)
+		}
+	}()
 
 	slog.Info("演义已就绪", "url", url)
 	if ip := net.ParseIP(hostOf(ln.Addr().String())); ip != nil && !ip.IsLoopback() {
 		slog.Warn("正在监听非本机地址：当前网络中的其他人可以访问你的存档与模型额度（访问密码功能尚未实现，TODO(M6-9)）")
 	}
 	if !opts.NoBrowser {
-		openBrowser(url)
+		openBrowser(ctx, url)
 	}
 
 	select {
@@ -187,13 +200,14 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 }
 
 // listen 选择监听地址：指定端口时只用该端口；否则从 DefaultPort 起找空闲端口。
-func listen(opts Options) (net.Listener, error) {
+func listen(ctx context.Context, opts Options) (net.Listener, error) {
 	host := opts.Listen
 	if host == "" {
 		host = "127.0.0.1"
 	}
+	var lc net.ListenConfig
 	if opts.Port > 0 {
-		ln, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(opts.Port)))
+		ln, err := lc.Listen(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(opts.Port)))
 		if err != nil {
 			return nil, fmt.Errorf("端口 %d 不可用（可能已被占用，可换一个 --port 或不指定以自动选择）: %w", opts.Port, err)
 		}
@@ -201,7 +215,7 @@ func listen(opts Options) (net.Listener, error) {
 	}
 	var lastErr error
 	for p := DefaultPort; p < DefaultPort+40; p++ {
-		ln, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(p)))
+		ln, err := lc.Listen(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(p)))
 		if err == nil {
 			return ln, nil
 		}

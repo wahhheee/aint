@@ -5,7 +5,7 @@ import "testing"
 func TestReplayAfterReconnect(t *testing.T) {
 	b := NewBus(4)
 	topic := SaveTopic("s1")
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		b.Publish(topic, "turn.text", i)
 	}
 	_, replay, resync := b.Subscribe(topic, 1)
@@ -20,7 +20,7 @@ func TestReplayAfterReconnect(t *testing.T) {
 func TestResyncWhenOverwritten(t *testing.T) {
 	b := NewBus(4)
 	topic := SaveTopic("s1")
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		b.Publish(topic, "turn.text", i)
 	}
 	if _, _, resync := b.Subscribe(topic, 2); !resync {
@@ -35,7 +35,7 @@ func TestSlowSubscriberIsDropped(t *testing.T) {
 	b := NewBus(8)
 	topic := SaveTopic("s1")
 	sub, _, _ := b.Subscribe(topic, 0)
-	for i := 0; i < subscriberBuffer+1; i++ {
+	for i := range subscriberBuffer + 1 {
 		b.Publish(topic, "turn.text", i)
 	}
 	for range sub.C {

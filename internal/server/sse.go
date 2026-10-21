@@ -1,7 +1,7 @@
 package server
 
 import (
-	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -36,15 +36,18 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request, topic strin
 	h.Set("Connection", "keep-alive")
 	h.Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "retry: 3000\n: connected %s\n\n", topic)
 
-	if resync {
-		writeResync(w)
+	// 写失败说明客户端已断开：结束本次连接即可（客户端会带 Last-Event-ID 重连）。
+	err := writeRaw(w, "retry: 3000\n: connected\n\n")
+	if err == nil && resync {
+		err = writeResync(w)
 	}
 	for _, ev := range replay {
-		writeEvent(w, ev)
+		if err == nil {
+			err = writeEvent(w, ev)
+		}
 	}
-	if err := rc.Flush(); err != nil {
+	if err != nil || rc.Flush() != nil {
 		return nil
 	}
 	slog.DebugContext(r.Context(), "SSE 已连接", "topic", topic, "last_event_id", lastID, "replay", len(replay), "resync", resync)
@@ -57,43 +60,48 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request, topic strin
 			return nil
 		case ev, ok := <-sub.C:
 			if !ok {
-				if sub.Lagged() {
-					writeResync(w)
+				if sub.Lagged() && writeResync(w) == nil {
 					_ = rc.Flush()
 				}
 				return nil
 			}
-			writeEvent(w, ev)
+			err = writeEvent(w, ev)
 		drain: // 合并发送已积压的事件，减少 Flush 次数（流式正文增量很密集）
-			for {
+			for err == nil {
 				select {
 				case ev, ok := <-sub.C:
 					if !ok {
 						break drain
 					}
-					writeEvent(w, ev)
+					err = writeEvent(w, ev)
 				default:
 					break drain
 				}
 			}
 		case <-ticker.C:
-			fmt.Fprint(w, ": ping\n\n")
+			err = writeRaw(w, ": ping\n\n")
 		}
-		if err := rc.Flush(); err != nil {
+		if err != nil || rc.Flush() != nil {
 			return nil // 客户端已断开
 		}
 	}
 }
 
-func writeEvent(w http.ResponseWriter, ev event.Event) {
+// writeEvent 写一条事件。序列化失败只记日志并跳过该事件（返回 nil）；返回的错误都是写连接失败。
+func writeEvent(w http.ResponseWriter, ev event.Event) error {
 	data, err := jsonx.Marshal(ev.Data)
 	if err != nil {
 		slog.Error("SSE 事件序列化失败", "type", ev.Type, "err", err)
-		return
+		return nil
 	}
-	fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", ev.ID, ev.Type, data)
+	return writeRaw(w, "id: "+strconv.FormatUint(ev.ID, 10)+"\nevent: "+ev.Type+"\ndata: "+string(data)+"\n\n")
 }
 
-func writeResync(w http.ResponseWriter) {
-	fmt.Fprintf(w, "event: %s\ndata: {}\n\n", event.Resync)
+func writeResync(w http.ResponseWriter) error {
+	return writeRaw(w, "event: "+event.Resync+"\ndata: {}\n\n")
+}
+
+func writeRaw(w http.ResponseWriter, s string) error {
+	_, err := io.WriteString(w, s)
+	return err
 }

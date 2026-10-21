@@ -9,6 +9,7 @@ package provider
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -155,20 +156,11 @@ func (s *Service) Models(ctx context.Context) ([]llm.Model, error) {
 	if s.fake != nil {
 		return []llm.Model{*fake.Model()}, nil
 	}
-	rows, err := s.db.Read().QueryContext(ctx, `SELECT id FROM models ORDER BY display_name, model`)
+	// 先取完 ID 并关闭 rows，再逐个 loadModel：rows 占着读连接，嵌套查询可能等不到空闲连接。
+	idList, err := s.modelIDs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var idList []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		idList = append(idList, id)
-	}
-	_ = rows.Close()
 	out := []llm.Model{}
 	for _, id := range idList {
 		m, _, err := s.loadModel(ctx, id)
@@ -178,6 +170,23 @@ func (s *Service) Models(ctx context.Context) ([]llm.Model, error) {
 		out = append(out, *m)
 	}
 	return out, nil
+}
+
+func (s *Service) modelIDs(ctx context.Context) ([]string, error) {
+	rows, err := s.db.Read().QueryContext(ctx, `SELECT id FROM models ORDER BY display_name, model`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // TODO(M1-11/M4-7)：供应商与模型的增删改（Create/Update/Delete，密钥写入 secrets.json 后 Invalidate）、
@@ -190,7 +199,7 @@ func (s *Service) loadProvider(ctx context.Context, id string) (llm.ProviderConf
 	err := s.db.Read().QueryRowContext(ctx,
 		`SELECT id, name, protocol, base_url, headers, options, secret_ref FROM providers WHERE id = ?`, id).
 		Scan(&cfg.ID, &cfg.Name, &cfg.Protocol, &cfg.BaseURL, &headers, &options, &ref)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return cfg, errs.NotFound("供应商不存在：%s", id)
 	}
 	if err != nil {

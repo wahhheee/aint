@@ -32,7 +32,7 @@ func TestMigrateIdempotent(t *testing.T) {
 
 func TestReadPoolIsQueryOnly(t *testing.T) {
 	db, _ := openTest(t)
-	_, err := db.Read().Exec(`INSERT INTO settings (key, value) VALUES ('x', '1')`)
+	_, err := db.Read().ExecContext(t.Context(), `INSERT INTO settings (key, value) VALUES ('x', '1')`)
 	if err == nil {
 		t.Fatal("读连接池不应允许写入")
 	}
@@ -84,7 +84,7 @@ func TestFTSTrigram(t *testing.T) {
 		t.Fatal(err)
 	}
 	var id string
-	if err := db.Read().QueryRow(`SELECT node_id FROM transcript_fts WHERE transcript_fts MATCH ?`, `"银色钥匙"`).Scan(&id); err != nil {
+	if err := db.Read().QueryRowContext(t.Context(), `SELECT node_id FROM transcript_fts WHERE transcript_fts MATCH ?`, `"银色钥匙"`).Scan(&id); err != nil {
 		t.Fatalf("trigram 中文子串检索失败: %v", err)
 	}
 }

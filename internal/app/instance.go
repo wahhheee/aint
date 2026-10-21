@@ -23,7 +23,7 @@ type instanceInfo struct {
 }
 
 // runningInstance 返回该数据目录下正在运行的实例地址（没有则返回空）。
-func runningInstance(path string) string {
+func runningInstance(ctx context.Context, path string) string {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return ""
@@ -32,14 +32,14 @@ func runningInstance(path string) string {
 	if jsonx.Unmarshal(b, &info) != nil || info.URL == "" {
 		return ""
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, info.URL+"/api/v1/system/health", nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return ""
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // 只读一个小响应体，关闭错误无影响
 	var health struct {
 		InstanceID string `json:"instance_id"`
 	}

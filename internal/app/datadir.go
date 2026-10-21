@@ -40,8 +40,8 @@ func ResolveDirs(flagDir string) (Dirs, error) {
 		if err != nil {
 			return Dirs{}, fmt.Errorf("无法定位可执行文件: %w", err)
 		}
-		if real, err := filepath.EvalSymlinks(exe); err == nil {
-			exe = real // 经符号链接启动时，数据跟随真实文件
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved // 经符号链接启动时，数据跟随真实文件
 		}
 		dir := filepath.Dir(exe)
 		if strings.Contains(dir, "go-build") {
@@ -68,7 +68,7 @@ func ResolveDirs(flagDir string) (Dirs, error) {
 		Instance: filepath.Join(root, "instance.json"),
 	}
 	for _, p := range []string{d.Blobs, d.Backup, d.Cache, d.Logs} {
-		if err := os.MkdirAll(p, 0o755); err != nil {
+		if err := os.MkdirAll(p, fsx.DirPerm); err != nil {
 			return Dirs{}, err
 		}
 	}

@@ -140,10 +140,6 @@ func scanNode(sc interface{ Scan(...any) error }) (*Node, error) {
 	return n, nil
 }
 
-func getNode(ctx context.Context, q store.Querier, id string) (*Node, error) {
-	return scanNode(q.QueryRowContext(ctx, `SELECT `+nodeColumns+` FROM nodes WHERE id = ?`, id))
-}
-
 // pathToRoot 沿 parent_id 递归取出 root → headID 的进度线（按深度升序）。
 func pathToRoot(ctx context.Context, q store.Querier, headID string) ([]*Node, error) {
 	rows, err := q.QueryContext(ctx, `

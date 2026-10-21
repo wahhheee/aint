@@ -8,12 +8,19 @@ import (
 	"runtime"
 )
 
+// 数据目录下新建目录与私密文件的权限：只有当前用户（目录另含同组）可以访问。
+// 存档、日志与模型调用追踪里有故事全文与提示词，secrets.json 里有 API Key。Windows 上不生效（沿用父目录 ACL）。
+const (
+	DirPerm         os.FileMode = 0o750
+	PrivateFilePerm os.FileMode = 0o600
+)
+
 // WriteFileAtomic 原子地写入文件：先写同目录临时文件并 fsync，再 rename 覆盖目标。
 // 崩溃时目标文件要么是旧内容，要么是新内容，不会出现写了一半的文件。
 // 用于 blob、secrets.json、instance.json 等。
 func WriteFileAtomic(path string, data []byte, perm os.FileMode) (err error) {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, DirPerm); err != nil {
 		return err
 	}
 	f, err := os.CreateTemp(dir, ".tmp-"+filepath.Base(path)+"-*")
@@ -62,7 +69,7 @@ func syncDir(dir string) error {
 // CheckWritable 通过实际创建并删除一个探测文件来判断目录是否可写。
 // 只看权限位不可靠（Windows ACL、只读介质、Program Files 虚拟化等）。
 func CheckWritable(dir string) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, DirPerm); err != nil {
 		return fmt.Errorf("无法创建目录 %s: %w", dir, err)
 	}
 	f, err := os.CreateTemp(dir, ".write-probe-*")

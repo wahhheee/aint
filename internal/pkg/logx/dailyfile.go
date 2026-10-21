@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wahhheee/yanyi/internal/pkg/fsx"
 )
 
 var timeZero time.Time
@@ -24,7 +26,7 @@ type dailyFile struct {
 }
 
 func newDailyFile(dir, prefix string, keep int) (*dailyFile, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, fsx.DirPerm); err != nil {
 		return nil, err
 	}
 	d := &dailyFile{dir: dir, prefix: prefix, keep: keep}
@@ -63,7 +65,7 @@ func (d *dailyFile) rotate(now time.Time) error {
 	}
 	d.day = now.Format(time.DateOnly)
 	name := filepath.Join(d.dir, fmt.Sprintf("%s-%s.log", d.prefix, d.day))
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_APPEND|os.O_WRONLY, fsx.PrivateFilePerm)
 	if err != nil {
 		return err
 	}

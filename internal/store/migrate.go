@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wahhheee/yanyi/internal/pkg/fsx"
 )
 
 //go:embed migrations/*.sql
@@ -110,7 +112,7 @@ func loadMigrations() ([]migration, error) {
 
 // backup 用 VACUUM INTO 生成一致性快照（WAL 模式下也安全），只保留最近 3 份。
 func (db *DB) backup(ctx context.Context, dir string, version int) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, fsx.DirPerm); err != nil {
 		return err
 	}
 	name := fmt.Sprintf("yanyi-v%04d-%s.db", version, time.Now().Format("20060102-150405"))

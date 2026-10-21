@@ -14,6 +14,7 @@ package vfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -35,7 +36,7 @@ func Clean(p string) (string, error) {
 	}
 	for _, seg := range strings.Split(p, "/") {
 		if seg == ".." {
-			return "", fmt.Errorf("路径中不能含 ..")
+			return "", errors.New("路径中不能含有上级目录（..）")
 		}
 	}
 	p = path.Clean(p)

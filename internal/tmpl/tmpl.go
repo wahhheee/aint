@@ -32,12 +32,12 @@ type Engine struct {
 // New 创建渲染器并注册附加过滤器。
 func New() *Engine {
 	e := liquid.NewEngine()
-	e.RegisterFilter("markdown", func(s string) string { return Markdown(s) })
-	e.RegisterFilter("percent", func(v, max float64) string {
-		if max == 0 {
+	e.RegisterFilter("markdown", Markdown)
+	e.RegisterFilter("percent", func(v, total float64) string {
+		if total == 0 {
 			return "0%"
 		}
-		return fmt.Sprintf("%.0f%%", v/max*100)
+		return fmt.Sprintf("%.0f%%", v/total*100)
 	})
 	// TODO(M2-10)：asset 过滤器：素材引用 → /api/v1/assets/{hash}（需要作品素材索引）。
 	e.RegisterFilter("asset", func(ref string) string { return "asset:" + ref })

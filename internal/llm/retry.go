@@ -62,7 +62,7 @@ func (r *retryProvider) Stream(ctx context.Context, m *Model, req *Request) (Str
 
 func (r *retryProvider) backoff(attempt int, retryAfter time.Duration) time.Duration {
 	d := r.pol.BaseDelay << attempt
-	d += time.Duration(rand.Int64N(int64(r.pol.BaseDelay/4) + 1)) // 抖动
+	d += time.Duration(rand.Int64N(int64(r.pol.BaseDelay/4) + 1)) //nolint:gosec // G404：重试抖动不需要密码学随机数
 	if retryAfter > d {
 		d = retryAfter // 遵守 Retry-After
 	}

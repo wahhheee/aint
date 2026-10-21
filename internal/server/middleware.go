@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -32,8 +33,8 @@ func recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if p := recover(); p != nil {
-				if p == http.ErrAbortHandler {
-					panic(p)
+				if err, ok := p.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+					panic(p) // 标准库约定的"中止响应"，交还给 net/http 处理
 				}
 				slog.ErrorContext(r.Context(), "处理请求时 panic", "panic", p, "stack", string(debug.Stack()))
 				writeError(w, r, errs.New(errs.CodeInternal, "服务器内部错误"))
