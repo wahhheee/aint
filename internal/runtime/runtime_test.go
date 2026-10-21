@@ -27,6 +27,21 @@ func (f fakeModels) Resolve(context.Context, string) (llm.Provider, *llm.Model, 
 	return f.p, fake.Model(), nil
 }
 
+// gatedProvider 在 open 关闭之前阻塞 Stream：测试据此确定"回合正在进行"，不依赖时序。
+type gatedProvider struct {
+	llm.Provider
+	open chan struct{}
+}
+
+func (g gatedProvider) Stream(ctx context.Context, m *llm.Model, req *llm.Request) (llm.Stream, error) {
+	select {
+	case <-g.open:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return g.Provider.Stream(ctx, m, req)
+}
+
 type env struct {
 	saves *save.Service
 	mgr   *runtime.Manager
@@ -34,6 +49,11 @@ type env struct {
 }
 
 func setup(t *testing.T, script *fake.Script) *env {
+	t.Helper()
+	return setupWith(t, fake.New(script))
+}
+
+func setupWith(t *testing.T, provider llm.Provider) *env {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -52,7 +72,7 @@ func setup(t *testing.T, script *fake.Script) *env {
 	saves := save.NewService(db, blobs, works, tm)
 	bus := event.NewBus(0)
 	mgr := runtime.NewManager(runtime.Deps{
-		Saves: saves, Works: works, Models: fakeModels{fake.New(script)}, Bus: bus,
+		Saves: saves, Works: works, Models: fakeModels{provider}, Bus: bus,
 		Builder: contextx.NewBuilder(tm), Tools: tools.NewRegistry(), Tmpl: tm,
 	})
 	t.Cleanup(func() { _ = mgr.Shutdown(context.Background()) })
@@ -92,7 +112,8 @@ func quickScript() *fake.Script {
 
 // 竖切：静态开场 → 选择选项 → 流式正文 → offer_choices → 提交 → 时间线。
 func TestTurnVerticalSlice(t *testing.T) {
-	e := setup(t, quickScript())
+	gate := make(chan struct{})
+	e := setupWith(t, gatedProvider{Provider: fake.New(quickScript()), open: gate})
 	ctx := context.Background()
 
 	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Form: map[string]any{"player.name": "阿遥"},
@@ -117,9 +138,11 @@ func TestTurnVerticalSlice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 模型调用被闸住，回合一定还在进行：再次提交必须得到冲突。
 	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputFree, Text: "再来"}); err == nil {
 		t.Error("回合进行中再次提交应返回冲突（单一写者）")
 	}
+	close(gate)
 	waitFor(t, sub, event.TurnText)
 	waitFor(t, sub, event.TurnChoices)
 	committed := waitFor(t, sub, event.TurnCommitted).Data.(event.TurnCommittedData)
