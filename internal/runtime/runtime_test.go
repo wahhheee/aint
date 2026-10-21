@@ -200,3 +200,42 @@ func TestCancelKeepsContent(t *testing.T) {
 		t.Fatalf("停止后的回合应为 interrupted，得到 %s", c.Status)
 	}
 }
+
+// 截断续写：显示上去掉续写开头与上一段末尾的重复（9.4），LLM 消息保留模型的原始输出。
+func TestContinuationDedup(t *testing.T) {
+	script := &fake.Script{Responses: []fake.Response{
+		{Text: "雾越来越浓。林舟把帽子挂上衣架，水珠沿着帽檐往下落。", Stop: "max_tokens", ChunkRunes: 3},
+		{Text: "水珠沿着帽檐往下落。他转过身来。", ChunkRunes: 3},
+	}}
+	e := setup(t, script)
+	ctx := context.Background()
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _, _ := e.bus.Subscribe(event.SaveTopic(sv.ID), 0)
+	defer sub.Close()
+	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputOpening}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, sub, event.TurnCommitted)
+
+	tl, err := e.saves.Timeline(ctx, sv.ID, "", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shown strings.Builder
+	for _, it := range tl.Nodes[len(tl.Nodes)-1].Display {
+		shown.WriteString(it.Markup)
+	}
+	if want := "雾越来越浓。林舟把帽子挂上衣架，水珠沿着帽檐往下落。他转过身来。"; shown.String() != want {
+		t.Fatalf("显示的正文应去掉重复：%q", shown.String())
+	}
+
+	_, line, _ := e.saves.ProgressLine(ctx, sv.ID)
+	msgs, _ := e.saves.LoadMessages(ctx, line[len(line)-1].MessagesHash)
+	last := msgs[len(msgs)-1]
+	if last.Role != llm.RoleAssistant || last.TextOf() != "水珠沿着帽檐往下落。他转过身来。" {
+		t.Fatalf("LLM 消息应保留续写的原始输出：%+v", last)
+	}
+}

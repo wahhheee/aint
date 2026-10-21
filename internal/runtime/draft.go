@@ -43,6 +43,7 @@ type draft struct {
 
 	// 计数与结果
 	calls, toolCalls, continuations int
+	continuing                      bool // 下一次调用是截断后的续写（只对紧接着的那一次调用有效）
 	usage                           llm.Usage
 	stop, stopRaw, errMsg           string
 	status                          save.NodeStatus
@@ -69,6 +70,16 @@ func (d *draft) appendText(delta string) {
 		return
 	}
 	d.display = append(d.display, save.DisplayItem{T: "text", Markup: delta})
+}
+
+// lastText 返回最近一个正文显示项的内容（续写去重时与新输出的开头比较）。
+func (d *draft) lastText() string {
+	for i := len(d.display) - 1; i >= 0; i-- {
+		if d.display[i].T == "text" {
+			return d.display[i].Markup
+		}
+	}
+	return ""
 }
 
 // addToolSummary 在玩家界面上合并显示读取类工具："翻阅了 N 份资料"（10.3）。

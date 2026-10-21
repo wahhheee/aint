@@ -198,10 +198,10 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 				return
 			}
 			d.continuations++
+			d.continuing = true // 下一次调用的开头与本段末尾去重（callOnce）
 			notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ContinueNotice)}}
 			d.req.Messages = append(d.req.Messages, notice)
 			d.turnMsgs = append(d.turnMsgs, notice)
-			// TODO(M4-5)：续写开头与上一段末尾的重叠去重（见 dedupOverlap），需要缓冲续写的前若干字再推送。
 		case llm.StopEnd:
 			d.stop = string(llm.StopEnd)
 			return
@@ -275,8 +275,12 @@ type callResult struct {
 func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	d.calls++
 	purpose := "narrate"
-	if d.continuations > 0 {
+	// 截断后的续写：先缓冲开头，去掉与上一段末尾重叠的部分再显示（9.4；只影响显示，LLM 消息保留原文）。
+	var overlap *overlapFilter
+	if d.continuing {
 		purpose = "continue"
+		overlap = newOverlapFilter(d.lastText())
+		d.continuing = false
 	}
 	d.req.Purpose = purpose
 	start := time.Now()
@@ -285,7 +289,19 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer stream.Close()
+	defer func() {
+		if err := stream.Close(); err != nil {
+			slog.WarnContext(ctx, "关闭模型流失败", "err", err)
+		}
+	}()
+	show := func(s string) {
+		if s == "" {
+			return
+		}
+		d.appendText(s)
+		d.seq++
+		m.publish(d.save.ID, event.TurnText, event.TurnTextData{TurnID: d.id, Seq: d.seq, Delta: s})
+	}
 
 	var text strings.Builder
 	res := &callResult{}
@@ -303,14 +319,13 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 		switch ev := ev.(type) {
 		case llm.TextDelta:
 			text.WriteString(ev.Text)
-			d.appendText(ev.Text)
-			d.seq++
-			m.publish(d.save.ID, event.TurnText, event.TurnTextData{TurnID: d.id, Seq: d.seq, Delta: ev.Text})
+			show(overlap.push(ev.Text))
 		case llm.Done:
 			// 工具调用以 Done.Message 为准（含协议原生数据）；ToolCallStart/ArgsDelta 目前不单独处理。
 			res.msg, res.stop, res.raw, u = ev.Message, ev.Stop, ev.Raw, ev.Usage
 		}
 	}
+	show(overlap.flush()) // 续写在缓冲满之前就结束时，剩余部分在这里放行
 
 	if res.msg.Role == "" {
 		// 没有收到 Done（流中途断开 / 被取消）：保留已收到的正文；参数不完整的工具调用丢弃（9.4）。
