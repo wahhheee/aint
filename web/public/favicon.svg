@@ -1,7 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="6" y="4" width="52" height="56" rx="3" fill="#23345a"/>
-  <rect x="14" y="10" width="14" height="40" rx="1" fill="#f1f0eb"/>
-  <path d="M52 10v44" stroke="#a9853f" stroke-width="2" stroke-dasharray="4 5"/>
-  <text x="21" y="27" font-family="serif" font-size="12" text-anchor="middle" fill="#23345a">演</text>
-  <text x="21" y="42" font-family="serif" font-size="12" text-anchor="middle" fill="#23345a">义</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!--
+  演义的标志：月洞门。纯黑的墙上一扇圆门（被门槛截平），门里是另一个世界——
+  黄昏的天、贴着地平线的一线金光、一轮小月、两层远山（山脚隐入雾中）；门里的光洒在门槛上。
+  走进一个故事，就像穿过园林里的一扇月洞门。界面里的品牌标识直接引用本文件（components/brand/BrandMark.tsx）。
+-->
+<defs>
+<linearGradient id="sky" x1="0" y1="20.5" x2="0" y2="76" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#0e1832"/><stop offset=".34" stop-color="#22305a"/><stop offset=".54" stop-color="#485277"/>
+<stop offset=".7" stop-color="#a4845f"/><stop offset=".84" stop-color="#e2c286"/><stop offset="1" stop-color="#f4ddab"/>
+</linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset=".5" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity=".03"/>
+</linearGradient>
+<linearGradient id="sill" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#e9cf98" stop-opacity="0"/><stop offset=".5" stop-color="#f1dcaa"/><stop offset="1" stop-color="#e9cf98" stop-opacity="0"/>
+</linearGradient>
+<radialGradient id="halo"><stop offset="0" stop-color="#f8eccf" stop-opacity=".45"/><stop offset="1" stop-color="#f8eccf" stop-opacity="0"/></radialGradient>
+<radialGradient id="spill" cx="50" cy="77" r="24" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1 0 0 .22 0 60.06)">
+<stop offset="0" stop-color="#e8c98a" stop-opacity=".32"/><stop offset="1" stop-color="#e8c98a" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="far" x1="0" y1="58" x2="0" y2="72" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#2a345c"/><stop offset=".55" stop-color="#4a5174" stop-opacity=".9"/><stop offset="1" stop-color="#c9a875" stop-opacity=".25"/>
+</linearGradient>
+<clipPath id="gate"><path d="M34.20 76A30 30 0 1 1 65.80 76Z"/></clipPath>
+</defs>
+<rect width="100" height="100" rx="22" fill="#000"/>
+<rect x=".5" y=".5" width="99" height="99" rx="21.5" fill="none" stroke="url(#edge)"/>
+<rect x="18" y="74" width="64" height="12" fill="url(#spill)"/>
+<g clip-path="url(#gate)">
+<rect x="20" y="19.5" width="60" height="57.5" fill="url(#sky)"/>
+<circle cx="61.5" cy="33.5" r="8" fill="url(#halo)"/>
+<circle cx="61.5" cy="33.5" r="3.3" fill="#f6ead0"/>
+<g transform="translate(0 2)">
+<path d="M19 73C24 71.5 27 67 30.5 63.5c2-2 3.5-4.3 5.5-4.5 2 .2 3.5 2.6 5.5 4.6 2 2 4.5 2.8 7 2 2.5-.8 4.5-3 7-3.2 2.5-.2 4.5 1.8 7 3.2 3 1.6 7.5 2 11.5 1.8 3-.2 5.5.4 8 1.2V83H19Z" fill="url(#far)"/>
+<path d="M19 74.5c7-2.3 14-2.9 21-2.5 7 .4 12-.8 18-2.2 6-1.4 12-1.2 18 .2 2.5.6 4.5 1.2 6 1.6V83H19Z" fill="#0b1122"/>
+</g>
+</g>
+<rect x="28.20" y="76" width="43.61" height="2.2" rx="1.1" fill="url(#sill)"/>
 </svg>
