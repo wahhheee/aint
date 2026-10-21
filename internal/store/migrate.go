@@ -33,7 +33,7 @@ type migration struct {
 //   - 旧库有待执行的迁移：先用 VACUUM INTO 备份到 backupDir（保留最近 3 份），再逐个执行；
 //   - 库的版本比程序新（用旧程序打开新数据）：拒绝启动，避免破坏数据。
 //
-// 新增迁移：在 migrations/ 下添加 NNNN_说明.sql，编号递增，已发布的脚本不得修改。
+// 新增迁移：首次发布前直接改 0001_init.sql（D-43）；发布后在 migrations/ 下添加 NNNN_说明.sql，编号递增，已发布的脚本不得修改。
 func (db *DB) Migrate(ctx context.Context, backupDir string) error {
 	all, err := loadMigrations()
 	if err != nil {

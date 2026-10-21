@@ -112,6 +112,8 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 
 字段名保持 snake_case 不转换：排查问题时浏览器网络面板、日志、Go 代码看到的是同一个名字。
 
+首次发布前契约不做向后兼容（D-43）：改名、删字段、改结构直接改，两边在同一次改动中同步，不保留旧字段、旧路由或别名。
+
 ## 8. 扩展指南
 
 | 想要…… | 改哪里 |
@@ -121,7 +123,7 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 新增一个工具 | `tools/builtins.go`：`Def`（名称、类型、显示策略、可用条件、`Spec` 裁切、`Handle`）；需要存档数据时扩展 `tools.Env` 并在 `runtime/draft.go` 实现 |
 | 新增一段平台提示词 | `prompts/l0.go` 加片段（声明 `When` 条件）；新条件在 `prompts/features.go` 加特征、在 `contextx/profile.go` 计算；**递增 `prompts.Version`** |
 | 新增作品文件类型或字段 | `work/manifest.go` 或 `work/model.go` → `work/compile.go`（解析 + 校验代码）→ 示例作品 → JSON Schema（TODO(M6-4)） |
-| 新增数据库表或列 | `store/migrations/NNNN_说明.sql`（编号递增，已发布的脚本不改）→ 对应包的 `repo.go` |
+| 新增数据库表或列 | 首次发布前直接改 `store/migrations/0001_init.sql`（D-43）；发布后追加 `NNNN_说明.sql`（编号递增，已发布的脚本不改）→ 对应包的 `repo.go` |
 | 新增模型协议 | `llm/<协议>/` 实现 `llm.Provider` → `provider/service.go` 的 `providerFor` 中登记 |
 | 新增设置项 | `settings/settings.go`（字段 + 默认值）→ `web/src/api/types.ts` → 设置页 |
 | 新增页面文案 | `web/src/i18n/zh-CN.ts`（不在组件里写死中文） |
