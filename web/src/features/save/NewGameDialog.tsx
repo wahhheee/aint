@@ -54,14 +54,12 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="title-book text-lg">
-            {t('newGame.title')}
-            <span className="ml-3 font-sans text-sm font-normal tracking-normal text-ink-muted">{work.title}</span>
-          </DialogTitle>
+          <DialogTitle className="title-book">{t('newGame.title')}</DialogTitle>
+          <p className="text-[13px] text-ink-muted">{work.title}</p>
           <DialogDescription className="sr-only">{t('newGame.title')}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={submit} className="space-y-7">
+        <form onSubmit={submit} className="space-y-8">
           <div className="space-y-2">
             <Label htmlFor="save-title">{t('newGame.saveName')}</Label>
             <Input
@@ -74,7 +72,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
 
           {fields.length > 0 && (
             <fieldset className="space-y-5">
-              <legend className="mb-3 w-full border-b border-rule pb-2 font-serif text-[13px] tracking-[0.12em] text-ink-muted">
+              <legend className="mb-4 w-full border-b border-rule pb-2 text-[13px] font-medium text-ink-muted">
                 {t('newGame.workSection')}
               </legend>
               {fields.map((f) => (
@@ -84,7 +82,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
           )}
 
           <fieldset className="space-y-5">
-            <legend className="mb-3 w-full border-b border-rule pb-2 font-serif text-[13px] tracking-[0.12em] text-ink-muted">
+            <legend className="mb-4 w-full border-b border-rule pb-2 text-[13px] font-medium text-ink-muted">
               {t('newGame.runSection')}
             </legend>
             <div className="flex items-baseline justify-between gap-4">
@@ -102,9 +100,9 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
             </div>
             <div className="flex items-center justify-between gap-4">
               <Label>{t('newGame.pace')}</Label>
-              <ToggleGroup type="single" variant="outline" size="sm" value={pace} onValueChange={(v) => v && setPace(v)}>
+              <ToggleGroup type="single" variant="segmented" size="sm" value={pace} onValueChange={(v) => v && setPace(v)}>
                 {PACES.map((p) => (
-                  <ToggleGroupItem key={p} value={p} aria-label={t(`paceHint.${p as 'short'}`)} className="px-3">
+                  <ToggleGroupItem key={p} value={p} aria-label={t(`paceHint.${p as 'short'}`)}>
                     {t(`pace.${p as 'short'}`)}
                   </ToggleGroupItem>
                 ))}
@@ -127,7 +125,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
                 onValueChange={(v) => v && setReasoning(v as Reasoning)}
               >
                 {REASONING.map((r) => (
-                  <ToggleGroupItem key={r} value={r} className="px-3">
+                  <ToggleGroupItem key={r} value={r}>
                     {t(`reasoning.${r}`)}
                   </ToggleGroupItem>
                 ))}
@@ -137,7 +135,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
           </fieldset>
 
           {create.isError && (
-            <p role="alert" className="rounded-lg border-l-2 border-danger bg-paper-sunken px-4 py-3 text-sm">
+            <p role="alert" className="rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-[13px] leading-6 text-ink">
               {errorMessage(create.error)}
               {isApiError(create.error, 'model_missing') && (
                 <Link to="/settings/providers" className="ml-2 underline underline-offset-4">
@@ -151,7 +149,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={create.isPending || noModel} className="px-6">
+            <Button type="submit" disabled={create.isPending || noModel} className="min-w-24">
               {t('newGame.start')}
             </Button>
           </DialogFooter>
@@ -244,7 +242,7 @@ function FieldInput({ field: f, value, onChange }: { field: FormField; value: un
             className="flex-wrap"
           >
             {(f.options ?? []).map((o) => (
-              <ToggleGroupItem key={o} value={o} className="px-3">
+              <ToggleGroupItem key={o} value={o}>
                 {o}
               </ToggleGroupItem>
             ))}

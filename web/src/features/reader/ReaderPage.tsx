@@ -151,11 +151,17 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
   return (
     <ReaderContext.Provider value={ctx}>
       <MarkupProvider value={markupCtx}>
-        <div className="work-root flex h-dvh overflow-hidden bg-background" style={readingStyle}>
+        <div className="work-root relative isolate flex h-dvh overflow-hidden bg-paper" style={readingStyle}>
+          {/* 舞台背景铺满整页（侧栏是半透明的磨砂面，背景从下面透出来） */}
+          <StageBackground asset={stageAsset} intensity={reading?.stage_intensity} />
+
           <div className="relative flex min-w-0 flex-1 flex-col">
-            <StageBackground asset={stageAsset} intensity={reading?.stage_intensity} />
             {connection === 'reconnecting' && (
-              <div role="status" className="absolute inset-x-0 top-0 z-20 bg-warn/15 py-1 text-center text-xs text-warn">
+              <div
+                role="status"
+                className="absolute inset-x-0 top-0 z-20 flex h-7 items-center justify-center gap-2 bg-warn/12 text-xs text-warn backdrop-blur"
+              >
+                <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-warn" />
                 连接已断开，正在重连……
               </div>
             )}
@@ -175,7 +181,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
 
           {hasSidebar && sidebarOpen && (
             <aside
-              className="hidden w-[300px] shrink-0 overflow-y-auto border-l border-rule px-6 py-6 min-[1200px]:block"
+              className="scroll-stable relative hidden w-[320px] shrink-0 border-l border-rule bg-paper/75 px-6 pt-[18px] pb-6 backdrop-blur-xl min-[1200px]:block"
               aria-label="面板"
             >
               <SidebarPanels meta={ui.panels} rendered={panels} />
@@ -184,9 +190,9 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
         </div>
 
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetContent side="right" className="w-[320px] overflow-y-auto bg-background px-6">
-            <SheetHeader className="px-0">
-              <SheetTitle className="title-book">{save.work_title}</SheetTitle>
+          <SheetContent side="right" className="w-[320px] overflow-y-auto bg-paper px-6">
+            <SheetHeader className="px-0 pt-5">
+              <SheetTitle className="title-book text-base">{save.work_title}</SheetTitle>
             </SheetHeader>
             <SidebarPanels meta={ui.panels} rendered={panels} />
           </SheetContent>

@@ -25,16 +25,19 @@ interface Props {
   className?: string
   /** 开发目录中的作品：右下角一枚小印"开发" */
   dev?: boolean
+  /** 缩略图（继续阅读的书签条）：题签留白，不写字 */
+  compact?: boolean
 }
 
-export function WorkCover({ id, title, className, dev }: Props) {
+export function WorkCover({ id, title, className, dev, compact }: Props) {
   // 题签高度固定，标题越长字越小（容器查询单位 cqw 随封面宽度缩放）
   const len = Math.max(2, Array.from(title).length)
   return (
     <div
       className={cn(
         'relative aspect-[5/7] w-full overflow-hidden rounded-[2px_4px_4px_2px] select-none [container-type:inline-size]',
-        'shadow-[inset_-1px_0_0_rgb(255_255_255/0.06),0_1px_0_rgb(0_0_0/0.18),0_10px_22px_-14px_rgb(0_0_0/0.55)]',
+        // 内描边让深色封面在纯黑底上也有轮廓
+        'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07),0_1px_0_rgb(0_0_0/0.18),0_10px_22px_-14px_rgb(0_0_0/0.55)]',
         className,
       )}
       style={{ backgroundColor: coverColor(id) }}
@@ -67,16 +70,18 @@ export function WorkCover({ id, title, className, dev }: Props) {
       {/* 题签 */}
       <div className="absolute top-[7%] left-[11%] flex h-[60%] w-[23%] justify-center bg-[#ece6d6] p-[2.2cqw] shadow-[0_1px_2px_rgb(0_0_0/0.25)]">
         <div className="flex h-full w-full justify-center border border-[#23345a]/25 py-[3cqw]">
-          <span
-            className="font-serif font-semibold text-[#23345a] [text-orientation:upright] [writing-mode:vertical-rl]"
-            style={{ fontSize: `min(9.5cqw, ${(70 / len).toFixed(2)}cqw)`, letterSpacing: '0.12em', lineHeight: 1 }}
-          >
-            {title}
-          </span>
+          {!compact && (
+            <span
+              className="font-serif font-semibold text-[#23345a] [text-orientation:upright] [writing-mode:vertical-rl]"
+              style={{ fontSize: `min(9.5cqw, ${(70 / len).toFixed(2)}cqw)`, letterSpacing: '0.12em', lineHeight: 1 }}
+            >
+              {title}
+            </span>
+          )}
         </div>
       </div>
 
-      {dev && (
+      {dev && !compact && (
         <span className="absolute right-[16%] bottom-[5%] rounded-[2px] border border-[#ece6d6]/60 px-[1.6cqw] py-[0.6cqw] font-serif text-[max(9px,5.5cqw)] leading-none text-[#ece6d6]/80">
           开发
         </span>

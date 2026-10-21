@@ -1,14 +1,15 @@
 /*
  * 演义 · 视觉语言
  *
- * 材料语汇取自线装书：
- *   宣（纸白，偏冷）  墨（带蓝调的墨色）  磁青（线装书封面的深靛蓝）  泥金（磁青纸上的金字）
- * 夜读模式是"灯下读书"：墨色的底，灯光暖白的字。
+ * 材料语汇取自线装书：宣（纸）、墨、磁青（线装书封面的深靛蓝）、泥金（金字）。
+ *   - 纸页（浅色）：干净的纸白，墨色正文；
+ *   - 夜读（深色）：纯黑的底，灯光暖白的字——像在漆黑的屋里只点一盏灯读书。
  *
  * 原则：
- *   - 界面框架安静克制，把注意力留给正文；
- *   - 泥金只用于极少数需要被注意的地方（封印陈述、当前选项、品牌），不做装饰；
- *   - 唯一的"记忆点"是书架上的线装书封面（features/library/WorkCover.tsx）。
+ *   - 界面框架安静克制，层级靠留白与发丝线，不靠阴影与色块；阴影只给浮层；
+ *   - 主操作用墨色（深色模式下是暖白），泥金只标记"当前选中"：导航、开关、滑块、标签页下划线、选项字母；
+ *   - 固定尺寸：4px 网格、一套字号阶梯（12 / 13 / 14 / 16 / 20 / 28 / 36），页面标题在每个页面的同一位置；
+ *   - 唯一的"记忆点"是线装书封面（features/library/WorkCover.tsx）。
  *
  * 结构：设计令牌（:root / .dark）→ 映射到 shadcn 变量 → Tailwind @theme → 基础样式。
  * 正文排版见 reading.css，叙事标记见 markup.css。
@@ -24,19 +25,30 @@
 /* ---------------------------------------------------------------- 设计令牌 */
 
 :root {
-  /* 材料色 */
-  --paper: #f2f1ec; /* 宣：页面底色 */
-  --paper-raised: #f8f7f3; /* 浮起的纸：弹窗、菜单 */
-  --paper-sunken: #e9e7e0; /* 压下的纸：输入框底、分组底 */
-  --ink: #1d222b; /* 墨：正文 */
-  --ink-muted: #5c6370; /* 淡墨：次要文字 */
-  --ink-faint: #8a8f99; /* 枯墨：提示、占位 */
-  --rule: #dcd9d0; /* 界线 */
-  --indigo: #23345a; /* 磁青：品牌与主操作 */
-  --indigo-soft: #23345a14; /* 磁青的淡染：悬停、选中底 */
-  --gold: #a9853f; /* 泥金：大号文字与图形 */
-  --gold-text: #876628; /* 泥金（小字号，保证对比度 ≥ 4.5） */
-  --cinnabar: #a33b2e; /* 朱：危险操作与错误 */
+  /* 底与面 */
+  --paper: #fafaf8; /* 页面底色 */
+  --paper-raised: #ffffff; /* 面：卡片、分组列表 */
+  --paper-sunken: #efefeb; /* 凹：输入框、分段控件的槽 */
+  --paper-overlay: #ffffff; /* 浮层：弹窗、菜单 */
+  --segment: #ffffff; /* 分段控件中选中的一段 */
+  --hover: rgb(20 20 15 / 0.045); /* 悬停底色 */
+  --selected: rgb(20 20 15 / 0.07); /* 选中底色 */
+
+  /* 字 */
+  --ink: #19191b;
+  --ink-muted: #5d5d62;
+  --ink-faint: #8e8e93;
+
+  /* 线 */
+  --rule: rgb(20 20 15 / 0.09);
+  --rule-strong: rgb(20 20 15 / 0.16);
+
+  /* 色 */
+  --indigo: #23345a; /* 磁青：品牌 */
+  --gold: #a5823c; /* 泥金：选中标记（图形） */
+  --gold-text: #876628; /* 泥金（小字号，对比度 ≥ 4.5） */
+  --gold-soft: rgb(165 130 60 / 0.12);
+  --cinnabar: #b23f31; /* 朱：危险操作与错误 */
   --jade: #3f6b55; /* 青：成功 */
 
   /* 语义状态色 */
@@ -45,57 +57,74 @@
   --danger: var(--cinnabar);
   --ok: var(--jade);
 
+  /* 浮层阴影 */
+  --elev-overlay: 0 0 0 1px rgb(20 20 15 / 0.06), 0 2px 4px rgb(20 20 15 / 0.04), 0 16px 40px -12px rgb(20 20 15 / 0.18);
+  --elev-lift: 0 1px 1px rgb(20 20 15 / 0.08), 0 14px 28px -16px rgb(20 20 15 / 0.45);
+  --elev-segment: 0 0 0 1px rgb(20 20 15 / 0.07), 0 1px 2px rgb(20 20 15 / 0.08);
+
   /* 字体 */
   --font-ui:
-    -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans SC', system-ui,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei',
+    'Noto Sans SC', system-ui, sans-serif;
   --font-book: 'Noto Serif SC', 'Source Han Serif SC', 'Source Han Serif CN', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-code: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+
+  /* 布局 */
+  --sidebar-width: 240px;
+  --topbar-height: 56px;
 
   /* shadcn 变量映射 */
   --background: var(--paper);
   --foreground: var(--ink);
   --card: var(--paper-raised);
   --card-foreground: var(--ink);
-  --popover: var(--paper-raised);
+  --popover: var(--paper-overlay);
   --popover-foreground: var(--ink);
-  --primary: var(--indigo);
-  --primary-foreground: #f6f4ee;
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
   --secondary: var(--paper-sunken);
   --secondary-foreground: var(--ink);
   --muted: var(--paper-sunken);
   --muted-foreground: var(--ink-muted);
-  --accent: #e4e2da;
+  --accent: var(--hover);
   --accent-foreground: var(--ink);
   --destructive: var(--cinnabar);
   --border: var(--rule);
-  --input: #d2cfc5;
-  --ring: #4a5f8c;
+  --input: var(--rule-strong);
+  --ring: color-mix(in oklab, var(--gold) 75%, transparent);
   --radius: 0.5rem;
 
   color-scheme: light;
 }
 
 .dark {
-  --paper: #14171d;
-  --paper-raised: #1b1f27;
-  --paper-sunken: #1f232c;
-  --ink: #e3dfd5;
-  --ink-muted: #a2a6ae;
-  --ink-faint: #737882;
-  --rule: #2a2f39;
+  --paper: #000000;
+  --paper-raised: #0d0d0e;
+  --paper-sunken: #18181a;
+  --paper-overlay: #141415;
+  --segment: #2a2a2c;
+  --hover: rgb(255 255 255 / 0.055);
+  --selected: rgb(255 255 255 / 0.085);
+
+  --ink: #ece9e3;
+  --ink-muted: #a19e98;
+  --ink-faint: #6c6a66;
+
+  --rule: rgb(255 255 255 / 0.085);
+  --rule-strong: rgb(255 255 255 / 0.15);
+
   --indigo: #9db0da;
-  --indigo-soft: #9db0da1c;
-  --gold: #cfae6a;
-  --gold-text: #d6b878;
-  --cinnabar: #e07a6b;
-  --jade: #7fb59a;
+  --gold: #cfaf70;
+  --gold-text: #d6b97e;
+  --gold-soft: rgb(207 175 112 / 0.14);
+  --cinnabar: #e5786a;
+  --jade: #86bfa0;
   --info: #8fa9d8;
   --warn: #d9ad5c;
 
-  --primary-foreground: #14171d;
-  --accent: #262b35;
-  --input: #343a47;
-  --ring: #7f93c0;
+  --elev-overlay: 0 0 0 1px rgb(255 255 255 / 0.07), 0 20px 48px -12px rgb(0 0 0 / 0.9);
+  --elev-lift: 0 0 0 1px rgb(255 255 255 / 0.05), 0 18px 32px -18px rgb(0 0 0 / 1);
+  --elev-segment: none;
 
   color-scheme: dark;
 }
@@ -106,18 +135,24 @@
   --font-sans: var(--font-ui);
   --font-serif: var(--font-book);
   --font-heading: var(--font-book);
+  --font-mono: var(--font-code);
 
   --color-paper: var(--paper);
   --color-paper-raised: var(--paper-raised);
   --color-paper-sunken: var(--paper-sunken);
+  --color-paper-overlay: var(--paper-overlay);
+  --color-segment: var(--segment);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
   --color-ink-faint: var(--ink-faint);
   --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
   --color-indigo: var(--indigo);
-  --color-indigo-soft: var(--indigo-soft);
   --color-gold: var(--gold);
   --color-gold-text: var(--gold-text);
+  --color-gold-soft: var(--gold-soft);
   --color-info: var(--info);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
@@ -142,14 +177,18 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
 
-  /* 圆角有层级：小组件 6px、卡片 12px、抽屉与弹窗 16px；书封几乎是直角 */
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* 圆角有层级：小组件 6px、按钮 8px、卡片 12px、弹窗 16px；书封几乎是直角 */
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.5);
   --radius-2xl: calc(var(--radius) * 2);
   --radius-3xl: calc(var(--radius) * 2.5);
   --radius-4xl: calc(var(--radius) * 3);
+
+  --shadow-overlay: var(--elev-overlay);
+  --shadow-lift: var(--elev-lift);
+  --shadow-segment: var(--elev-segment);
 
   /* 动效（《04-交互与界面设计》11） */
   --ease-out-soft: cubic-bezier(0.22, 0.8, 0.32, 1);
@@ -163,13 +202,14 @@
   }
   html {
     @apply font-sans antialiased;
-    font-size: 14px;
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
   }
   body {
     @apply bg-background text-foreground;
     min-height: 100dvh;
+    font-size: 14px;
+    line-height: 1.5;
   }
   /* 数字等宽：回合数、百分比、用量不跳动 */
   .tabular {
@@ -179,7 +219,7 @@
   .title-book {
     font-family: var(--font-book);
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -188,6 +228,48 @@
   ::selection {
     background: color-mix(in oklch, var(--gold) 35%, transparent);
   }
+
+  /* 滚动条：细、淡，不在纯黑底上留一道灰条 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--rule-strong) padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--ink-faint);
+  }
+}
+
+@layer utilities {
+  /* 滚动容器始终预留滚动条的位置：内容长短变化时版面不左右跳动 */
+  .scroll-stable {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 切换主题的一帧内不播放过渡（lib/theme.ts） */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }
 
 /* 减少动画（系统设置或阅读设置）：取消位移与特效，淡入缩短 */

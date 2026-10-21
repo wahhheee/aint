@@ -17,9 +17,9 @@ export function ContextRing({ used, threshold }: { used?: number; threshold?: nu
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-ink-faint tabular" tabIndex={0}>
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-ink-muted tabular outline-offset-0" tabIndex={0}>
           <svg viewBox="0 0 18 18" className="size-[18px] -rotate-90" aria-hidden>
-            <circle cx="9" cy="9" r={r} fill="none" stroke="var(--rule)" strokeWidth="2" />
+            <circle cx="9" cy="9" r={r} fill="none" stroke="var(--rule-strong)" strokeWidth="2" />
             <circle
               cx="9"
               cy="9"
@@ -32,7 +32,7 @@ export function ContextRing({ used, threshold }: { used?: number; threshold?: nu
               className="transition-[stroke-dasharray] duration-300"
             />
           </svg>
-          <span className={cn(warn && 'text-warn')}>{used !== undefined ? `${Math.round(ratio * 100)}%` : '—'}</span>
+          <span className={cn('w-8', warn && 'text-warn')}>{used !== undefined ? `${Math.round(ratio * 100)}%` : '—'}</span>
         </span>
       </TooltipTrigger>
       <TooltipContent className="max-w-64">

@@ -18,8 +18,14 @@ function resolve(pref: ThemePreference): ResolvedTheme {
   return pref
 }
 
+/** 切换主题的这一帧暂停所有过渡：否则带 transition 的元素慢慢变色、其余元素立刻变色，画面会"闪"一下。 */
 function apply(resolved: ResolvedTheme) {
-  document.documentElement.classList.toggle('dark', resolved === 'dark')
+  const root = document.documentElement
+  if (root.classList.contains('dark') === (resolved === 'dark')) return
+  root.classList.add('theme-switching')
+  root.classList.toggle('dark', resolved === 'dark')
+  void root.offsetHeight // 强制样式计算，让新颜色在无过渡的状态下生效
+  requestAnimationFrame(() => root.classList.remove('theme-switching'))
 }
 
 interface ThemeState {

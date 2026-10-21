@@ -38,15 +38,15 @@ const UiBar: UIComponent = ({ attrs }) => {
       aria-valuemax={max}
     >
       <span className="w-14 shrink-0 truncate text-ink-muted">{attrs.label}</span>
-      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-sunken">
-        <span className="block h-full rounded-full bg-indigo/70 transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
+      <span className="h-1 flex-1 overflow-hidden rounded-full bg-rule-strong">
+        <span className="block h-full rounded-full bg-ink-muted transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
       </span>
     </div>
   )
 }
 
 const UiBadge: UIComponent = ({ attrs, children }) => (
-  <span className="inline-flex items-center gap-1 rounded-md bg-paper-sunken px-1.5 py-0.5 text-xs text-ink-muted">
+  <span className="inline-flex items-center gap-1 rounded-md border border-rule px-1.5 py-0.5 text-xs text-ink-muted">
     {attrs.icon && <WorkIcon name={attrs.icon} className="size-3" />}
     {children}
   </span>

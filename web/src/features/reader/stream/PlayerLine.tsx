@@ -21,7 +21,7 @@ export function PlayerLine({ item }: { item: InputItem }) {
   return (
     <p
       className={cn(
-        'mb-6 flex items-baseline gap-2.5 border-l-2 border-gold/70 py-0.5 pl-3.5 font-sans text-[13.5px] leading-relaxed',
+        'mb-6 flex items-baseline gap-2.5 border-l-2 border-gold/60 py-0.5 pl-3.5 font-sans text-[13.5px] leading-relaxed',
         isOOC ? 'border-ink-faint/40 text-ink-faint' : 'text-ink-muted',
       )}
     >

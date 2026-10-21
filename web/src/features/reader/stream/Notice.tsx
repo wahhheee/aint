@@ -18,12 +18,18 @@ export function Notice({
   return (
     <div
       role={level === 'error' ? 'alert' : 'status'}
-      className={cn(
-        'my-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border-l-2 bg-paper-sunken px-4 py-2.5 font-sans text-[13px] text-ink-muted',
-        level === 'error' ? 'border-danger' : level === 'warn' ? 'border-warn' : 'border-info',
-      )}
+      className="my-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-rule bg-paper-raised/75 px-4 py-2.5 font-sans text-[13px] leading-6 text-ink-muted backdrop-blur-md"
     >
-      <span className="min-w-0 flex-1">{children}</span>
+      <span className="flex min-w-0 flex-1 items-baseline gap-3">
+        <span
+          aria-hidden
+          className={cn(
+            'size-1.5 shrink-0 -translate-y-px rounded-full',
+            level === 'error' ? 'bg-danger' : level === 'warn' ? 'bg-warn' : 'bg-info',
+          )}
+        />
+        <span className="min-w-0">{children}</span>
+      </span>
       {actions && <span className="flex shrink-0 gap-2">{actions}</span>}
     </div>
   )

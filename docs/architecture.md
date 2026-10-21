@@ -88,7 +88,7 @@ api/        与后端契约一一对应：types.ts、events.ts、errors.ts；cli
 stores/     Zustand：reader.ts（草稿回合，事件处理为纯函数 reduceEvent）、ui.ts
 markup/     叙事标记解析（parse.ts）与渲染（render.tsx）、作品样式标签 CSS（workStyles.ts）
 features/   library（书架、线装书封面）、work（作品详情）、save（开局）、reader（阅读页）、settings
-components/ ui/（shadcn 生成，可按设计语言定制）、common/、brand/
+components/ ui/（shadcn 生成，已按设计语言定制尺寸与配色）、common/（PageHeader 页面骨架、ThemeSwitch 外观切换等）、brand/
 styles/     globals.css（设计令牌）、reading.css（正文排版）、markup.css（标签样式）
 i18n/       zh-CN.ts（全部文案；键名有类型检查）
 ```
@@ -96,7 +96,9 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 阅读页的数据分工：**已提交的回合**来自时间线接口（权威）；**进行中的回合**是 SSE 驱动的草稿（`stores/reader.ts`）。
 提交后时间线刷新，打字机显示完毕再用时间线节点替换草稿，避免内容跳变。
 
-视觉语言的取材与原则写在 `styles/globals.css` 文件头。
+视觉语言的取材与原则写在 `styles/globals.css` 文件头。外壳（`app/ShellLayout.tsx`）宽屏是左侧栏 + 内容区，窄屏是顶栏 + 内容区；
+整个外壳不滚动，只有内容区滚动（`.scroll-stable` 预留滚动条位置），新页面以 `PageHeader` 开头，标题行与侧栏品牌同一水平线。
+加页面时沿用这两点，版面在切换页面、标签时就不会移动。
 
 ## 7. 前后端契约（修改时必须两边同步）
 

@@ -75,55 +75,62 @@ export function Stream({ timeline, onRetry, onContinue }: Props) {
   }, [timeline?.save_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={scrollRef} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <div className="relative min-h-0 flex-1">
+      {/* 上下两端渐隐：正文滚到顶栏与输入栏下面时柔和地淡出，而不是被一刀切断 */}
       <div
-        ref={contentRef}
-        className="mx-auto w-full max-w-[var(--reading-width)] px-6 pt-12 pb-16"
-        style={{ fontSize: 'var(--reading-size)' }}
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="scroll-stable absolute inset-0 overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_28px,#000_calc(100%-36px),transparent)]"
       >
-        {visible.map((n, i) => (
-          <section key={n.id} className={i > 0 ? 'mt-[2.4em]' : undefined} data-node={n.id} data-turn={n.turn_no}>
-            <TurnView
-              items={n.display}
-              // 已选择、等待新回合开始期间：选项仍显示，所选项高亮、其余变淡
-              interactive={n === latest && (!busy || (pending?.kind === 'choice' && !draft))}
-              selected={n === latest && pending?.kind === 'choice' ? pending.choice_id : undefined}
-              noticeActions={n === latest && !busy && n.status === 'interrupted' ? <Continue onClick={onContinue} /> : undefined}
-            />
-          </section>
-        ))}
+        <div
+          ref={contentRef}
+          className="mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-6 pt-10 pb-14"
+          style={{ fontSize: 'var(--reading-size)' }}
+        >
+          {visible.map((n, i) => (
+            <section key={n.id} className={i > 0 ? 'mt-[2.4em]' : undefined} data-node={n.id} data-turn={n.turn_no}>
+              <TurnView
+                items={n.display}
+                // 已选择、等待新回合开始期间：选项仍显示，所选项高亮、其余变淡
+                interactive={n === latest && (!busy || (pending?.kind === 'choice' && !draft))}
+                selected={n === latest && pending?.kind === 'choice' ? pending.choice_id : undefined}
+                noticeActions={n === latest && !busy && n.status === 'interrupted' ? <Continue onClick={onContinue} /> : undefined}
+              />
+            </section>
+          ))}
 
-        {/* 已提交输入、等待回合开始：先显示玩家的输入与等待态 */}
-        {pending && !draft && (
-          <section className="mt-[2.4em]">
-            <TurnView items={inputItems(pending, latest?.display)} />
-            <Waiting label={t('reader.waiting')} />
-          </section>
-        )}
+          {/* 已提交输入、等待回合开始：先显示玩家的输入与等待态 */}
+          {pending && !draft && (
+            <section className="mt-[2.4em]">
+              <TurnView items={inputItems(pending, latest?.display)} />
+              <Waiting label={t('reader.waiting')} />
+            </section>
+          )}
 
-        {draft && (
-          <section className={visible.length > 0 ? 'mt-[2.4em]' : undefined}>
-            <DraftTurnView
-              draft={draft}
-              typewriter={reading?.typewriter ?? 'normal'}
-              onRevealed={() => draftCommittedInTimeline && clearDraft()}
-            />
-          </section>
-        )}
+          {draft && (
+            <section className={visible.length > 0 ? 'mt-[2.4em]' : undefined}>
+              <DraftTurnView
+                draft={draft}
+                typewriter={reading?.typewriter ?? 'normal'}
+                onRevealed={() => draftCommittedInTimeline && clearDraft()}
+              />
+            </section>
+          )}
 
-        {failure && !busy && (
-          <Notice level="error" actions={failure.recoverable ? <RetryButton onClick={onRetry} /> : undefined}>
-            {failure.message}
-          </Notice>
-        )}
+          {failure && !busy && (
+            <Notice level="error" actions={failure.recoverable ? <RetryButton onClick={onRetry} /> : undefined}>
+              {failure.message}
+            </Notice>
+          )}
+        </div>
       </div>
 
       {showJump && (
         <Button
           size="sm"
-          variant="secondary"
+          variant="outline"
           onClick={jumpToLatest}
-          className="sticky bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full shadow-md"
+          className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-paper-overlay/90 shadow-overlay backdrop-blur"
         >
           <ArrowDown />
           {t('reader.backToLatest')}

@@ -17,7 +17,7 @@ export function SidebarPanels({ meta, rendered, className }: { meta: PanelMeta[]
       {panels.map(({ meta: m, render }) => (
         <section key={m.id} aria-label={m.title ?? m.id}>
           {m.title && (
-            <h3 className="mb-3 flex items-center gap-3 font-serif text-[13px] tracking-[0.16em] text-ink-muted after:h-px after:flex-1 after:bg-rule">
+            <h3 className="mb-3 flex h-5 items-center gap-3 font-serif text-[13px] font-semibold tracking-[0.14em] text-ink-muted after:h-px after:flex-1 after:bg-rule">
               {m.title}
             </h3>
           )}
@@ -33,10 +33,12 @@ export function TopbarPanels({ meta, rendered }: { meta: PanelMeta[]; rendered?:
   const panels = byPlace(meta, rendered, 'topbar')
   if (panels.length === 0) return null
   return (
-    <div className="relative border-b border-rule/70 px-6 py-2 text-center font-serif text-[13px] text-ink-muted [&_p]:m-0">
-      {panels.map(({ meta: m, render }) => (
-        <PanelHTML key={m.id} html={render.html} />
-      ))}
+    <div className="relative z-10 flex shrink-0 justify-center px-6 pb-1">
+      <div className="max-w-full truncate rounded-full border border-rule bg-paper-raised/70 px-4 py-1 text-center font-serif text-[13px] leading-5 text-ink-muted backdrop-blur-md [&_p]:m-0">
+        {panels.map(({ meta: m, render }) => (
+          <PanelHTML key={m.id} html={render.html} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -46,11 +48,11 @@ export function FloatPanels({ meta, rendered }: { meta: PanelMeta[]; rendered?: 
   const panels = byPlace(meta, rendered, 'float')
   if (panels.length === 0) return null
   return (
-    <div className="pointer-events-none absolute right-5 bottom-28 z-10 hidden flex-col gap-2 md:flex">
+    <div className="pointer-events-none absolute right-5 bottom-28 z-10 hidden flex-col items-end gap-2 md:flex">
       {panels.map(({ meta: m, render }) => (
         <div
           key={m.id}
-          className="pointer-events-auto rounded-xl border border-rule bg-paper-raised/90 px-3.5 py-2 font-serif text-[13px] text-ink shadow-[0_6px_18px_-10px_rgb(0_0_0/0.4)] backdrop-blur-sm [&_p]:m-0"
+          className="pointer-events-auto rounded-xl border border-rule bg-paper-overlay/85 px-3.5 py-2 font-serif text-[13px] text-ink shadow-overlay backdrop-blur-md [&_p]:m-0"
         >
           <PanelHTML html={render.html} />
         </div>

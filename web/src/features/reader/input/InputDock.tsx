@@ -126,15 +126,19 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
       : t('reader.placeholder')
 
   return (
-    <div className="relative mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-4 pb-4">
+    // 宽度与正文列一致（--reading-width 以正文字号为单位换算，所以这里也用正文字号）
+    <div
+      className="relative z-10 mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-4 pb-4 sm:px-6 sm:pb-5"
+      style={{ fontSize: 'var(--reading-size)' }}
+    >
       {commandBar.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5 px-1">
+        <div className="mb-2.5 flex flex-wrap gap-1.5">
           {commandBar.map((c) => (
             <Button
               key={c.name}
-              variant="ghost"
+              variant="outline"
               size="xs"
-              className="text-ink-muted"
+              className="rounded-full border-rule bg-paper-raised/70 text-ink-muted backdrop-blur hover:text-ink"
               disabled={busy}
               onClick={() => {
                 // 需要参数的命令先填入输入框，否则直接执行
@@ -155,14 +159,14 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
 
       <div
         className={cn(
-          'flex items-end gap-2 rounded-2xl border border-rule bg-paper-raised px-2 py-2 shadow-[0_8px_24px_-16px_rgb(0_0_0/0.35)] transition-colors',
-          'focus-within:border-ring/50',
+          'flex items-end gap-1 rounded-2xl border border-rule-strong bg-paper-overlay/92 p-2 text-sm shadow-overlay backdrop-blur-xl transition-[border-color]',
+          'focus-within:border-ring/60',
         )}
       >
         {modes.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className={cn('shrink-0 gap-1', mode?.mode_style && `mk-${mode.mode_style}`)}>
+              <Button variant="ghost" size="sm" className={cn('shrink-0 gap-1 text-ink', mode?.mode_style && `mk-${mode.mode_style}`)}>
                 {mode ? mode.mode_label || mode.title : t('reader.modeAction')}
                 <ChevronDown className="size-3.5 opacity-60" />
               </Button>
@@ -187,7 +191,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 font-serif text-[15px] leading-[26px] text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
+          className="min-h-8 flex-1 resize-none bg-transparent px-2 py-[3px] font-serif text-[15px] leading-[26px] text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
         />
 
         <div className="flex shrink-0 items-center gap-0.5">
@@ -195,7 +199,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-9 text-ink-muted" aria-label="本回合篇幅">
+                  <Button variant="ghost" size="icon-sm" className="text-[13px] font-normal" aria-label="本回合篇幅">
                     {t(`pace.${(PACES as readonly string[]).includes(pace) ? (pace as 'short') : 'medium'}`)}
                   </Button>
                 </DropdownMenuTrigger>
@@ -215,13 +219,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
           <Tooltip>
             <TooltipTrigger asChild>
               {/* TODO(M2-10)：附加图片（POST /uploads），非视觉模型时提示 */}
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-ink-faint"
-                aria-label={t('reader.attach')}
-                onClick={() => toast(t('common.notImplemented'))}
-              >
+              <Button variant="ghost" size="icon-sm" aria-label={t('reader.attach')} onClick={() => toast(t('common.notImplemented'))}>
                 <Paperclip />
               </Button>
             </TooltipTrigger>
@@ -230,7 +228,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
 
           {busy ? (
             <Button size="icon-sm" variant="secondary" onClick={onStop} aria-label={t('reader.stop')}>
-              <Square className="fill-current" />
+              <Square className="size-3 fill-current" />
             </Button>
           ) : (
             <Button size="icon-sm" onClick={() => void send()} disabled={!text.trim()} aria-label={t('reader.send')}>

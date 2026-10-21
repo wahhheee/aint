@@ -8,26 +8,29 @@ export function ReportList({ issues }: { issues: Issue[] }) {
   const { t } = useTranslation()
   if (issues.length === 0) return <p className="text-ink-muted">{t('work.reportClean')}</p>
   return (
-    <ul className="space-y-2">
+    <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper-raised">
       {issues.map((i, idx) => (
-        <li
-          key={idx}
-          className={cn(
-            'rounded-lg border-l-2 bg-paper-raised px-4 py-2.5',
-            i.level === 'error' ? 'border-danger' : i.level === 'warning' ? 'border-warn' : 'border-info',
-          )}
-        >
-          <p className="text-ink">{i.message}</p>
-          <p className="mt-0.5 text-xs text-ink-faint">
-            <span className="font-mono">{i.code}</span>
-            {i.path && (
-              <span className="ml-3">
-                {i.path}
-                {i.line ? `:${i.line}` : ''}
-              </span>
+        <li key={idx} className="flex gap-3 px-4 py-3">
+          <span
+            aria-hidden
+            className={cn(
+              'mt-2 size-1.5 shrink-0 rounded-full',
+              i.level === 'error' ? 'bg-danger' : i.level === 'warning' ? 'bg-warn' : 'bg-info',
             )}
-            {i.hint && <span className="ml-3 text-ink-muted">{i.hint}</span>}
-          </p>
+          />
+          <div className="min-w-0">
+            <p className="text-ink">{i.message}</p>
+            <p className="mt-1 flex flex-wrap gap-x-3 text-xs leading-5 text-ink-faint">
+              <span className="font-mono">{i.code}</span>
+              {i.path && (
+                <span className="font-mono">
+                  {i.path}
+                  {i.line ? `:${i.line}` : ''}
+                </span>
+              )}
+              {i.hint && <span className="text-ink-muted">{i.hint}</span>}
+            </p>
+          </div>
         </li>
       ))}
     </ul>

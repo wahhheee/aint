@@ -12,7 +12,7 @@ import { LoadError } from '@/components/common/LoadError'
 import { Button } from '@/components/ui/button'
 import { formatTokens } from '@/lib/format'
 
-import { SectionTitle } from './SettingRow'
+import { SectionTitle, SettingGroup, SettingRow } from './SettingRow'
 
 const PROTOCOL_LABEL = { 'openai-responses': 'OpenAI Responses', anthropic: 'Anthropic Messages', gemini: 'Gemini', fake: '演示模型' }
 
@@ -22,55 +22,71 @@ export function ProvidersSection() {
   const providers = useProviders()
   const models = useModels()
   const settings = useSettings()
+  const todo = () => toast(t('common.notImplemented'))
 
   return (
     <section>
       <SectionTitle description={t('settings.providers.intro')}>{t('settings.sections.providers')}</SectionTitle>
 
       {info.data?.fake_llm && (
-        <p className="mb-6 rounded-lg border-l-2 border-gold bg-paper-sunken px-4 py-3 text-[13px] text-ink-muted">{t('app.fakeHint')}</p>
+        <p className="mb-8 flex gap-3 rounded-xl border border-rule bg-paper-raised px-4 py-3 text-[13px] leading-6 text-ink-muted">
+          <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-gold" />
+          {t('app.fakeHint')}
+        </p>
       )}
 
       {providers.isError && <LoadError error={providers.error} />}
-      {providers.data && providers.data.length === 0 && (
-        <div className="rounded-xl border border-dashed border-rule px-6 py-10 text-center">
-          <p className="text-ink-muted">{t('settings.providers.empty')}</p>
-          <Button className="mt-4" onClick={() => toast(t('common.notImplemented'))}>
-            <Plus />
-            {t('settings.providers.add')}
-          </Button>
-        </div>
-      )}
-      {providers.data && providers.data.length > 0 && (
-        <ul className="divide-y divide-rule">
-          {providers.data.map((p) => (
-            <li key={p.id} className="flex items-baseline gap-4 py-3">
-              <span className="font-medium">{p.name}</span>
-              <span className="text-xs text-ink-muted">{PROTOCOL_LABEL[p.protocol]}</span>
-              <span className="ml-auto font-mono text-xs text-ink-faint">{p.key_masked}</span>
-            </li>
-          ))}
-        </ul>
+      {providers.data && (
+        <SettingGroup
+          title={t('settings.providers.services')}
+          action={
+            providers.data.length > 0 && (
+              <Button variant="ghost" size="xs" onClick={todo}>
+                <Plus />
+                {t('settings.providers.add')}
+              </Button>
+            )
+          }
+        >
+          {providers.data.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-10 text-center">
+              <p className="text-ink-muted">{t('settings.providers.empty')}</p>
+              <Button className="mt-4" size="sm" onClick={todo}>
+                <Plus />
+                {t('settings.providers.add')}
+              </Button>
+            </div>
+          ) : (
+            providers.data.map((p) => (
+              <SettingRow key={p.id} label={p.name} hint={PROTOCOL_LABEL[p.protocol]}>
+                <span className="font-mono text-xs text-ink-faint">{p.key_masked}</span>
+              </SettingRow>
+            ))
+          )}
+        </SettingGroup>
       )}
 
       {models.data && models.data.length > 0 && (
-        <div className="mt-10">
-          <h3 className="mb-3 font-serif text-[13px] tracking-[0.16em] text-ink-muted">{t('settings.providers.models')}</h3>
-          <ul className="divide-y divide-rule">
-            {models.data.map((m) => (
-              <li key={m.id} className="flex items-baseline gap-4 py-3">
-                <span>{m.display_name || m.name}</span>
-                <span className="text-xs text-ink-faint tabular">
-                  {formatTokens(m.context_window)} / {formatTokens(m.max_output)}
+        <SettingGroup title={t('settings.providers.models')}>
+          {models.data.map((m) => (
+            <SettingRow
+              key={m.id}
+              label={m.display_name || m.name}
+              hint={
+                <span className="tabular">
+                  {t('settings.providers.window', { window: formatTokens(m.context_window), output: formatTokens(m.max_output) })}
+                  {m.caps.vision && <span className="ml-3">{t('settings.providers.vision')}</span>}
                 </span>
-                {m.caps.vision && <span className="text-xs text-ink-muted">看图</span>}
-                {(settings.data?.models.narrator === m.id || info.data?.fake_llm) && (
-                  <span className="ml-auto text-xs text-gold-text">{t('settings.providers.narrator')}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+              }
+            >
+              {(settings.data?.models.narrator === m.id || info.data?.fake_llm) && (
+                <span className="rounded-md bg-gold-soft px-1.5 py-0.5 text-xs leading-4 text-gold-text">
+                  {t('settings.providers.narrator')}
+                </span>
+              )}
+            </SettingRow>
+          ))}
+        </SettingGroup>
       )}
     </section>
   )

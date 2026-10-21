@@ -35,7 +35,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="title-book">{t('import.title')}</DialogTitle>
+          <DialogTitle>{t('import.title')}</DialogTitle>
           <DialogDescription>{t('import.pending')}</DialogDescription>
         </DialogHeader>
 
@@ -73,7 +73,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           </TabsContent>
           {(['github', 'url', 'dev'] as const).map((s) => (
             <TabsContent key={s} value={s}>
-              <form onSubmit={submit} className="space-y-2 pt-2">
+              <form onSubmit={submit} className="space-y-2.5 pt-4">
                 <Label htmlFor={`import-${s}`}>
                   {s === 'github' ? t('import.githubLabel') : s === 'url' ? t('import.urlLabel') : t('import.devLabel')}
                 </Label>
@@ -94,14 +94,20 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     {t('import.parse')}
                   </Button>
                 </div>
-                <p className="text-xs text-ink-faint">{s === 'github' ? t('import.githubHint') : s === 'dev' ? t('import.devHint') : ''}</p>
+                <p className="min-h-5 text-xs leading-5 text-ink-faint">
+                  {s === 'github' ? t('import.githubHint') : s === 'dev' ? t('import.devHint') : ''}
+                </p>
               </form>
             </TabsContent>
           ))}
         </Tabs>
 
         {preview.isError && (
-          <p role="alert" className="rounded-lg border-l-2 border-warn bg-paper-sunken px-4 py-3 text-ink-muted">
+          <p
+            role="alert"
+            className="flex gap-3 rounded-xl border border-rule bg-paper-sunken px-4 py-3 text-[13px] leading-6 text-ink-muted"
+          >
+            <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-warn" />
             {errorMessage(preview.error)}
           </p>
         )}
@@ -112,7 +118,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
 function DropZone({ hint }: { hint: string }) {
   return (
-    <div className="mt-2 flex h-36 items-center justify-center rounded-xl border border-dashed border-rule bg-paper-sunken/50 text-ink-muted">
+    <div className="mt-4 flex h-40 items-center justify-center rounded-xl border border-dashed border-rule-strong bg-paper-sunken/60 px-6 text-center text-[13px] text-ink-muted">
       {hint}
     </div>
   )

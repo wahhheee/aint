@@ -34,9 +34,9 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
   if (!saves) return null
   if (saves.length === 0) {
     return (
-      <div className="py-10 text-center">
+      <div className="flex flex-col items-center py-16 text-center">
         <p className="text-ink-muted">{t('work.noSaves')}</p>
-        <Button className="mt-4" onClick={onStart}>
+        <Button className="mt-5" onClick={onStart}>
           {t('work.startNew')}
         </Button>
       </div>
@@ -45,22 +45,24 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
 
   return (
     <>
-      <ul className="divide-y divide-rule">
+      <ul className="-mx-3">
         {saves.map((s) => (
-          <li key={s.id} className="flex items-center gap-4 py-3.5">
-            <Link to={`/play/${s.id}`} className="min-w-0 flex-1 rounded-md outline-offset-4">
-              <p className="truncate font-serif text-[15px] font-semibold">{saveTitle(s)}</p>
-              <p className="mt-0.5 text-xs text-ink-faint">
+          <li key={s.id} className="relative flex min-h-16 items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-hover">
+            <Link to={`/play/${s.id}`} className="min-w-0 flex-1 rounded-md outline-offset-4 after:absolute after:inset-0">
+              <p className="truncate font-serif text-[15px] leading-6 font-semibold text-ink">{saveTitle(s)}</p>
+              <p className="flex gap-4 text-xs leading-5 text-ink-faint">
                 <span className="tabular">{t('work.turns', { n: s.turn_count })}</span>
-                <span className="ml-4">{formatRelative(s.last_played_at)}</span>
+                <span>{formatRelative(s.last_played_at)}</span>
               </p>
             </Link>
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/play/${s.id}`}>{t('work.resume')}</Link>
+            <Button asChild variant="outline" size="sm" className="relative">
+              <Link to={`/play/${s.id}`} tabIndex={-1}>
+                {t('work.resume')}
+              </Link>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="更多操作">
+                <Button variant="ghost" size="icon-sm" aria-label="更多操作" className="relative">
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -127,7 +129,7 @@ function RenameDialog({ save, onClose, onSubmit }: { save: Save | null; onClose:
           }}
         >
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('newGame.saveNamePlaceholder')} autoFocus />
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-5">
             <Button type="button" variant="ghost" onClick={onClose}>
               {t('common.cancel')}
             </Button>

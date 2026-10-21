@@ -12,7 +12,7 @@ export function RouteError() {
   const message = err instanceof Error ? err.message : String(err)
   return (
     <div className="mx-auto max-w-lg px-6 py-[18vh]">
-      <h1 className="title-book text-2xl">{t('errors.loadFailed')}</h1>
+      <h1 className="title-book text-[28px] leading-10">{t('errors.loadFailed')}</h1>
       <p className="mt-4 text-ink-muted">{message}</p>
       {err instanceof ApiError && err.requestId && (
         <p className="mt-2 text-xs text-ink-faint">
@@ -29,7 +29,7 @@ export function RouteError() {
 export function NotFound() {
   const { t } = useTranslation()
   return (
-    <div className="py-[16vh] text-center">
+    <div className="flex flex-col items-center py-[16vh] text-center">
       <p className="title-book text-xl">{t('errors.notFound')}</p>
       <Button asChild variant="outline" className="mt-6">
         <Link to="/">{t('errors.backHome')}</Link>

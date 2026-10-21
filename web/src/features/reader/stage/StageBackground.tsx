@@ -1,6 +1,10 @@
 /**
- * 轻舞台的背景层（《04-交互与界面设计》8.6）：位于正文之后、铺满阅读区，
- * 默认高斯模糊 + 以纸色覆盖（深色模式下是墨色），保证正文对比度；场景切换时交叉淡化（600ms）。
+ * 轻舞台的背景层（《04-交互与界面设计》8.6）：铺满阅读页、位于一切内容之后。
+ *
+ *   图片：高斯模糊、略降饱和，透明度取阅读设置的舞台强度；场景切换时交叉淡化（600ms）
+ *   暗角：版心一带以底色（夜读时是纯黑）覆盖得最实，四周逐渐透出画面——保证正文对比度
+ *   上下：顶栏与输入栏所在的两端再压暗一些，让它们"落"在画面上
+ *   颗粒：极淡的噪点，消除深色渐变的色带
  *
  * 舞台状态从时间线推导（最近一次 <scene bg>），回看或切换分支时自然恢复到对应位置的舞台。
  * TODO(M5-2)：transition（fade / cut / blur）、BGM 与音效、"减少动画"时直接替换。
@@ -9,25 +13,34 @@ import { AnimatePresence, motion } from 'motion/react'
 
 import type { AssetRef } from '@/api/types'
 
+const GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
+
 export function StageBackground({ asset, intensity = 0.6 }: { asset?: AssetRef; intensity?: number }) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
       <AnimatePresence>
         {asset && (
-          <motion.img
+          <motion.div
             key={asset.url}
-            src={asset.url}
-            alt=""
+            className="absolute inset-0"
             initial={{ opacity: 0 }}
-            animate={{ opacity: intensity }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6, ease: 'easeInOut' }}
-            className="absolute inset-0 size-full scale-110 object-cover blur-[10px] saturate-[0.85]"
-          />
+          >
+            <img
+              src={asset.url}
+              alt=""
+              className="absolute inset-0 size-full scale-110 object-cover blur-[14px] saturate-[0.85]"
+              style={{ opacity: intensity }}
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_58%_80%_at_50%_46%,color-mix(in_oklch,var(--paper)_92%,transparent)_30%,color-mix(in_oklch,var(--paper)_55%,transparent)_70%,color-mix(in_oklch,var(--paper)_25%,transparent)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,color-mix(in_oklch,var(--paper)_70%,transparent),transparent_16%,transparent_72%,color-mix(in_oklch,var(--paper)_85%,transparent))]" />
+            <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay" style={{ backgroundImage: GRAIN }} />
+          </motion.div>
         )}
       </AnimatePresence>
-      {/* 纸色覆盖：四周透出背景，正文区域更"实"，保证可读 */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_62%_85%_at_50%_45%,color-mix(in_oklch,var(--paper)_90%,transparent)_35%,color-mix(in_oklch,var(--paper)_30%,transparent)_100%)]" />
     </div>
   )
 }

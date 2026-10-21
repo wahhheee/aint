@@ -22,7 +22,7 @@ export function CommandPalette({
     <div
       role="listbox"
       aria-label="命令"
-      className="absolute inset-x-4 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-rule bg-popover py-1.5 shadow-lg"
+      className="absolute inset-x-4 bottom-full z-20 mb-2 overflow-hidden rounded-xl bg-popover p-1 text-sm shadow-overlay sm:inset-x-6"
     >
       {entries.map((e, i) => (
         <button
@@ -35,7 +35,7 @@ export function CommandPalette({
             ev.preventDefault() // 保持输入框焦点
             onPick(e)
           }}
-          className={cn('flex w-full items-baseline gap-3 px-3.5 py-2 text-left', i === active && 'bg-indigo-soft')}
+          className={cn('flex w-full items-baseline gap-3 rounded-lg px-3 py-2 text-left', i === active && 'bg-selected')}
         >
           <span className="w-4 shrink-0 self-center text-ink-faint">{e.icon ? <WorkIcon name={e.icon} className="size-3.5" /> : null}</span>
           <span className="shrink-0 font-mono text-[13px] text-ink">{e.signature}</span>

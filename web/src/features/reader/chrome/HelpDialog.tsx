@@ -15,20 +15,20 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="title-book">{t('reader.help')}</DialogTitle>
+          <DialogTitle>{t('reader.help')}</DialogTitle>
           <DialogDescription>{t('reader.helpBody')}</DialogDescription>
         </DialogHeader>
-        <dl className="space-y-3">
+        <dl className="-mx-2 max-h-[60dvh] space-y-1 overflow-y-auto">
           {entries.map((e) => (
-            <div key={e.name}>
-              <dt className="font-mono text-[13px]">{e.signature}</dt>
-              <dd className="text-[13px] text-ink-muted">{e.description}</dd>
+            <div key={e.name} className="rounded-lg px-2 py-1.5">
+              <dt className="font-mono text-[13px] text-ink">{e.signature}</dt>
+              <dd className="mt-0.5 text-[13px] text-ink-muted">{e.description}</dd>
             </div>
           ))}
           {modes.map((m) => (
-            <div key={m.name}>
-              <dt className="text-[13px]">输入模式「{m.mode_label || m.title}」</dt>
-              <dd className="text-[13px] text-ink-muted">{m.description}</dd>
+            <div key={m.name} className="rounded-lg px-2 py-1.5">
+              <dt className="text-[13px] text-ink">输入模式「{m.mode_label || m.title}」</dt>
+              <dd className="mt-0.5 text-[13px] text-ink-muted">{m.description}</dd>
             </div>
           ))}
         </dl>

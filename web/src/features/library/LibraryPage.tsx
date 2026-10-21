@@ -6,13 +6,27 @@ import { Link } from 'react-router'
 import { useRecentSaves, useWorks } from '@/api/queries'
 import type { Save, WorkSummary } from '@/api/types'
 import { LoadError } from '@/components/common/LoadError'
+import { PageHeader, SectionHeading } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatRelative, saveTitle } from '@/lib/format'
 
-import { coverColor } from './coverColor'
 import { ImportDialog } from './ImportDialog'
 import { WorkCover } from './WorkCover'
+
+/** 作品网格：列宽固定（auto-fill），作品多少都不改变封面大小。 */
+const SHELF_GRID =
+  'grid grid-cols-[repeat(auto-fill,minmax(136px,1fr))] gap-x-8 gap-y-12 sm:grid-cols-[repeat(auto-fill,minmax(152px,1fr))]'
+
+/**
+ * "继续阅读"只占一行：每种宽度下只显示刚好排满一行的张数，不留半行。
+ *   窄屏 1 列（3 张，竖排）· sm 2 列 · xl 及更宽 3 列（再多列存档名就要被截断了）
+ */
+function slipVisibility(i: number) {
+  if (i < 2) return undefined
+  if (i === 2) return 'sm:max-xl:hidden'
+  return 'hidden'
+}
 
 /** 书架（首页）：继续阅读 + 全部作品。 */
 export function LibraryPage() {
@@ -22,15 +36,23 @@ export function LibraryPage() {
   const [importing, setImporting] = useState(false)
 
   return (
-    <div className="space-y-14">
+    <>
+      <PageHeader
+        title={t('library.shelf')}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+            <Plus />
+            {t('library.import')}
+          </Button>
+        }
+      />
+
       {recent.data && recent.data.length > 0 && (
-        <section aria-labelledby="continue-heading">
-          <h2 id="continue-heading" className="title-book mb-5 text-lg">
-            {t('library.continueReading')}
-          </h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {recent.data.map((s) => (
-              <li key={s.id}>
+        <section aria-labelledby="continue-heading" className="mb-14">
+          <SectionHeading id="continue-heading">{t('library.continueReading')}</SectionHeading>
+          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {recent.data.map((s, i) => (
+              <li key={s.id} className={slipVisibility(i)}>
                 <SaveSlip save={s} />
               </li>
             ))}
@@ -39,21 +61,15 @@ export function LibraryPage() {
       )}
 
       <section aria-labelledby="shelf-heading">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 id="shelf-heading" className="title-book text-lg">
-            {t('library.shelf')}
-          </h2>
-          <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
-            <Plus />
-            {t('library.import')}
-          </Button>
-        </div>
+        <SectionHeading id="shelf-heading" count={works.data?.length}>
+          {t('library.all')}
+        </SectionHeading>
 
         {works.isPending && <ShelfSkeleton />}
         {works.isError && <LoadError error={works.error} onRetry={() => void works.refetch()} />}
         {works.data?.length === 0 && <EmptyShelf onImport={() => setImporting(true)} />}
         {works.data && works.data.length > 0 && (
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <ul className={SHELF_GRID}>
             {works.data.map((w) => (
               <li key={w.id}>
                 <ShelfBook work={w} />
@@ -64,11 +80,11 @@ export function LibraryPage() {
       </section>
 
       <ImportDialog open={importing} onOpenChange={setImporting} />
-    </div>
+    </>
   )
 }
 
-/** 书架上的一本书：封面 + 书名 + 一行副标题。 */
+/** 书架上的一本书：封面 + 书名 + 一行副标题 + 存档数。 */
 function ShelfBook({ work }: { work: WorkSummary }) {
   const { t } = useTranslation()
   return (
@@ -77,32 +93,32 @@ function ShelfBook({ work }: { work: WorkSummary }) {
         id={work.id}
         title={work.title}
         dev={work.latest.is_dev}
-        className="transition-transform duration-200 ease-out group-hover:-translate-y-1"
+        className="transition-[translate,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-lift"
       />
-      <div className="mt-3.5 space-y-1">
-        <p className="font-serif text-[15px] leading-snug font-semibold tracking-[0.04em] text-ink">{work.title}</p>
-        {work.subtitle && <p className="line-clamp-1 text-xs text-ink-muted">{work.subtitle}</p>}
-        <p className="text-xs text-ink-faint">{t('library.saveCount', { count: work.save_count })}</p>
-      </div>
+      <p className="mt-4 truncate font-serif text-[15px] leading-6 font-semibold tracking-[0.04em] text-ink">{work.title}</p>
+      <p className="truncate text-xs leading-5 text-ink-muted">{work.subtitle || ' '}</p>
+      <p className="mt-1 text-xs leading-5 text-ink-faint">{t('library.saveCount', { count: work.save_count })}</p>
     </Link>
   )
 }
 
-/** 继续阅读：像夹在书里的书签条，左侧色带是作品封面的颜色。 */
+/** 继续阅读：一册微缩封面 + 存档名 + 回合与时间，点击直接回到阅读页。 */
 function SaveSlip({ save }: { save: Save }) {
   const { t } = useTranslation()
   return (
     <Link
       to={`/play/${save.id}`}
-      className="group flex h-full overflow-hidden rounded-xl border border-rule bg-paper-raised transition-colors hover:border-gold/50"
+      className="group flex h-full items-stretch gap-4 rounded-xl border border-rule bg-paper-raised p-3 pr-4 transition-colors hover:border-rule-strong hover:bg-hover"
     >
-      <span aria-hidden className="w-1.5 shrink-0" style={{ backgroundColor: coverColor(save.work_id) }} />
-      <span className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-3.5">
-        <span className="truncate font-serif text-[15px] font-semibold text-ink">{saveTitle(save)}</span>
-        <span className="truncate text-xs text-ink-muted">{save.work_title}</span>
-        <span className="mt-1.5 flex items-center justify-between text-xs text-ink-faint">
+      <WorkCover id={save.work_id} title={save.work_title} compact className="w-12 shrink-0" />
+      <span className="flex min-w-0 flex-1 flex-col justify-between">
+        <span className="min-w-0">
+          <span className="block truncate text-xs leading-5 text-ink-faint">{save.work_title}</span>
+          <span className="block truncate font-serif text-[15px] leading-6 font-semibold text-ink">{saveTitle(save)}</span>
+        </span>
+        <span className="flex items-center justify-between gap-3 text-xs leading-5 text-ink-muted">
           <span className="tabular">{t('library.turnNo', { n: save.turn_count })}</span>
-          <span>{formatRelative(save.last_played_at)}</span>
+          <span className="truncate">{formatRelative(save.last_played_at)}</span>
         </span>
       </span>
     </Link>
@@ -111,11 +127,12 @@ function SaveSlip({ save }: { save: Save }) {
 
 function ShelfSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className={SHELF_GRID}>
       {Array.from({ length: 4 }, (_, i) => (
         <div key={i}>
           <Skeleton className="aspect-[5/7] w-full rounded-sm" />
-          <Skeleton className="mt-3.5 h-4 w-2/3" />
+          <Skeleton className="mt-4 h-4 w-2/3" />
+          <Skeleton className="mt-2 h-3 w-1/2" />
         </div>
       ))}
     </div>
@@ -125,7 +142,7 @@ function ShelfSkeleton() {
 function EmptyShelf({ onImport }: { onImport: () => void }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-dashed border-rule px-6 py-20 text-center">
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-rule-strong px-6 py-20 text-center">
       <div aria-hidden className="mb-6 h-24 w-[68px] rounded-[2px_4px_4px_2px] border border-dashed border-ink-faint/60" />
       <p className="title-book text-lg">{t('library.emptyTitle')}</p>
       <p className="mt-2 max-w-sm text-ink-muted">{t('library.emptyBody')}</p>
