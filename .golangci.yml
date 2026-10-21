@@ -1,18 +1,62 @@
-# golangci-lint 配置（CI 中运行；本地可选安装：https://golangci-lint.run）
+# golangci-lint 配置（`task lint` 与 CI 都使用；版本见 docs/development.md 第 1 节）
+#
+# 原则：只启用"发现的问题几乎都值得修"的检查。确属误报时就地写
+#   //nolint:<linter> // 原因
+# （nolintlint 要求写明 linter 与原因），不要整体关闭检查。
 version: "2"
+
 linters:
-  default: standard
+  default: standard # errcheck、govet、ineffassign、staticcheck、unused
   enable:
-    - bodyclose
-    - errorlint
-    - misspell
-    - nilerr
+    # 错误处理
+    - errorlint # 包装过的错误要用 errors.Is / As 判断
+    - nilerr # 检查了 err 却返回 nil
+    - nilnesserr # 返回了另一个已知为 nil 的 err
+    # 资源与上下文
+    - bodyclose # HTTP 响应体未关闭
+    - rowserrcheck # 遍历 sql.Rows 后未检查 rows.Err()
+    - sqlclosecheck # sql.Rows / Stmt 未用 defer 关闭
+    - noctx # 网络与数据库调用未传 context
+    # 安全（作品内容不可信，见 architecture.md 第 9 节"作品不执行"）
+    - gosec
+    - bidichk # 源码中的双向控制字符
+    # 日志（全项目使用 slog 键值对）
+    - loggercheck # 键值对个数与键的类型
+    - asasalint # 把 []any 当成单个参数传给可变参数
+    # 正确性与现代写法
+    - copyloopvar
+    - durationcheck
+    - gocritic
+    - intrange
+    - predeclared # 遮蔽内置标识符（min、max、real……）
     - unconvert
+    - usestdlibvars
+    - wastedassign
+    - misspell
+    - nolintlint # nolint 必须写明 linter 与原因
+
   settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment # 结构体字段按含义排列，不按内存对齐排列
+        - shadow # `if err := …` 的遮蔽是惯用法
     errcheck:
       exclude-functions:
-        - (*database/sql.Rows).Close
-        - (*os.File).Close
+        - (*database/sql.Rows).Close # 关闭错误经 rows.Err() 暴露（rowserrcheck 保证检查）
+        - (*os.File).Close # 只用于目录与只读文件的 defer 关闭；写入的文件都显式检查关闭错误
+    gosec:
+      excludes:
+        - G304 # 按变量路径读文件：路径都来自数据目录与命令行参数，不来自作品或网络
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
 formatters:
   enable:
     - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/wahhheee/yanyi

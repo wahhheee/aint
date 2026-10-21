@@ -9,6 +9,8 @@ vars:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   COMMIT:
     sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
+  # golangci-lint 版本（与 .github/workflows/ci.yml 保持一致；版本不同检查结果可能不同）
+  GOLANGCI_VERSION: 2.15.0
   PKG: github.com/wahhheee/yanyi/internal/buildinfo
   LDFLAGS: -s -w -X {{.PKG}}.Version={{.VERSION}} -X {{.PKG}}.Commit={{.COMMIT}}
 
@@ -75,20 +77,43 @@ tasks:
       - task: web
         vars: { SCRIPT: test }
 
-  lint:
-    desc: 静态检查（go vet、gofmt、ESLint、TypeScript）
+  check:
+    desc: 提交前检查：全部静态检查 + 全部测试（与 CI 相同）
     cmds:
-      - go vet ./...
-      - cmd: test -z "$(gofmt -l ./cmd ./internal ./examples ./web/embed.go)" || (echo "以下文件需要 gofmt：" && gofmt -l ./cmd ./internal ./examples ./web/embed.go && exit 1)
+      - task: lint
+      - task: test
+
+  lint:
+    desc: 全部静态检查（与 CI 相同）：Go 与前端
+    cmds:
+      - task: lint:go
+      - task: lint:web
+
+  lint:go:
+    desc: Go 静态检查：go.mod 整洁 + golangci-lint（含 go vet、staticcheck、gosec、gofmt / goimports 等，见 .golangci.yml）
+    preconditions:
+      - sh: golangci-lint version --short
+        msg: "需要 golangci-lint {{.GOLANGCI_VERSION}}：https://golangci-lint.run/docs/welcome/install/ （Windows：winget install GolangCI.golangci-lint）"
+    cmds:
+      - cmd: v=$(golangci-lint version --short); [ "$v" = "{{.GOLANGCI_VERSION}}" ] || echo "提示：本地 golangci-lint 为 $v，CI 使用 {{.GOLANGCI_VERSION}}，检查结果可能不同"
+        silent: true
+      - cmd: go mod tidy -diff || (echo "go.mod / go.sum 不整洁：运行 go mod tidy" && exit 1)
+      - golangci-lint run ./...
+
+  lint:web:
+    desc: 前端静态检查：ESLint、TypeScript、Prettier
+    cmds:
       - task: web
         vars: { SCRIPT: lint }
       - task: web
         vars: { SCRIPT: typecheck }
+      - task: web
+        vars: { SCRIPT: "format:check" }
 
   fmt:
-    desc: 格式化代码
+    desc: 格式化代码（Go：gofmt + goimports；前端：Prettier）
     cmds:
-      - gofmt -w ./cmd ./internal ./examples ./web/embed.go
+      - golangci-lint fmt ./...
       - task: web
         vars: { SCRIPT: format }
 

@@ -11,6 +11,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "test": "vitest run",
     "test:watch": "vitest"
   },

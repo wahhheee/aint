@@ -1,4 +1,5 @@
-# 持续集成：Go 测试（三平台）、前端检查与测试、六平台交叉编译。
+# 持续集成：Go 测试（三平台）、Go 静态检查、前端检查与测试、六平台交叉编译。
+# 静态检查与本地 `task lint` 相同（golangci-lint 版本见 Taskfile.yml 的 GOLANGCI_VERSION）。
 name: CI
 
 on:
@@ -20,25 +21,25 @@ jobs:
         with:
           go-version-file: go.mod
       - name: go vet
+        # 各平台都跑一次：覆盖按操作系统区分的源文件（格式与其余检查在 golangci-lint 任务中）
         run: go vet ./...
-      - name: gofmt
-        if: runner.os == 'Linux'
-        run: test -z "$(gofmt -l ./cmd ./internal ./examples ./web/embed.go)"
       - name: go test
         # -race 需要 cgo；Windows 运行器没有 C 工具链，跳过竞态检测
         run: go test ${{ runner.os != 'Windows' && '-race' || '' }} ./...
 
   golangci:
-    name: golangci-lint
+    name: Go 静态检查
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: go.mod 整洁
+        run: go mod tidy -diff
       - uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          version: v2.15.0 # 与 Taskfile.yml 的 GOLANGCI_VERSION 一致
 
   web:
     name: 前端检查与测试
@@ -59,6 +60,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm format:check
       - run: pnpm test
       - run: pnpm build
       - uses: actions/upload-artifact@v4
