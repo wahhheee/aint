@@ -8,7 +8,7 @@
 | Node | ≥ 22 | 前端构建 |
 | pnpm | 11 | 版本写在 `web/package.json` 的 `packageManager` |
 | Task | 3 | <https://taskfile.dev>，任务编排（跨平台） |
-| golangci-lint | 可选 | CI 中运行；配置见 `.golangci.yml` |
+| golangci-lint | 2.15.0 | `task lint` 需要；与 CI 使用同一版本（`Taskfile.yml` 的 `GOLANGCI_VERSION`），版本不同检查结果可能不同。配置见 `.golangci.yml` |
 
 > TypeScript 固定在 6.0.x：`typescript-eslint` 目前只支持 `<6.1`。等生态支持 TypeScript 7 后再升级。
 
@@ -117,6 +117,22 @@ task build
 
 - 注释使用简体中文；尚未完成的地方写 `TODO(任务编号)：说明`，编号对应实施计划（如 `TODO(M3-6)`），文档冲突写 `TODO(待确认)`。
 - 提交信息：Conventional Commits + 简体中文，例如 `feat(runtime): 回合截断续写`、`fix(web): 选项键盘快捷键冲突`。
-- Go：`gofmt`；包级注释写清"职责 / 不负责什么 / 调试方法"。
+- Go：`task fmt` 格式化（gofmt + goimports，本项目的包单独成组）；包级注释写清"职责 / 不负责什么 / 调试方法"。
 - 前端：ESLint + Prettier；文案进 `i18n/zh-CN.ts`；`components/ui` 是 shadcn 生成的组件，可以按设计语言修改。
 - 修改前后端契约时同步两边（见 [architecture.md](architecture.md) 第 7 节）。
+
+### 6.1 静态检查
+
+```bash
+task check
+```
+
+提交前运行：`task lint`（全部静态检查）+ `task test`（全部测试），与 CI 相同。`task lint` 包括：
+
+| 部分 | 内容 |
+| --- | --- |
+| `task lint:go` | `go mod tidy -diff`（go.mod / go.sum 整洁）；golangci-lint：go vet（除 fieldalignment、shadow 外的全部分析器）、staticcheck、errcheck、errorlint、gosec、rowserrcheck / sqlclosecheck、noctx、loggercheck、gofmt / goimports 等，清单与理由写在 `.golangci.yml` |
+| `task lint:web` | ESLint、`tsc -b`、Prettier 格式检查 |
+
+- 只启用"发现的问题几乎都值得修"的检查。遇到确属误报的，就地写 `//nolint:<linter> // 原因`（必须写明 linter 与原因，nolintlint 会检查），不要整体关闭检查。
+- 错误不能静默丢弃：确实无需处理的写 `_ = f()` 并在注释里说明原因；`defer` 中的关闭错误需要时记日志。

@@ -12,7 +12,7 @@
 
 ## 快速开始
 
-需要 Go ≥ 1.27、Node ≥ 22、pnpm、[Task](https://taskfile.dev)。
+需要 Go ≥ 1.27、Node ≥ 22、pnpm、[Task](https://taskfile.dev)；静态检查另需 [golangci-lint](https://golangci-lint.run)（版本见 [开发文档](docs/development.md)）。
 
 ```bash
 task setup
@@ -34,7 +34,8 @@ task dev
 | 命令 | 作用 |
 | --- | --- |
 | `task dev` | 开发：后端（假模型）+ 前端 |
-| `task test` / `task lint` / `task fmt` | 测试 / 静态检查 / 格式化 |
+| `task check` | 提交前检查：全部静态检查 + 全部测试（与 CI 相同） |
+| `task test` / `task lint` / `task fmt` | 测试 / 静态检查（需要 golangci-lint）/ 格式化 |
 | `task build` | 构建单文件可执行程序到 `bin/`（前端已嵌入） |
 | `task prompt -- <作品目录>` | 打印 AI 实际收到的完整提示词与工具定义（调试提示词组装） |
 | `task validate -- <作品目录>` | 校验作品，输出带行号的问题列表 |

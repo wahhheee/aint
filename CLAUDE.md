@@ -21,6 +21,7 @@
 - 推进或完成任务后按 `docs/progress.md` 顶部的"更新规则"更新它（任务状态、总览计数、进度日志）
 - 未完成处写 `TODO(任务编号)：说明`；文档冲突或需要用户拍板的写 `TODO(待确认)` 并记入 open-questions.md
 - 文档只是设计讨论，遇到不合理或需要抉择的地方先与用户确认，不要死磕文档
+- 提交前 `task check` 通过；误报用 `//nolint:<linter> // 原因` 就地说明，不要关闭检查（见 development.md 6.1）
 - 后端只允许向下依赖（见 architecture.md 第 2 节）；JSON 经 `internal/pkg/jsonx`；业务错误用 `internal/pkg/errs`
 - 修改前后端契约（types / events / errors / routes）时两边同步
 - 修改平台提示词文本时递增 `internal/prompts.Version`
@@ -30,8 +31,10 @@
 
 ```bash
 task dev        # 后端（假模型）+ 前端，访问 http://localhost:5173
+task check      # 提交前：lint + test，与 CI 相同
 task test       # Go + 前端测试
-task lint       # go vet、gofmt、ESLint、tsc
+task lint       # golangci-lint（go vet、staticcheck、gosec 等）、go.mod 整洁、ESLint、tsc、Prettier
+task fmt        # gofmt + goimports、Prettier
 task prompt -- examples/works/misty-harbor   # 查看组装后的提示词
 ```
 

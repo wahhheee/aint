@@ -135,6 +135,6 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 分支隔离 | `save.ProgressLine`（递归 CTE 只取祖先链） | TODO(M3-10) |
 | 状态类型正确 | `state.Check` / `state.Set` | `state/schema_test.go` |
 | 单一写者 | `runtime.Manager.Submit`（会话锁）+ `app` 单实例检测 + 写连接池单连接 | `runtime/runtime_test.go` |
-| 作品不执行 | `tmpl`（Liquid 限时限量）、前端 DOMPurify 白名单（`features/reader/panels/PanelHTML.tsx`） | — |
-| 密钥不出后端 | `provider/secrets.go`、`ProviderView.KeyMasked`、`logx.Secret` | — |
+| 作品不执行 | `tmpl`（Liquid 限时限量）、前端 DOMPurify 白名单（`features/reader/panels/PanelHTML.tsx`）、素材只按媒体类型提供并带 CSP sandbox（`server/api_assets.go`） | `server/api_assets_test.go` |
+| 密钥不出后端 | `provider/secrets.go`（0600）、`ProviderView.KeyMasked`、`logx.Secret`；数据目录新建目录 0750、日志与追踪文件 0600（`fsx.DirPerm` / `PrivateFilePerm`） | — |
 | 存档不膨胀 | 游玩只追加节点；存档条目只在 `save.Create` 产生 | — |
