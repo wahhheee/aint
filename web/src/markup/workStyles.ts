@@ -1,10 +1,12 @@
 /**
  * 作品样式标签 → CSS（《02-技术方案》17）。生成 .mk-<tag> 类，作用域限定在阅读区 .work-root 内。
  *
- * 缺少 dark_color 时，用 color-mix 在 OKLCH 空间提亮作为深色模式颜色。
- * TODO(M2-7)：按规范计算到对比度 ≥ 4.5 为止（目前是固定比例的近似）。
+ * 深色模式颜色：作品写了 dark_color 用作品的；没写时服务端编译作品已按对比度 ≥ 4.5 算好（work/color.go），
+ * 这里的 color-mix 提亮只是兜底。
  */
 import type { TagDef } from '@/api/types'
+
+import type { Inline } from './parse'
 
 const SAFE_COLOR = /^#[0-9a-fA-F]{3,8}$/
 const SAFE_CLASS = /^[a-zA-Z][\w-]*$/
@@ -45,4 +47,13 @@ export function workTagClasses(t: TagDef): string {
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n))
+}
+
+/** 样式标签的悬停提示：模板中的 {{ text }} 换成标签内的文字（《03-作品格式规范》10.1）。 */
+export function tooltipText(template: string, children: Inline[]): string {
+  return template.replace(/\{\{\s*text\s*\}\}/g, () => plainText(children))
+}
+
+function plainText(nodes: Inline[]): string {
+  return nodes.map((n) => (n.type === 'text' || n.type === 'raw' ? n.text : plainText(n.children))).join('')
 }

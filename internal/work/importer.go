@@ -151,7 +151,7 @@ func (im *Importer) PreviewFolder(ctx context.Context, u *FolderUpload, name str
 }
 
 func (im *Importer) preview(ctx context.Context, set *FileSet, src Source) (*ImportPreview, error) {
-	m, rep := Compile(set)
+	m, rep := im.works.compile(set)
 	mf := m.Manifest
 	p := &ImportPreview{
 		Source: src, TreeHash: m.TreeHash, Files: set.Len(), Size: set.Size(), Report: rep,

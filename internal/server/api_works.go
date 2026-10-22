@@ -28,6 +28,16 @@ func (s *Server) getWork(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// versionReport：GET /works/{id}/versions/{vid}/report，版本入库时的校验报告。
+func (s *Server) versionReport(w http.ResponseWriter, r *http.Request) error {
+	rep, err := s.d.Works.Report(r.Context(), r.PathValue("id"), r.PathValue("vid"))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, rep)
+	return nil
+}
+
 func (s *Server) listWorkSaves(w http.ResponseWriter, r *http.Request) error {
 	list, err := s.d.Saves.ListByWork(r.Context(), r.PathValue("id"))
 	if err != nil {

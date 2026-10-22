@@ -99,3 +99,41 @@ custom_css: ui/custom.css
 		t.Fatalf("custom.css 应包在 .work-root 中：\n%s", th.CSS)
 	}
 }
+
+func TestAutoDarkColor(t *testing.T) {
+	// 深蓝在纯黑上不够清楚：提亮到对比度 ≥ 4.5，色相大致不变
+	got := autoDarkColor("#2f6fbf", "#000000")
+	fg, _ := parseHex(got)
+	if contrast(fg, rgb{}) < minContrast {
+		t.Fatalf("%s 与黑色的对比度不足", got)
+	}
+	_, _, h1 := toOKLCH(mustHex(t, "#2f6fbf"))
+	_, _, h2 := toOKLCH(fg)
+	if d := h1 - h2; d > 0.2 || d < -0.2 {
+		t.Fatalf("色相变化过大：%s → %s", "#2f6fbf", got)
+	}
+	if got := autoDarkColor("#f2c14e", "#000000"); got != "#f2c14e" {
+		t.Fatalf("本来就清楚的颜色应原样返回，得到 %s", got)
+	}
+	if autoDarkColor("red", "#000") != "" {
+		t.Fatal("不合法的颜色返回空")
+	}
+}
+
+func mustHex(t *testing.T, s string) rgb {
+	t.Helper()
+	c, ok := parseHex(s)
+	if !ok {
+		t.Fatal(s)
+	}
+	return c
+}
+
+func TestCompileFillsDarkColors(t *testing.T) {
+	m, _ := compileExample(t, "misty-harbor")
+	for _, tag := range m.Tags {
+		if tag.Style.Color != "" && tag.Style.DarkColor == "" {
+			t.Fatalf("标签 %s 应有深色颜色", tag.Name)
+		}
+	}
+}

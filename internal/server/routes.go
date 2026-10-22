@@ -25,7 +25,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/v1/works/{id}/versions", todo("版本列表（M6-5）"))
 	m.HandleFunc("POST /api/v1/works/{id}/check-update", todo("检查更新（M6-1）"))
 	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/export", todo("导出 zip（M6-5）"))
-	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/report", todo("校验报告（M2-12）"))
+	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/report", s.h(s.versionReport))
 	m.HandleFunc("DELETE /api/v1/works/{id}", todo("删除作品（M6-5）"))
 	m.HandleFunc("DELETE /api/v1/works/{id}/versions/{vid}", todo("删除版本（M6-5）"))
 	m.HandleFunc("POST /api/v1/works/dev-link", todo("链接开发目录（M6-2）"))

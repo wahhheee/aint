@@ -151,3 +151,34 @@ func TestPrefixHashStable(t *testing.T) {
 		t.Fatal("换成支持看图的模型后前缀应变化（提示词裁切不同）")
 	}
 }
+
+// token 估算（I-TOKENS）：各层都有数，常驻图片按尺寸估算；超过建议值时给出警告。
+func TestAnalyzeTokens(t *testing.T) {
+	sub, _ := fs.Sub(examples.Works(), "misty-harbor")
+	set, err := work.FromFS(sub, work.DefaultLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, rep := work.Compile(set)
+	contextx.Analyze(m, rep, tools.NewRegistry().Specs)
+	tk := rep.Tokens
+	if tk == nil || tk.Platform == 0 || tk.Work == 0 || tk.Index == 0 || tk.Tools == 0 || tk.Resident == 0 || tk.Images == 0 {
+		t.Fatalf("各层都应有估算：%+v", tk)
+	}
+	if tk.Total != tk.Platform+tk.Work+tk.Tools+tk.Resident+tk.Images {
+		t.Fatalf("合计不对：%+v", tk)
+	}
+	found := false
+	for _, i := range rep.Issues {
+		found = found || (i.Code == work.CodeTokens && i.Level == work.LevelInfo && strings.Contains(i.Message, "常驻部分约"))
+	}
+	if !found {
+		t.Fatalf("应有 I-TOKENS 信息：%+v", rep.Issues)
+	}
+	if got := contextx.EstimateTokens("雾港abc"); got != 3 { // 2 × 1.0 + 3 × 0.3 = 2.9 → 3
+		t.Fatalf("EstimateTokens = %d", got)
+	}
+	if got := contextx.EstimateImageTokens(3136, 1568); got != contextx.EstimateImageTokens(1568, 784) {
+		t.Fatalf("大图应先缩放到长边 1568 再估算：%d", got)
+	}
+}

@@ -21,8 +21,9 @@ const (
 	CodeState        = "E-STATE"
 	CodeLFS          = "E-LFS"
 	CodeAsset        = "E-ASSET"
-	CodeTheme        = "E-THEME" // ui/theme.yaml 取值或 custom.css 不合法
-	CodeParse        = "E-PARSE" // YAML / frontmatter 语法错误（规范中未单列，归入对应文件）
+	CodeTheme        = "E-THEME"    // ui/theme.yaml 取值或 custom.css 不合法
+	CodeEncoding     = "W-ENCODING" // 文本文件带 BOM 或不是 UTF-8
+	CodeParse        = "E-PARSE"    // YAML / frontmatter 语法错误（规范中未单列，归入对应文件）
 	CodeUnknownField = "W-UNKNOWN-FIELD"
 	CodePrefixLarge  = "W-PREFIX-LARGE"
 	CodeIndexLarge   = "W-INDEX-LARGE"
@@ -55,9 +56,24 @@ func (i Issue) String() string {
 
 // Report 是校验报告。
 type Report struct {
-	Issues []Issue `json:"issues"`
-	// TODO(M2-12)：Tokens 各层 token 估算（I-TOKENS），按实际启用的提示词片段计算。
+	Issues []Issue        `json:"issues"`
+	Tokens *TokenEstimate `json:"tokens,omitzero"` // 常驻部分的 token 估算（I-TOKENS；有 error 时没有）
 }
+
+// TokenEstimate 是常驻部分（每回合都会发送、可被缓存的前缀）各层的 token 估算（contextx.Analyze）。
+type TokenEstimate struct {
+	Platform int `json:"platform"`        // L0 平台提示词
+	Work     int `json:"work"`            // L1 作品指令（含设定索引）
+	Index    int `json:"index,omitzero"`  // 其中的设定索引
+	Tools    int `json:"tools"`           // L2 工具定义
+	Resident int `json:"resident"`        // L3 常驻资料（always 文档）与 L4 第 0 阶段块
+	Images   int `json:"images,omitzero"` // 常驻图片
+	Total    int `json:"total"`
+}
+
+// Analyzer 在编译之后补充报告（如需要组装提示词的 token 估算，由上层提供，见 contextx.Analyze）。
+// 只在报告没有 error 时调用。
+type Analyzer func(m *Model, r *Report)
 
 func (r *Report) add(level Level, code, path string, line int, hint, format string, args ...any) {
 	r.Issues = append(r.Issues, Issue{
@@ -74,6 +90,11 @@ func (r *Report) Errorf(code, path string, line int, hint, format string, args .
 // Warnf 添加 warning 级问题。
 func (r *Report) Warnf(code, path string, line int, hint, format string, args ...any) {
 	r.add(LevelWarning, code, path, line, hint, format, args...)
+}
+
+// Infof 添加 info 级问题。
+func (r *Report) Infof(code, path string, line int, hint, format string, args ...any) {
+	r.add(LevelInfo, code, path, line, hint, format, args...)
 }
 
 // HasErrors 报告中是否有 error。

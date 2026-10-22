@@ -35,8 +35,22 @@ type Service struct {
 	db    *store.DB
 	blobs *store.Blobs
 
+	analyze Analyzer // 编译后补充报告（token 估算）；为空时只做编译期检查
+
 	mu    sync.Mutex
 	cache map[string]*Model // 版本 ID → 编译结果（TODO(M1)：缓存需要 LRU 淘汰与容量上限）
+}
+
+// SetAnalyzer 设置编译后补充报告的分析器（app.wire 中设置为 contextx.Analyze）。在开始导入之前调用。
+func (s *Service) SetAnalyzer(a Analyzer) { s.analyze = a }
+
+// compile 编译文件集并补充报告：导入（预览与入库）使用；加载已入库的版本只需要 Compile。
+func (s *Service) compile(set *FileSet) (*Model, *Report) {
+	m, rep := Compile(set)
+	if s.analyze != nil && !rep.HasErrors() {
+		s.analyze(m, rep)
+	}
+	return m, rep
 }
 
 // NewService 创建作品服务。
@@ -59,7 +73,7 @@ func (s *Service) ImportFileSet(ctx context.Context, set *FileSet, src Source) (
 	if src.Type == "dev" {
 		return nil, errs.NotImplemented("开发目录")
 	}
-	m, rep := Compile(set)
+	m, rep := s.compile(set)
 	if rep.HasErrors() {
 		n, _ := rep.Count()
 		return nil, errs.New(errs.CodeWorkInvalid, "作品有 %d 处错误，无法导入", n).WithDetails(rep)
@@ -263,6 +277,18 @@ func (s *Service) Get(ctx context.Context, workID string) (*Detail, error) {
 		}
 	}
 	return d, nil
+}
+
+// Report 返回作品版本入库时的校验报告。
+func (s *Service) Report(ctx context.Context, workID, versionID string) (*Report, error) {
+	v, err := getVersion(ctx, s.db.Read(), versionID)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && v.WorkID != workID) {
+		return nil, errs.NotFound("作品版本不存在：%s", versionID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &v.Report, nil
 }
 
 // Model 返回作品版本的编译结果（带缓存）。

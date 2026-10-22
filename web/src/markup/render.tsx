@@ -8,7 +8,7 @@ import { WorkIcon } from '@/components/common/WorkIcon'
 
 import { findAsset, MarkupContext, type MarkupContextValue } from './context'
 import { MarkupParser, type Block, type Inline } from './parse'
-import { workTagClasses } from './workStyles'
+import { tooltipText, workTagClasses } from './workStyles'
 
 /**
  * 渲染一段叙事标记源码。drafting：流式中，最后一段带光标。
@@ -132,7 +132,7 @@ function renderTag(n: Extract<Inline, { type: 'tag' }>, ctx: MarkupContextValue)
       const def = ctx.workTags.get(n.name)
       if (!def) return children
       return (
-        <span className={workTagClasses(def)} title={def.tooltip?.replace('{{ text }}', '')}>
+        <span className={workTagClasses(def)} title={def.tooltip ? tooltipText(def.tooltip, n.children) : undefined}>
           {def.icon && <WorkIcon name={def.icon} className="mk-icon" />}
           {children}
         </span>

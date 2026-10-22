@@ -192,6 +192,8 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 
 	settingsSvc := settings.NewService(db)
 	works := work.NewService(db, blobs)
+	registry := tools.NewRegistry()
+	works.SetAnalyzer(func(m *work.Model, r *work.Report) { contextx.Analyze(m, r, registry.Specs) })
 	works.EnsureBuiltins(ctx, examples.Works())
 	imports, err := work.NewImporter(works, filepath.Join(dirs.Tmp, "imports"), work.DefaultLimits)
 	if err != nil {
@@ -202,7 +204,7 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 
 	rt := runtime.NewManager(runtime.Deps{
 		Saves: saves, Works: works, Models: providers, Bus: bus,
-		Builder: contextx.NewBuilder(tm, images), Tools: tools.NewRegistry(), Tmpl: tm, Images: images,
+		Builder: contextx.NewBuilder(tm, images), Tools: registry, Tmpl: tm, Images: images,
 	})
 
 	srv := server.New(server.Deps{

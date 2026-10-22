@@ -136,6 +136,19 @@ export interface Issue {
 /** work.Report：校验报告 */
 export interface Report {
   issues: Issue[]
+  /** 常驻部分的 token 估算（有 error 时没有） */
+  tokens?: TokenEstimate
+}
+
+/** work.TokenEstimate：常驻部分（每回合都会发送、可被缓存的前缀）各层的 token 估算 */
+export interface TokenEstimate {
+  platform: number
+  work: number
+  index?: number
+  tools: number
+  resident: number
+  images?: number
+  total: number
 }
 
 /** work.Detail（GET /works/{id}） */

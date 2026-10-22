@@ -117,3 +117,23 @@ func TestTemplateChecks(t *testing.T) {
 		t.Fatalf("ui/ 下的模板集：%v", m.Partials)
 	}
 }
+
+func TestEncodingWarnings(t *testing.T) {
+	set := NewFileSet()
+	_ = set.Add("work.yaml", []byte("format: 1\nid: test.enc\nversion: 0.1.0\ntitle: 编码\n"))
+	_ = set.Add("lore/a.md", append([]byte{0xEF, 0xBB, 0xBF}, []byte("---\ntitle: 甲\n---\n正文\n")...))
+	_ = set.Add("lore/b.md", []byte{0xD3, 0xEA, 0xB8, 0xDB}) // GBK 编码的"雨港"
+	m, rep := Compile(set)
+	var got []string
+	for _, i := range rep.Issues {
+		if i.Code == CodeEncoding {
+			got = append(got, i.Path)
+		}
+	}
+	if strings.Join(got, ",") != "lore/a.md,lore/b.md" {
+		t.Fatalf("应提示 BOM 与非 UTF-8：%+v", rep.Issues)
+	}
+	if d, ok := m.DocByPath("lore/a.md"); !ok || d.Title != "甲" {
+		t.Fatal("带 BOM 的文件应照常读取")
+	}
+}

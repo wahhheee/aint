@@ -96,7 +96,9 @@ func (c *compiler) theme() {
 
 	// 配色：浅色写在 .work-root，深色写在 .dark .work-root；只提供一套时另一模式用平台默认
 	c.themeColors(&css, file, "light", ".work-root", t.Colors.Light)
-	c.themeColors(&css, file, "dark", ".dark .work-root", t.Colors.Dark)
+	if c.themeColors(&css, file, "dark", ".dark .work-root", t.Colors.Dark) && t.Colors.Dark.Background != "" {
+		c.darkBackground = t.Colors.Dark.Background
+	}
 
 	// 排版
 	r := t.Reading
@@ -148,7 +150,8 @@ func (c *compiler) theme() {
 }
 
 // themeColors 生成一套配色的 CSS 变量；派生色（凹面、分隔线、淡字）用 color-mix 由主色算出。
-func (c *compiler) themeColors(css *strings.Builder, file, scheme, selector string, tc themeColors) {
+// 返回配色是否合法且已生成。
+func (c *compiler) themeColors(css *strings.Builder, file, scheme, selector string, tc themeColors) bool {
 	fields := []struct{ name, value string }{
 		{"background", tc.Background}, {"text", tc.Text}, {"muted", tc.Muted}, {"accent", tc.Accent}, {"panel", tc.Panel},
 	}
@@ -159,12 +162,12 @@ func (c *compiler) themeColors(css *strings.Builder, file, scheme, selector stri
 		}
 		if !reHexColor.MatchString(f.value) {
 			c.r.Errorf(CodeTheme, file, 0, "颜色写成 #rrggbb", "colors.%s.%s 不合法：%q", scheme, f.name, f.value)
-			return
+			return false
 		}
 		set = true
 	}
 	if !set {
-		return
+		return false
 	}
 	var decls []string
 	add := func(v, val string) {
@@ -189,6 +192,7 @@ func (c *compiler) themeColors(css *strings.Builder, file, scheme, selector stri
 		decls = append(decls, "--ink-faint: color-mix(in oklab, var(--ink-muted) 70%, var(--paper))")
 	}
 	fmt.Fprintf(css, "%s { %s; }\n", selector, strings.Join(decls, "; "))
+	return true
 }
 
 // cssAsset 把 custom.css 中 url(asset:…) 的素材引用解析为地址。

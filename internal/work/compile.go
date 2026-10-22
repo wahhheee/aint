@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/goccy/go-yaml"
 
@@ -42,6 +43,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.m.TreeHash = fs.TreeHash()
 
 	c.lfsPointers() // 放在清单之前：work.yaml 本身是指针文件时，"指针文件"比"YAML 解析失败"更能说明问题
+	c.encodings()
 	if !c.manifest() {
 		return c.m, c.r // 清单都读不出来，后续检查没有意义
 	}
@@ -57,7 +59,8 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.crossRefs()
 	c.pinnedImages()
 	c.theme()
-	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
+	c.tagDarkColors()
+	// 前缀 token 估算需要组装提示词，由上层在编译之后补充（Analyzer，见 contextx.Analyze）。
 	return c.m, c.r
 }
 
@@ -65,6 +68,8 @@ type compiler struct {
 	fs *FileSet
 	m  *Model
 	r  *Report
+
+	darkBackground string // 主题的深色背景（样式标签的深色颜色据此计算）；没有时为平台的纯黑
 }
 
 // yamlError 把 YAML 解析错误转成报告条目，尽量带上行号。
@@ -110,6 +115,25 @@ func (c *compiler) lfsPointers() {
 		if data, _ := c.fs.Get(p); isLFSPointer(data) {
 			c.r.Errorf(CodeLFS, p, 0, "作者需要先 git lfs pull 取回实际文件再打包；玩家可以改用作者发布的 zip 包",
 				"这是 Git LFS 指针文件，不是文件的实际内容")
+		}
+	}
+}
+
+// textExts 是作品中的文本文件（检查编码）。
+var textExts = map[string]bool{".md": true, ".yaml": true, ".yml": true, ".liquid": true, ".css": true, ".txt": true}
+
+// encodings 检查文本文件的编码（W-ENCODING）：规范要求 UTF-8 无 BOM。带 BOM 的文件照常读取（BOM 被忽略）。
+func (c *compiler) encodings() {
+	for _, p := range c.fs.Paths() {
+		if !textExts[strings.ToLower(path.Ext(p))] {
+			continue
+		}
+		data, _ := c.fs.Get(p)
+		switch {
+		case !utf8.Valid(data):
+			c.r.Warnf(CodeEncoding, p, 0, "用 UTF-8 编码保存", "文件不是 UTF-8 编码，内容可能显示为乱码")
+		case bytes.HasPrefix(data, []byte{0xEF, 0xBB, 0xBF}):
+			c.r.Warnf(CodeEncoding, p, 0, "保存为“UTF-8（无 BOM）”", "文件开头带有 BOM，已忽略")
 		}
 	}
 }
@@ -353,6 +377,20 @@ func (c *compiler) markup() {
 		})
 	}
 	slices.SortFunc(c.m.Tags, func(a, b TagDef) int { return strings.Compare(a.Name, b.Name) })
+}
+
+// tagDarkColors 为没有写 dark_color 的样式标签计算深色模式颜色（与深色背景的对比度至少 4.5）。
+func (c *compiler) tagDarkColors() {
+	bg := c.darkBackground
+	if bg == "" {
+		bg = platformDarkBackground
+	}
+	for i := range c.m.Tags {
+		s := &c.m.Tags[i].Style
+		if s.Color != "" && s.DarkColor == "" {
+			s.DarkColor = autoDarkColor(s.Color, bg)
+		}
+	}
 }
 
 func (c *compiler) layout() {

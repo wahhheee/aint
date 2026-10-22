@@ -54,6 +54,9 @@ func loadWorkFiles(dir string) (*work.Model, *work.Report, *work.FileSet, error)
 		return nil, nil, nil, err
 	}
 	m, rep := work.Compile(set)
+	if !rep.HasErrors() {
+		contextx.Analyze(m, rep, tools.NewRegistry().Specs) // 与导入时相同的 token 估算
+	}
 	return m, rep, set, nil
 }
 
