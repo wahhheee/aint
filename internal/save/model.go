@@ -39,7 +39,7 @@ type Settings struct {
 	Pace          string `json:"pace"`               // short | medium | long | "<最少>-<最多>"
 	Reasoning     string `json:"reasoning"`          // off | low | medium | high
 	Helpers       bool   `json:"helpers"`            // 后台助手（P1）
-	CacheTTL      string `json:"cache_ttl,omitzero"` // Anthropic："5m" | "1h"
+	CacheTTL      string `json:"cache_ttl,omitzero"` // short | long（Anthropic 5 分钟 / 1 小时；OpenAI 30 分钟 / 12 小时）
 	// TODO(M3)：上下文预算、保留原文量、整理方式的存档级覆盖。
 }
 

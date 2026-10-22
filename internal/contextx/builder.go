@@ -76,13 +76,10 @@ func (b *Builder) Build(in BuildInput) (*Built, error) {
 	if len(head) > 0 {
 		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Parts: head})
 	}
+	// 历史与本回合消息不打标记：CacheMark 只标稳定层的边界（L1、L3、L4 末尾），
+	// "最新消息末尾"的滚动断点由适配器按协议放置（Anthropic 显式、OpenAI 隐式断点）；相邻同角色消息由适配器合并。
 	msgs = append(msgs, in.History...)
-	turn := in.Turn
-	if n := len(turn.Parts); n > 0 {
-		turn.Parts = append([]llm.Part(nil), turn.Parts...)
-		turn.Parts[n-1].CacheMark = true // 断点 ③（滚动）；相邻同角色消息由适配器合并
-	}
-	msgs = append(msgs, turn)
+	msgs = append(msgs, in.Turn)
 
 	maxOut := min(in.Model.MaxOutput, 32_000)
 	if maxOut <= 0 {

@@ -62,7 +62,7 @@ type ModelRoles struct {
 type Play struct {
 	Pace        string `json:"pace"`          // short | medium | long
 	Reasoning   string `json:"reasoning"`     // off | low | medium | high（作品推荐值优先）
-	CacheTTL    string `json:"cache_ttl"`     // 5m | 1h
+	CacheTTL    string `json:"cache_ttl"`     // short | long：缓存保留时长（llm.CacheShort / CacheLong）
 	TitleOnExit string `json:"title_on_exit"` // auto | ask | off
 	Helpers     bool   `json:"helpers"`
 }
@@ -77,7 +77,7 @@ func Defaults() Settings {
 			Indent: "work", Typewriter: "normal", ReduceMotion: "system", StageIntensity: 0.6, ToolHints: true,
 		},
 		Audio:  Audio{Master: 0.6, BGM: 1, SFX: 1},
-		Play:   Play{Pace: "medium", Reasoning: "low", CacheTTL: "5m", TitleOnExit: "auto"},
+		Play:   Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "auto"},
 		Models: ModelRoles{},
 	}
 }

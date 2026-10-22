@@ -1,0 +1,243 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"fe477201-a09a-409c-ba1a-5adfe6543c66","object":"response","created_at":1792638394,"status":"in_progress","background":false,"completed_at":null,"content_filters":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"你是简洁的助手。需要信息时调用工具。","max_output_tokens":800,"max_tool_calls":null,"model":"deepseek-flash","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":null,"reasoning":{"effort":"low","summary":"auto"},"safety_identifier":null,"service_tier":"default","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":null},"tool_choice":"auto","tools":[{"type":"function","name":"get_weather","description":"查询城市天气","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"],"additionalProperties":false},"strict":true}],"top_logprobs":0,"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":0}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"fe477201-a09a-409c-ba1a-5adfe6543c66","object":"response","created_at":1792638394,"status":"in_progress","background":false,"completed_at":null,"content_filters":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"你是简洁的助手。需要信息时调用工具。","max_output_tokens":800,"max_tool_calls":null,"model":"deepseek-flash","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":null,"reasoning":{"effort":"low","summary":"auto"},"safety_identifier":null,"service_tier":"default","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":null},"tool_choice":"auto","tools":[{"type":"function","name":"get_weather","description":"查询城市天气","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"],"additionalProperties":false},"strict":true}],"top_logprobs":0,"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":1}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"type":"reasoning","id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","status":"in_progress","content":[],"summary":[],"encrypted_content":"fe477201-a09a-409c-ba1a-5adfe6543c66-0"},"output_index":0,"sequence_number":2}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","content_index":0,"item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"part":{"type":"reasoning_text","text":""},"sequence_number":3}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":"The","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":4}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" user","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":5}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" wants","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":6}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" me","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":7}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" to","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":8}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" first","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":9}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" say","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":10}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" in","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":11}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" one","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":12}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" sentence","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":13}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" what","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":14}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" I","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":15}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":"'m","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":16}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" going","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":17}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" to","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":18}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" do","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":19}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":",","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":20}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" then","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":21}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" simultaneously","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":22}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" query","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":23}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" the","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":24}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" weather","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":25}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" in","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":26}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" Hang","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":27}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":"zhou","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":28}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" and","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":29}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":" Beijing","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":30}
+
+event: response.reasoning_text.delta
+data: {"type":"response.reasoning_text.delta","content_index":0,"delta":".","item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":31}
+
+event: response.reasoning_text.done
+data: {"type":"response.reasoning_text.done","content_index":0,"item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"sequence_number":32,"text":"The user wants me to first say in one sentence what I'm going to do, then simultaneously query the weather in Hangzhou and Beijing."}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","output_index":0,"part":{"type":"reasoning_text","text":"The user wants me to first say in one sentence what I'm going to do, then simultaneously query the weather in Hangzhou and Beijing."},"sequence_number":33}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"type":"reasoning","id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","status":"completed","content":[{"type":"reasoning_text","text":"The user wants me to first say in one sentence what I'm going to do, then simultaneously query the weather in Hangzhou and Beijing."}],"summary":[],"encrypted_content":"fe477201-a09a-409c-ba1a-5adfe6543c66-0"},"output_index":0,"sequence_number":34}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"type":"message","id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","status":"in_progress","content":[],"phase":"final_answer","role":"assistant"},"output_index":1,"sequence_number":35}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","content_index":0,"item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","output_index":1,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":""},"sequence_number":36}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"我先","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":37}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"同时","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":38}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"查询","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":39}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"杭州","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":40}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"和","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":41}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"北京的","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":42}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"天气","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":43}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"，","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":44}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"然后","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":45}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"汇总","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":46}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"告诉你","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":47}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"两","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":48}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"地的","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":49}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"天气","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":50}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"情况","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":51}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"。","item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":52}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","content_index":0,"item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","logprobs":[],"output_index":1,"sequence_number":53,"text":"我先同时查询杭州和北京的天气，然后汇总告诉你两地的天气情况。"}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","output_index":1,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":"我先同时查询杭州和北京的天气，然后汇总告诉你两地的天气情况。"},"sequence_number":54}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"type":"message","id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","status":"completed","content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"我先同时查询杭州和北京的天气，然后汇总告诉你两地的天气情况。"}],"phase":"commentary","role":"assistant"},"output_index":1,"sequence_number":55}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"type":"function_call","id":"0554db68-fd5f-49c0-a5da-655a05af13e4","status":"in_progress","arguments":"","call_id":"call_00_ctmQxCcNQXkbPNLL1Mfp8773","name":"get_weather"},"output_index":2,"sequence_number":56}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"{","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":57}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":58}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"city","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":59}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":60}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":": ","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":61}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":62}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"杭州","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":63}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":64}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"}","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":65}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","arguments":"{\"city\": \"杭州\"}","item_id":"0554db68-fd5f-49c0-a5da-655a05af13e4","output_index":2,"sequence_number":66}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"type":"function_call","id":"0554db68-fd5f-49c0-a5da-655a05af13e4","status":"completed","arguments":"{\"city\": \"杭州\"}","call_id":"call_00_ctmQxCcNQXkbPNLL1Mfp8773","name":"get_weather"},"output_index":2,"sequence_number":67}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"type":"function_call","id":"f015afbf-02d2-4211-88ec-4970d4169daf","status":"in_progress","arguments":"","call_id":"call_01_okvx9L4JQLxNGXhqJLYJ0816","name":"get_weather"},"output_index":3,"sequence_number":68}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"{","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":69}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":70}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"city","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":71}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":72}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":": ","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":73}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":74}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"北京","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":75}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\"","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":76}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"}","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":77}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","arguments":"{\"city\": \"北京\"}","item_id":"f015afbf-02d2-4211-88ec-4970d4169daf","output_index":3,"sequence_number":78}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"type":"function_call","id":"f015afbf-02d2-4211-88ec-4970d4169daf","status":"completed","arguments":"{\"city\": \"北京\"}","call_id":"call_01_okvx9L4JQLxNGXhqJLYJ0816","name":"get_weather"},"output_index":3,"sequence_number":79}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"fe477201-a09a-409c-ba1a-5adfe6543c66","object":"response","created_at":1792638394,"status":"completed","background":false,"completed_at":1792638395,"content_filters":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"你是简洁的助手。需要信息时调用工具。","max_output_tokens":800,"max_tool_calls":null,"model":"deepseek-flash","moderation":null,"output":[{"type":"reasoning","id":"ec8e1bc8-b27f-4ca3-b4c2-e5c7bc602a8d","status":"completed","content":[{"type":"reasoning_text","text":"The user wants me to first say in one sentence what I'm going to do, then simultaneously query the weather in Hangzhou and Beijing."}],"summary":[],"encrypted_content":"fe477201-a09a-409c-ba1a-5adfe6543c66-0"},{"type":"message","id":"01b297e4-25b3-4b01-8607-f4182bfbbe0e","status":"completed","content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"我先同时查询杭州和北京的天气，然后汇总告诉你两地的天气情况。"}],"phase":"commentary","role":"assistant"},{"type":"function_call","id":"0554db68-fd5f-49c0-a5da-655a05af13e4","status":"completed","arguments":"{\"city\": \"杭州\"}","call_id":"call_00_ctmQxCcNQXkbPNLL1Mfp8773","name":"get_weather"},{"type":"function_call","id":"f015afbf-02d2-4211-88ec-4970d4169daf","status":"completed","arguments":"{\"city\": \"北京\"}","call_id":"call_01_okvx9L4JQLxNGXhqJLYJ0816","name":"get_weather"}],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":null,"reasoning":{"effort":"low","summary":"auto"},"safety_identifier":null,"service_tier":"default","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":null},"tool_choice":"auto","tools":[{"type":"function","name":"get_weather","description":"查询城市天气","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"],"additionalProperties":false},"strict":true}],"top_logprobs":0,"top_p":1.0,"truncation":"disabled","usage":{"input_tokens":316,"input_tokens_details":{"cached_tokens":0},"output_tokens":111,"output_tokens_details":{"reasoning_tokens":28},"total_tokens":427},"user":null,"metadata":{}},"sequence_number":80}
+

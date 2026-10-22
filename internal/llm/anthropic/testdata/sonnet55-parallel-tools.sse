@@ -1,0 +1,92 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5-5","id":"msg_011Cg4T9n5hBKBgb9GJXZdDz","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":474,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard","inference_geo":"not_available"}} }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}             }
+
+
+event: ping
+data: {"type": "ping"}
+
+
+event: content_block_delta
+data: {"delta":{"thinking":"The user wants me to query the weather for both Hangzhou and Beijing simultaneously.\n","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"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"}       }
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0             }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}      }
+
+
+event: content_block_delta
+data: {"delta":{"text":"同","type":"text_delta"},"index":1,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"时查询杭州和北","type":"text_delta"},"index":1,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"京的天气。","type":"text_delta"},"index":1,"type":"content_block_delta"}
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1             }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_015csLzyTTUn6pkI4Pr42cnh","name":"get_weather","input":{},"caller":{"type":"direct"}}    }
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":""}            }
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"{\"city\":\""}       }
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"杭州\"}"}    }
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":2 }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":3,"content_block":{"type":"tool_use","id":"toolu_01iIKevalMCMpf0OWloHSgmf","name":"get_weather","input":{},"caller":{"type":"direct"}}   }
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":3,"delta":{"type":"input_json_delta","partial_json":""}  }
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":3,"delta":{"type":"input_json_delta","partial_json":"{\"city\":\"北"}      }
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":3,"delta":{"type":"input_json_delta","partial_json":"京\"}"}         }
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":3 }
+
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":474,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":118,"output_tokens_details":{"thinking_tokens":92}} }
+
+
+event: message_stop
+data: {"type":"message_stop"          }
+
+

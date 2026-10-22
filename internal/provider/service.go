@@ -82,16 +82,9 @@ func (s *Service) providerFor(ctx context.Context, id string) (llm.Provider, err
 	if err != nil {
 		return nil, err
 	}
-	var adapter llm.Provider
-	switch cfg.Protocol {
-	case llm.ProtocolOpenAIResponses:
-		adapter = openai.New(cfg)
-	case llm.ProtocolAnthropic:
-		adapter = anthropic.New(cfg)
-	case llm.ProtocolGemini:
-		adapter = gemini.New(cfg)
-	default:
-		return nil, errs.Invalid("不支持的协议：%s", cfg.Protocol)
+	adapter, err := NewAdapter(cfg)
+	if err != nil {
+		return nil, err
 	}
 	p := s.decorate(adapter)
 	s.built[id] = p
@@ -104,6 +97,19 @@ func (s *Service) decorate(p llm.Provider) llm.Provider {
 		p = llm.WithTrace(p, s.opts.TraceDir)
 	}
 	return p
+}
+
+// NewAdapter 按协议创建适配器（不含重试与追踪装饰）。
+func NewAdapter(cfg llm.ProviderConfig) (llm.Provider, error) {
+	switch cfg.Protocol {
+	case llm.ProtocolOpenAIResponses:
+		return openai.New(cfg), nil
+	case llm.ProtocolAnthropic:
+		return anthropic.New(cfg), nil
+	case llm.ProtocolGemini:
+		return gemini.New(cfg), nil
+	}
+	return nil, errs.Invalid("不支持的协议：%s", cfg.Protocol)
 }
 
 // Invalidate 在供应商配置变更后丢弃缓存的 Provider。

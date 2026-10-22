@@ -85,6 +85,13 @@ const (
 	ReasoningHigh   ReasoningLevel = "high"
 )
 
+// 缓存保留时长（存档设置）。适配器映射到各协议：
+// Anthropic cache_control.ttl 5m / 1h；OpenAI prompt_cache_options.ttl 30m / 12h；其他协议忽略。
+const (
+	CacheShort = "short"
+	CacheLong  = "long"
+)
+
 // Request 是一次模型调用的完整输入。
 type Request struct {
 	System      []SystemBlock  `json:"system"`
@@ -94,7 +101,7 @@ type Request struct {
 	Reasoning   ReasoningLevel `json:"reasoning"`
 	Temperature *float64       `json:"temperature,omitzero"`
 	CacheKey    string         `json:"cache_key,omitzero"` // OpenAI prompt_cache_key
-	CacheTTL    string         `json:"cache_ttl,omitzero"` // Anthropic："5m" | "1h"
+	CacheTTL    string         `json:"cache_ttl,omitzero"` // CacheShort | CacheLong
 
 	// Purpose 是调用用途（narrate | continue | compact | helper | title | probe），
 	// 不发给模型，只用于用量记录、日志与调试追踪。

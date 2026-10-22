@@ -37,7 +37,7 @@ export interface Settings {
   reading: ReadingSettings
   audio: { master: number; bgm: number; sfx: number; muted: boolean }
   models: { narrator: string; light: string }
-  play: { pace: Pace; reasoning: Reasoning; cache_ttl: '5m' | '1h'; title_on_exit: 'auto' | 'ask' | 'off'; helpers: boolean }
+  play: { pace: Pace; reasoning: Reasoning; cache_ttl: 'short' | 'long'; title_on_exit: 'auto' | 'ask' | 'off'; helpers: boolean }
   onboarded: boolean
   /** 开发者选项（SET-07，D-31）：显示检查器、回合检查、完整状态与状态编辑 */
   developer: boolean
@@ -187,7 +187,7 @@ export interface SaveSettings {
   pace: Pace
   reasoning: Reasoning
   helpers: boolean
-  cache_ttl?: '5m' | '1h'
+  cache_ttl?: 'short' | 'long'
 }
 
 /** save.Save */

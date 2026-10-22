@@ -27,13 +27,16 @@ func (u Usage) InputTotal() int { return u.InputUncached + u.CacheRead + u.Cache
 
 // Price 是每百万 token 的价格，单位为 Currency（D-34：费用按货币分别汇总，不做汇率换算）。
 // 任一需要的单价为 nil 时，费用无法估算（界面显示"无法估算"，不显示 0）。
+//
+// 缓存写入分两档，对应存档设置的缓存保留时长（Request.CacheTTL）：
+// short = Anthropic 5 分钟 / OpenAI 30 分钟；long = Anthropic 1 小时 / OpenAI 12 小时。
 type Price struct {
-	Input        *float64 `json:"input,omitzero"`
-	CacheRead    *float64 `json:"cache_read,omitzero"`
-	CacheWrite5m *float64 `json:"cache_write_5m,omitzero"`
-	CacheWrite1h *float64 `json:"cache_write_1h,omitzero"`
-	Output       *float64 `json:"output,omitzero"`
-	Currency     string   `json:"currency,omitzero"` // ISO 4217，如 "CNY"、"USD"；为空按 DefaultCurrency
+	Input          *float64 `json:"input,omitzero"`
+	CacheRead      *float64 `json:"cache_read,omitzero"`
+	CacheWrite     *float64 `json:"cache_write,omitzero"`
+	CacheWriteLong *float64 `json:"cache_write_long,omitzero"`
+	Output         *float64 `json:"output,omitzero"`
+	Currency       string   `json:"currency,omitzero"` // ISO 4217，如 "CNY"、"USD"；为空按 DefaultCurrency
 }
 
 // DefaultCurrency 是价格未写货币时的默认值（官方 API 多以美元计价）。
@@ -47,15 +50,33 @@ func (p *Price) CurrencyOrDefault() string {
 	return p.Currency
 }
 
+// Scaled 返回乘以倍率后的价格（中转站的分组倍率，D-48）。倍率 ≤ 0 或为 1 时原样返回。
+func (p *Price) Scaled(multiplier float64) *Price {
+	if p == nil || multiplier <= 0 || multiplier == 1 {
+		return p
+	}
+	scale := func(v *float64) *float64 {
+		if v == nil {
+			return nil
+		}
+		x := *v * multiplier
+		return &x
+	}
+	return &Price{
+		Input: scale(p.Input), CacheRead: scale(p.CacheRead), CacheWrite: scale(p.CacheWrite),
+		CacheWriteLong: scale(p.CacheWriteLong), Output: scale(p.Output), Currency: p.Currency,
+	}
+}
+
 // CostMicros 估算费用（百万分之一货币单位）。ok=false 表示单价缺失，无法估算。
-// cacheTTL 决定缓存写入使用哪档单价（"1h" 或其他）。
+// cacheTTL 决定缓存写入使用哪档单价（CacheLong 用 CacheWriteLong，其余用 CacheWrite）。
 func (p *Price) CostMicros(u Usage, cacheTTL string) (micros int64, ok bool) {
 	if p == nil {
 		return 0, false
 	}
-	write := p.CacheWrite5m
-	if cacheTTL == "1h" {
-		write = p.CacheWrite1h
+	write := p.CacheWrite
+	if cacheTTL == CacheLong {
+		write = p.CacheWriteLong
 	}
 	items := []struct {
 		n     int
