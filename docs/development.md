@@ -76,6 +76,8 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 - 大于 64 KiB 的 blob 在 `blobs/ab/cd/<sha256>`，小的内联在 `blobs` 表。
 - 结构迁移前会自动备份到 `backup/`；用旧程序打开新数据会拒绝启动（防止破坏数据）。
 - `instance.json` 用于单实例检测；进程异常退出后残留的文件会在下次启动时被识别并覆盖。
+- 导入作品是两段式的：解析后的文件暂存在 `tmp/imports/<任务 ID>/`（按内容哈希命名），确认、放弃或 30 分钟后删除，启动时整个清空。
+  想知道一个 zip 包为什么导入失败，用 `yanyi work validate <zip 包>`：与导入走同一条流水线（作品根定位、忽略规则、安全限制、校验）。
 
 ### 3.6 常见问题
 
