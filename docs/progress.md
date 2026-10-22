@@ -1,6 +1,6 @@
 # 项目进度
 
-> 最后核对：**2026-10-23**（M0、M1、M2 完成；T3 真实评测通过）。想知道"做到哪了、下一步做什么、某个功能的代码在哪"，从这里开始。
+> 最后核对：**2026-10-23**（M0、M1、M2 完成；T3 真实评测通过；待确认事项已清空）。想知道"做到哪了、下一步做什么、某个功能的代码在哪"，从这里开始。
 > 任务编号与实施计划（`.local/docs/05-实施计划.md`，不入库）一致；本文收录了每个任务的名称，不看实施计划也能读懂。
 
 ## 怎么用
@@ -137,9 +137,9 @@ T3《雾港来信》经 Claude 真实游玩 15 步、事实召回 4 / 4；杀进
 | --- | --- | --- | --- | --- |
 | M2-1 | 状态定义与类型校验；`get_state` / `update_state`；开局表单 | ✅ 完成 | `state.yaml` 解析、类型检查、默认值；开局表单写入初始状态；`state.Apply`（set / inc / append / remove / delete，原子执行，失败时说明哪个操作、可以怎么写）；`get_state` / `update_state`；回合内修改即时生效并推送 `turn.state`、面板去抖 100 ms 重渲染；提交时写入新快照；`GET /saves/{id}/state` | 状态抽屉与玩家编辑（M3-9）；存档升级后的 `$orphan` 键（M6-6） |
 | M2-5 | 命令：解析、参数与候选项、模板展开、呈现方式、内置命令 | ✅ 完成 | 解析、Liquid 模板展开、斜杠 / 模式 / 按钮、命令面板、`/ooc` `/continue` `/help`；命令的 `confirm`（应用内确认框，斜杠、按钮、命令栏、选项附带的命令都会确认；输入模式不确认） | `/compact`（M3-6） |
-| M2-7 | 叙事标记：内置标签 + 作品样式标签；服务端纯文本化；`inline: false` 警告 | ✅ 完成 | 内置标签渲染、样式标签 CSS 生成、`<ooc>` 场外块、原文纯文本化；没写 `dark_color` 时编译作品按 OKLCH 提亮到与深色背景（主题或纯黑）对比度 ≥ 4.5（`work/color.go`）；悬停提示的 `{{ text }}` 换成标签内文字；未收录的 lucide 图标按需加载完整图标集（单独一个构建产物）；`<cg src>` 接受 ID 或路径 | `inline: false` 警告规范中没有定义（open-questions 第 1 条）；`<pause>` 与音频（M5-1、M5-2）；`<act>`（P1） |
+| M2-7 | 叙事标记：内置标签 + 作品样式标签；服务端纯文本化 | ✅ 完成 | 内置标签渲染、样式标签 CSS 生成、`<ooc>` 场外块、原文纯文本化；没写 `dark_color` 时编译作品按 OKLCH 提亮到与深色背景（主题或纯黑）对比度 ≥ 4.5（`work/color.go`）；悬停提示的 `{{ text }}` 换成标签内文字；未收录的 lucide 图标按需加载完整图标集（单独一个构建产物）；`<cg src>` 接受 ID 或路径 | `<pause>` 与音频（M5-1、M5-2）；`<act>`（P1）。不设 `inline: false` 警告（D-54） |
 | M2-8 | 面板：Liquid 服务端渲染、推送、前端净化、`ui-*` 组件、`ui-button` 触发命令 | ✅ 完成 | sidebar / topbar / float / drawer 面板（抽屉标签页；窄屏时侧栏面板也进抽屉，手机从底部拉出）、SSE 推送、回合内状态变化去抖重渲染；DOMPurify + style 白名单、`<img>` 只接受 `asset:`；ui-stat / bar / badge / button / collapse / tooltip / image；应用内确认框；`{% render %}` 只读作品 ui/ 模板；校验器解析全部模板（E-TEMPLATE）、拒绝 include、检查 render 引用 | 平板的右侧图标列（M5-11） |
-| M2-9 | 主题：`theme.yaml` → CSS 变量；`custom.css` 校验与作用域；字体 | ✅ 完成 | `work.Theme`：配色 → `.work-root` / `.dark .work-root` 上的设计令牌（派生色 color-mix）、字体素材 `@font-face`、背景图（`.work-backdrop`）；`work.ScopeCSS`：custom.css 校验（E-THEME）、`url(asset:)`、嵌套作用域、`@font-face` / `@keyframes` 提升与动画改名；排版数值与玩家阅读设置合并（`useReadingStyle`）；设置中可关闭作品主题；封面与主题背景不进 AI 素材索引；《雾港来信》主题 | 阅读设置"跟随作品"的显式状态（目前以"等于平台默认值"判断，M5-10） |
+| M2-9 | 主题：`theme.yaml` → CSS 变量；`custom.css` 校验与作用域；字体 | ✅ 完成 | `work.Theme`：配色 → `.work-root` / `.dark .work-root` 上的设计令牌（派生色 color-mix）、字体素材 `@font-face`、背景图（`.work-backdrop`）；`work.ScopeCSS`：custom.css 校验（E-THEME）、`url(asset:)`、嵌套作用域、`@font-face` / `@keyframes` 提升与动画改名；排版数值与玩家阅读设置合并（`useReadingStyle`）；设置中可关闭作品主题；封面与主题背景不进 AI 素材索引；《雾港来信》主题 | — （排版数值与阅读设置的合并规则见 D-56） |
 | M2-10 | 素材与多模态：素材索引、常驻图片、`read` 图片、玩家上传、派生缩放、非视觉降级 | ✅ 完成 | `internal/media`：解码校验（E-ASSET）、按模型长边派生（结果确定，派生图存为 blob）、上传重新编码去元数据；素材索引（图片写 ID 与路径，封面不进索引）与服务（`?w=` 缩略图）；常驻图片进 L3（W-PIN-IMAGE）；`read` 看图用派生图，设定文档附关联图片路径；`POST /uploads`、`GET /uploads/{hash}`、`/uploads` 挂载点；附件随输入发送、非视觉模型写文字说明；书架封面图；开局时提示作品需要看图 | 插图大图查看与音频（M5-2）；派生图与上传的存储 GC（M6-5） |
 | M2-11 | 开场（static / generate）、掷骰 | ✅ 完成 | 静态开场（以初始状态渲染、初始选项）、生成式开场（前端自动提交）；`roll_dice`（`NdM±K`、`d%`，多项相加减，上限 8 项 / 50 颗 / 1000 面）与骰子卡片（`turn.display` 实时推送） | — |
 | M2-12 | 校验器：全部文件类型、引用完整性、名称冲突、token 估算、组装一致性测试 | ✅ 完成 | 清单、提示词、状态、设定、命令、标签、布局、素材（解码）、主题与 custom.css、全部 Liquid 模板、交叉引用（文档链接、图片、头像、封面、render、命令栏）、engine、LFS、编码（W-ENCODING）；token 估算（`contextx.Analyze`：各层估算写入报告 I-TOKENS，设定索引与常驻部分过大时警告），导入与 `work validate` 都执行；`GET /works/{id}/versions/{vid}/report`；`TestAssemblyConsistency` | JSON Schema（M6-4）；按模型校准的 token 估算（M3-8） |
@@ -170,7 +170,7 @@ T3《雾港来信》经 Claude 真实游玩 15 步、事实召回 4 / 4；杀进
 | M4-2 | `Native` 保真与跨供应商降级；工具调用 ID 映射；相邻同角色合并；孤儿修复 | 🟡 部分 | 同协议同模型原样回传 Native，换模型退回中立内容（推理丢弃）；工具调用 ID 确定性映射；相邻同角色合并；Gemini 跨模型历史用占位签名 | 孤儿修复（8.4）；跨供应商切换的真实验证 |
 | M4-3 | 缓存策略（Anthropic 断点与 TTL、OpenAI 缓存键、Gemini 隐式缓存） | ✅ 完成 | Anthropic：L1 / L3 / L4 + 滚动断点、5m / 1h；OpenAI：GPT-5.6 起隐式 + 显式断点与 30m / 12h（D-47），早期模型与兼容接口用 prompt_cache_key；Gemini 隐式缓存；均经真实调用验证 | Anthropic 断点 ④（单回合追加超过 20 个位置时）；Gemini 显式缓存（P2） |
 | M4-4 | 用量归一与费用计算；用量日志与统计接口 | 🟡 部分 | 中立用量类型、按价格与货币估算费用、写入 `usage_log`（D-34） | 汇总 `usage.Summarize` 与 `GET /usage` |
-| M4-5 | 推理强度映射；截断续写与去重的一致性 | 🟡 部分 | 截断续写（次数受预算限制）；续写开头去重（缓冲开头 200 字后比较，只影响显示，`runtime/continuation.go`） | 推理强度映射；去重下限待确认（open-questions 第 1 条）；三协议上的一致性验证 |
+| M4-5 | 推理强度映射；截断续写与去重的一致性 | 🟡 部分 | 截断续写（次数受预算限制）；续写开头去重（缓冲开头 200 字后比较，只影响显示，`runtime/continuation.go`） | 推理强度映射；三协议上的一致性验证（去重下限 8 字，D-52） |
 | M4-6 | 重试策略；错误分类 | ✅ 完成 | `llm.WithRetry`；适配器按状态码与各家错误 JSON 归类（含上下文超限、过载、余额不足、Retry-After），流中错误事件；运行器保留原始错误给玩家分类提示 | — |
 | M4-7 | 供应商与模型设置页、添加向导、连接测试、拉取模型列表、预设、模型角色 | 🟡 部分 | 随 M1-11 完成：增删改、向导、连接测试、拉取模型列表、内置预设、设为主笔 | 轻量模型角色；预设随新模型更新的机制 |
 | M4-8 | 录制回放测试：每协议 ≥ 10 个夹具 | 🟡 部分 | 5 份真实录制的 SSE 夹具（并行工具，含 DeepSeek 兼容接口）与回放测试；`--trace-llm` 会把原始报文写到 `logs/llm-trace/raw/`，可直接做成夹具 | 每协议补到 10 个以上（截断、拒答、错误、推理块等） |
@@ -251,6 +251,8 @@ T3《雾港来信》经 Claude 真实游玩 15 步、事实召回 4 / 4；杀进
 
 ### 2026-10-23
 
+- 待确认事项按推荐做法定为决策 D-54～D-56（不设 `inline: false` 警告；`for` 循环不单独计数；主题排版数值与阅读设置的合并规则），open-questions 清空；
+  实施计划 M2-7 去掉 `inline: false` 警告。
 - **M2 完成**，达到退出标准。**M2-14 完成**：《雾港来信》补全第二、三段主线、周看守与旧码头、`/揭晓`（带确认）、人物抽屉（render 片段）；
   回归用例 `runtime/t3_test.go`；评测脚本与 `TestEval`；claude 真实游玩两轮（结论见 api-verification.md）。
   D-53：update_state 改为单项操作，工具参数中写成 JSON 字符串的数组 / 对象修复引号后还原（`1cdd4d3`、`3cfbddb`）。
