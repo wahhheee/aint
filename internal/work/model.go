@@ -44,8 +44,55 @@ type Asset struct {
 	Kind        string `json:"kind"` // image | audio | font
 	Role        string `json:"role"` // background | cg | avatar | bgm | sfx | font | reference
 	Description string `json:"description,omitzero"`
-	Pin         bool   `json:"pin,omitzero"` // 常驻 AI 上下文（多模态，TODO(M2-10)）
+	Pin         bool   `json:"pin,omitzero"` // 常驻 AI 上下文（多模态，模型能看图时进入 L3）
 	Blob        string `json:"blob"`
+	Width       int    `json:"width,omitzero"` // 图片尺寸（编译时读取文件头）
+	Height      int    `json:"height,omitzero"`
+}
+
+// IsCover 判断素材是否是作品封面（work.yaml 的 cover）。封面只用于书架展示，不出现在 AI 的素材索引中。
+func (m *Model) IsCover(a Asset) bool {
+	ref := m.Manifest.Cover
+	return ref != "" && (a.ID == ref || a.Path == ref)
+}
+
+// PinnedImages 返回常驻 AI 上下文的图片（L3）：assets.yaml 中 pin: true 的图片（按 ID），
+// 再加上 pin_images 文档的关联图片（按文档顺序）；同一张图片只出现一次。
+func (m *Model) PinnedImages() []Asset {
+	var out []Asset
+	seen := map[string]bool{}
+	add := func(a Asset) {
+		if a.Kind == "image" && !seen[a.Path] {
+			seen[a.Path] = true
+			out = append(out, a)
+		}
+	}
+	for _, a := range m.Assets {
+		if a.Pin {
+			add(a)
+		}
+	}
+	for _, d := range m.Docs {
+		if !d.PinImages {
+			continue
+		}
+		for _, ref := range d.Images {
+			if a, ok := m.Asset(ref); ok {
+				add(a)
+			}
+		}
+	}
+	return out
+}
+
+// DocByPath 按路径（相对作品根，如 lore/characters/lin.md）查找设定文档。
+func (m *Model) DocByPath(p string) (Doc, bool) {
+	for _, d := range m.Docs {
+		if d.Path == p {
+			return d, true
+		}
+	}
+	return Doc{}, false
 }
 
 // Asset 按 ID 或路径查找素材（规范：含 / 的引用视为路径）。

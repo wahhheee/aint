@@ -39,7 +39,11 @@ func handleRead(ctx context.Context, env Env, raw jsonx.Value) Result {
 		if !env.Features().Has(prompts.FVision) {
 			return Text("%s\n当前模型不能看图，可以依据图片说明来写。", head)
 		}
-		return Result{Parts: []llm.Part{llm.Text(head), {Kind: llm.PartImage, Image: &llm.ImageRef{Blob: res.Image.Blob, MIME: res.Image.MIME}}}}
+		ref, err := env.ModelImage(ctx, res.Image.Blob)
+		if err != nil {
+			return NotExecuted("%s 无法读取（%v），可以依据图片说明来写。", res.Path, err)
+		}
+		return Result{Parts: []llm.Part{llm.Text(head), {Kind: llm.PartImage, Image: &ref}}}
 	}
 	if res.TotalLines == 0 {
 		return Text("# read %s（空文件）", res.Path)

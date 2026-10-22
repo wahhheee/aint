@@ -3,8 +3,10 @@ title: 老陈
 kind: character
 aliases: [陈伯, 陈局长]
 summary: 邮局的老局长，午夜前从不离开柜台；故事开始时失踪
+images: [old-chen]
 display:
   color: "#8a5a2b"
+  avatar: old-chen
 ---
 ## 外貌
 六十出头，背微驼，灰呢外套从不离身。

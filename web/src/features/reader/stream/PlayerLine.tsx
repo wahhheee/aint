@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
+import { uploadURL } from '@/api/endpoints'
 import type { DisplayItem } from '@/api/types'
 import { cn } from '@/lib/utils'
 
@@ -29,7 +30,18 @@ export function PlayerLine({ item }: { item: InputItem }) {
         {isOOC ? t('reader.ooc') : t('reader.you')}
         {item.mode && <span className={cn('ml-1', modeStyle && `mk-${modeStyle}`)}>（{item.mode}）</span>}
       </span>
-      <span className="min-w-0 break-words whitespace-pre-wrap text-ink">{item.text}</span>
+      <span className="min-w-0 break-words whitespace-pre-wrap text-ink">
+        {item.text}
+        {item.attachments && item.attachments.length > 0 && (
+          <span className="mt-1.5 flex flex-wrap gap-1.5">
+            {item.attachments.map((h) => (
+              <a key={h} href={uploadURL(h)} target="_blank" rel="noreferrer" title={t('reader.attachment')}>
+                <img src={uploadURL(h, 160)} alt={t('reader.attachment')} className="h-14 rounded-md border border-rule object-cover" />
+              </a>
+            ))}
+          </span>
+        )}
+      </span>
     </p>
   )
 }

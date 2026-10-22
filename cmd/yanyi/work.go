@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -138,7 +139,7 @@ func workPrompt(args []string) error {
 		}
 	}
 	initState := m.State.Defaults()
-	built, err := contextx.NewBuilder(tmpl.New()).Build(contextx.BuildInput{
+	built, err := contextx.NewBuilder(tmpl.New(), nil).Build(context.Background(), contextx.BuildInput{
 		SaveID: "preview", Work: m, Features: features, Model: model, Settings: settings,
 		InitialState: initState, InitialStateHash: "preview", Epoch: contextx.RenderEpoch0(features, m.State, initState, memory),
 		Tools: tools.NewRegistry().Specs(features, m), Turn: env.Message(features),
@@ -161,7 +162,7 @@ func workPrompt(args []string) error {
 	for i, msg := range built.Request.Messages {
 		fmt.Printf("[消息 %d · %s]\n", i+1, msg.Role)
 		for _, p := range msg.Parts {
-			fmt.Println(p.Text) // 每个内容块单独成段（L3、L4 是同一条消息中的不同块）
+			fmt.Println(p.Text) // 每个内容块单独成段（L3、L4 是同一条消息中的不同块；预览不附图片，常驻图片只显示文字标注）
 		}
 		fmt.Println(rule)
 	}

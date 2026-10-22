@@ -90,13 +90,20 @@ func TestPrefixStableAcrossTurns(t *testing.T) {
 			}
 		}
 	}
-	checkAdapterPrefix(t, reqs)
+	checkAdapterPrefix(t, reqs, storeBlobs{e})
+}
+
+// storeBlobs 让适配器从测试数据目录读取图片（常驻图片随前缀发送）。
+type storeBlobs struct{ e *env }
+
+func (s storeBlobs) ReadBlob(ctx context.Context, hash string) ([]byte, error) {
+	return s.e.blobs.Get(ctx, s.e.db.Read(), hash)
 }
 
 // 协议层：同一组请求经三个适配器构建请求体，"角色 + 内容块"的序列只追加。
 // 缓存标记不参与比较（Anthropic 的滚动断点每次落在最后一块；移动断点不影响缓存前缀与推理块签名）；
 // 按内容块而不是按消息比较，因为适配器会合并相邻同角色消息。
-func checkAdapterPrefix(t *testing.T, reqs []*llm.Request) {
+func checkAdapterPrefix(t *testing.T, reqs []*llm.Request, blobs llm.BlobReader) {
 	t.Helper()
 	model := &llm.Model{Name: "m", MaxOutput: 8000, Caps: llm.Caps{Tools: true, Reasoning: "effort", Cache: "breakpoints"}}
 	marker := regexp.MustCompile(`,"(cache_control|prompt_cache_breakpoint)":\{[^}]*\}`)
@@ -113,7 +120,7 @@ func checkAdapterPrefix(t *testing.T, reqs []*llm.Request) {
 	}
 	for _, p := range []interface {
 		Body(context.Context, *llm.Model, *llm.Request) ([]byte, error)
-	}{anthropic.New(llm.ProviderConfig{}), openai.New(llm.ProviderConfig{}), gemini.New(llm.ProviderConfig{})} {
+	}{anthropic.New(llm.ProviderConfig{Blobs: blobs}), openai.New(llm.ProviderConfig{Blobs: blobs}), gemini.New(llm.ProviderConfig{Blobs: blobs})} {
 		var prev []string
 		for i, req := range reqs {
 			raw, err := p.Body(context.Background(), model, req)

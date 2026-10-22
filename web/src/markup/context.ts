@@ -42,9 +42,15 @@ export function useMarkupContext(
   }, [builtinTags, workTags, characters, assets])
 }
 
-/** 图片素材引用（ID、路径或 asset:ID）→ 素材地址；不是作品中的图片时返回 undefined。 */
-export function imageURL(ref: string | undefined, ctx: MarkupContextValue): string | undefined {
+/** 素材引用（ID、作品内路径、AI 看到的 /work/ 路径或 asset:ID）→ 素材。 */
+export function findAsset(ref: string | undefined, ctx: MarkupContextValue): AssetRef | undefined {
   if (!ref) return undefined
-  const a = ctx.assets.get(ref.startsWith('asset:') ? ref.slice('asset:'.length) : ref)
+  const key = ref.replace(/^asset:/, '').replace(/^\/work\//, '')
+  return ctx.assets.get(key)
+}
+
+/** 图片素材引用 → 素材地址；不是作品中的图片时返回 undefined。 */
+export function imageURL(ref: string | undefined, ctx: MarkupContextValue): string | undefined {
+  const a = findAsset(ref, ctx)
   return a?.kind === 'image' ? a.url : undefined
 }

@@ -7,11 +7,12 @@
  *   └────────────────────────────────────────────────────────┘
  *
  *   - Enter 发送、Shift+Enter 换行；输入 / 弹出命令面板；发送中按钮变为停止；
+ *   - 📎 或粘贴附加图片（上传完成后才能发送；模型不能看图时提示）；
  *   - 输入草稿按存档保存在 localStorage，切换页面不丢失；
  *   - 自由输入被作品关闭时，只接受命令。
  */
-import { ArrowUp, ChevronDown, Paperclip, Square } from 'lucide-react'
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { ArrowUp, ChevronDown, LoaderCircle, Paperclip, Square, X } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -25,15 +26,25 @@ import { cn } from '@/lib/utils'
 import { useReaderContext } from '../ReaderContext'
 import { CommandPalette } from './CommandPalette'
 import { paletteEntries, type PaletteEntry } from './paletteEntries'
+import { ACCEPT_ATTR, useAttachments } from './useAttachments'
 
 export interface InputDockHandle {
   focus: (text?: string) => void
 }
 
+/** 提交输入栏内容时的附加信息。 */
+export interface SubmitOptions {
+  mode?: string
+  pace?: string
+  attachments?: string[]
+  /** 调用方已请玩家确认过（命令的 confirm） */
+  confirmed?: boolean
+}
+
 interface Props {
   busy: boolean
   defaultPace: Pace
-  onSubmit: (text: string, mode?: string, pace?: string) => Promise<boolean | 'help'>
+  onSubmit: (text: string, opts?: SubmitOptions) => Promise<boolean | 'help'>
   onStop: () => void
   onHelp: () => void
 }
@@ -42,7 +53,9 @@ const PACES = ['short', 'medium', 'long'] as const
 
 export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({ busy, defaultPace, onSubmit, onStop, onHelp }, ref) {
   const { t } = useTranslation()
-  const { saveId, ui } = useReaderContext()
+  const { saveId, ui, vision } = useReaderContext()
+  const attachments = useAttachments()
+  const fileRef = useRef<HTMLInputElement>(null)
   const storageKey = `yanyi.draft.${saveId}`
   const [text, setText] = useState(() => localStorage.getItem(storageKey) ?? '')
   const [mode, setMode] = useState<Command | null>(null)
@@ -83,16 +96,33 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
     taRef.current?.focus()
   }
 
+  const canSend = (!!text.trim() || attachments.hashes.length > 0) && !attachments.uploading
+
   const send = async () => {
     const value = text.trim()
-    if (!value || busy) return
+    if (!canSend || busy) return
     if (!ui.features.free_input && !value.startsWith('/')) {
       toast(t('reader.placeholderChoicesOnly'))
       return
     }
-    const res = await onSubmit(value, mode?.name, pace !== defaultPace ? pace : undefined)
+    const res = await onSubmit(value, {
+      mode: mode?.name,
+      pace: pace !== defaultPace ? pace : undefined,
+      attachments: attachments.hashes.length > 0 ? attachments.hashes : undefined,
+    })
     if (res === 'help') onHelp()
-    if (res) setText('')
+    if (res) {
+      setText('')
+      if (res !== 'help') attachments.clear()
+    }
+  }
+
+  // 粘贴图片即附加（文字照常粘贴）
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = [...e.clipboardData.files].filter((f) => f.type.startsWith('image/'))
+    if (files.length === 0) return
+    e.preventDefault()
+    attachments.add(files)
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -157,6 +187,28 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
 
       {paletteOpen && <CommandPalette entries={entries} active={active} onPick={pick} onHover={setActive} />}
 
+      {attachments.items.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-end gap-2 font-sans">
+          {attachments.items.map((a) => (
+            <span key={a.id} className="group relative size-14 overflow-hidden rounded-lg border border-rule-strong bg-paper-raised">
+              <img src={a.preview} alt="" className={cn('size-full object-cover', a.status !== 'done' && 'opacity-50')} />
+              {a.status === 'uploading' && (
+                <LoaderCircle className="absolute inset-0 m-auto size-4 animate-spin text-ink" aria-label={t('common.loading')} />
+              )}
+              <button
+                type="button"
+                onClick={() => attachments.remove(a.id)}
+                aria-label={t('reader.attachRemove')}
+                className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-80 hover:opacity-100"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+          {!vision && <span className="pb-1 text-xs text-ink-faint">{t('reader.attachNoVision')}</span>}
+        </div>
+      )}
+
       <div
         className={cn(
           'flex items-end gap-1 rounded-2xl border border-rule-strong bg-paper-overlay/92 p-2 text-sm shadow-overlay backdrop-blur-xl transition-[border-color]',
@@ -189,6 +241,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
+          onPaste={onPaste}
           placeholder={placeholder}
           aria-label={placeholder}
           className="min-h-8 flex-1 resize-none bg-transparent px-2 py-[3px] font-serif text-[15px] leading-[26px] text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
@@ -218,20 +271,30 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
 
           <Tooltip>
             <TooltipTrigger asChild>
-              {/* TODO(M2-10)：附加图片（POST /uploads），非视觉模型时提示 */}
-              <Button variant="ghost" size="icon-sm" aria-label={t('reader.attach')} onClick={() => toast(t('common.notImplemented'))}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('reader.attach')} onClick={() => fileRef.current?.click()}>
                 <Paperclip />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('reader.attach')}</TooltipContent>
           </Tooltip>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPT_ATTR}
+            multiple
+            hidden
+            onChange={(e) => {
+              if (e.target.files) attachments.add(e.target.files)
+              e.target.value = ''
+            }}
+          />
 
           {busy ? (
             <Button size="icon-sm" variant="secondary" onClick={onStop} aria-label={t('reader.stop')}>
               <Square className="size-3 fill-current" />
             </Button>
           ) : (
-            <Button size="icon-sm" onClick={() => void send()} disabled={!text.trim()} aria-label={t('reader.send')}>
+            <Button size="icon-sm" onClick={() => void send()} disabled={!canSend} aria-label={t('reader.send')}>
               <ArrowUp />
             </Button>
           )}

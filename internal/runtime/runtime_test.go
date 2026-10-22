@@ -1,8 +1,11 @@
 package runtime_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"image"
+	"image/png"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +16,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/llm/fake"
+	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/runtime"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/state"
@@ -46,11 +50,12 @@ func (g gatedProvider) Stream(ctx context.Context, m *llm.Model, req *llm.Reques
 
 // env 是测试用的最小应用装配：依赖关系与 app.wire 相同，模型换成假模型。
 type env struct {
-	db    *store.DB
-	blobs *store.Blobs
-	saves *save.Service
-	mgr   *runtime.Manager
-	bus   *event.Bus
+	db     *store.DB
+	blobs  *store.Blobs
+	saves  *save.Service
+	mgr    *runtime.Manager
+	bus    *event.Bus
+	images *media.Store
 }
 
 func setup(t *testing.T, script *fake.Script) *env {
@@ -83,12 +88,13 @@ func openEnv(ctx context.Context, dir string, provider llm.Provider) (*env, erro
 	works := work.NewService(db, blobs)
 	works.EnsureBuiltins(ctx, examples.Works())
 	saves := save.NewService(db, blobs, works, tm)
+	images := media.NewStore(db, blobs, "")
 	bus := event.NewBus(0)
 	mgr := runtime.NewManager(runtime.Deps{
 		Saves: saves, Works: works, Models: fakeModels{provider}, Bus: bus,
-		Builder: contextx.NewBuilder(tm), Tools: tools.NewRegistry(), Tmpl: tm,
+		Builder: contextx.NewBuilder(tm, images), Tools: tools.NewRegistry(), Tmpl: tm, Images: images,
 	})
-	return &env{db: db, blobs: blobs, saves: saves, mgr: mgr, bus: bus}, nil
+	return &env{db: db, blobs: blobs, saves: saves, mgr: mgr, bus: bus, images: images}, nil
 }
 
 // close 等运行中的回合结束（已生成的内容以 interrupted 提交），再关闭数据库。
@@ -395,5 +401,62 @@ func TestStateTools(t *testing.T) {
 		if p.ID == "day" && !strings.Contains(p.HTML, "第 2 天") {
 			t.Fatalf("面板应以新状态渲染：%s", p.HTML)
 		}
+	}
+}
+
+// 玩家上传的图片：随输入发送（按模型长边上限派生）、挂到 /uploads、read 可以再看；不存在的附件拒绝。
+func TestAttachments(t *testing.T) {
+	script := &fake.Script{Responses: []fake.Response{
+		{DelayMS: 1, ToolCalls: []fake.ToolCall{{Name: "read", Args: map[string]any{"path": "/uploads/0002-1.jpg"}}}},
+		{Text: "那是一张褪色的照片。", ChunkRunes: 50, DelayMS: 1},
+	}}
+	var reqs []*llm.Request
+	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
+	ctx := context.Background()
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	img := image.NewGray(image.Rect(0, 0, 2000, 1000)) // 不透明：重新编码为 JPEG
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	up, err := e.images.SaveUpload(ctx, buf.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _, _ := e.bus.Subscribe(event.SaveTopic(sv.ID), 0)
+	defer sub.Close()
+	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputFree, Text: "看看这张照片", Attachments: []string{up.Hash}}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, sub, event.TurnCommitted)
+
+	first := reqs[0].Messages[len(reqs[0].Messages)-1]
+	var images []*llm.ImageRef
+	for _, p := range first.Parts {
+		if p.Kind == llm.PartImage {
+			images = append(images, p.Image)
+		}
+	}
+	if len(images) != 1 || images[0].Width != 1568 || images[0].Height != 784 {
+		t.Fatalf("附件应以派生图随输入发送：%+v", images)
+	}
+	if !strings.Contains(first.Parts[0].Text, "/uploads/0002-1.jpg") {
+		t.Fatalf("输入应说明附件在 /uploads 中的路径：%s", first.Parts[0].Text)
+	}
+	last := reqs[1].Messages[len(reqs[1].Messages)-1]
+	res := last.Parts[0].ToolResult
+	if res == nil || len(res.Parts) != 2 || res.Parts[1].Kind != llm.PartImage || res.Parts[1].Image.Blob != images[0].Blob {
+		t.Fatalf("read /uploads 应返回同一张派生图：%+v", last.Parts[0])
+	}
+
+	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputFree, Text: "再看", Attachments: []string{"sha256:nope"}}); err != nil {
+		t.Fatal(err)
+	}
+	failed := waitFor(t, sub, event.TurnFailed).Data.(event.TurnFailedData)
+	if !strings.Contains(failed.Message, "图片不存在") {
+		t.Fatalf("不存在的附件应拒绝：%+v", failed)
 	}
 }

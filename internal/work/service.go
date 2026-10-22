@@ -164,7 +164,7 @@ type Summary struct {
 	Latest        VersionInfo `json:"latest"`
 	SaveCount     int         `json:"save_count"`
 	UpdatedAt     int64       `json:"updated_at"`
-	// TODO(M2-10)：CoverURL（封面素材 → /api/v1/assets/{hash}）；目前前端用标题生成排版封面。
+	CoverURL      string      `json:"cover_url,omitzero"` // 作品提供封面图时（work.yaml 的 cover）；没有时前端用标题生成排版封面
 }
 
 // Detail 是作品详情页。
@@ -206,9 +206,26 @@ func (s *Service) List(ctx context.Context) ([]Summary, error) {
 		if err != nil {
 			return nil, fmt.Errorf("读取作品 %s 的最新版本失败: %w", w.ID, err)
 		}
-		out = append(out, summaryOf(w, v))
+		sum := summaryOf(w, v)
+		sum.CoverURL = s.coverURL(ctx, v)
+		out = append(out, sum)
 	}
 	return out, nil
+}
+
+// coverURL 返回版本的封面图地址（素材引用需要编译后的素材索引才能解析）；没有封面或无法加载时为空。
+func (s *Service) coverURL(ctx context.Context, v versionRow) string {
+	if v.Manifest.Cover == "" {
+		return ""
+	}
+	m, err := s.Model(ctx, v.ID)
+	if err != nil {
+		return ""
+	}
+	if a, ok := m.Asset(v.Manifest.Cover); ok && a.Kind == "image" {
+		return AssetURL(a)
+	}
+	return ""
 }
 
 // Get 返回作品详情。
@@ -233,6 +250,7 @@ func (s *Service) Get(ctx context.Context, workID string) (*Detail, error) {
 		}
 	}
 	d.Summary = summaryOf(w, latest)
+	d.CoverURL = s.coverURL(ctx, latest)
 	mf := latest.Manifest
 	d.License, d.Requires, d.Narrator, d.NewGame, d.Changelog = mf.License, mf.Requires, mf.Narrator, mf.NewGame, mf.Changelog
 	d.Report = &latest.Report

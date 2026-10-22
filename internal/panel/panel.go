@@ -1,7 +1,7 @@
 // Package panel 渲染作品面板（《02-技术方案》第 17 节）。
 //
 // 服务端用 Liquid 渲染全部面板，输出为空的面板不显示；结果带内容哈希，前端按哈希做差量更新。
-// 渲染时机：回合提交、回合内状态变化（去抖 100ms，TODO(M2-8)）、edit 节点、切换 head。
+// 渲染时机：回合提交、回合内状态变化（去抖 100ms，见 runtime.panelRefresher）、edit 节点、切换 head。
 // 净化在前端（DOMPurify 白名单 + ui-* 组件），这里只负责模板与 Markdown。
 package panel
 

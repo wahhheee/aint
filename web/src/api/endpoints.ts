@@ -21,6 +21,7 @@ import type {
   TestReport,
   Timeline,
   TurnInput,
+  Upload,
   WorkDetail,
   WorkSummary,
 } from './types'
@@ -65,6 +66,10 @@ export const api = {
     submit: (id: string, input: TurnInput) => http.post<{ turn_id: string }>(`/saves/${id}/turns`, input),
     cancel: (id: string, turnId: string) => http.post<void>(`/saves/${id}/turns/${turnId}/cancel`),
   },
+  uploads: {
+    /** 上传图片（表单字段 file），返回引用；提交回合时放进 attachments */
+    create: (form: FormData, opts?: UploadOptions) => http.upload<Upload>('/uploads', form, opts),
+  },
   providers: {
     list: () => http.get<ProviderView[]>('/providers'),
     create: (input: ProviderInput) => http.post<ProviderView>('/providers', input),
@@ -80,4 +85,9 @@ export const api = {
     update: (id: string, input: ModelInput) => http.patch<Model>(`/models/${id}`, input),
     remove: (id: string) => http.del(`/models/${id}`),
   },
+}
+
+/** 上传图片的显示地址（w：缩略图的长边，像素）。 */
+export function uploadURL(hash: string, w?: number): string {
+  return `/api/v1/uploads/${hash.replace(/^sha256:/, '')}${w ? `?w=${w}` : ''}`
 }

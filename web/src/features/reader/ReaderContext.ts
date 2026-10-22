@@ -6,6 +6,8 @@ import type { ChoiceItem, Presentation, ReadingSettings } from '@/api/types'
 export interface ReaderContextValue {
   saveId: string
   ui: Presentation['ui']
+  /** 主笔模型能看图（附件、图片相关的提示） */
+  vision: boolean
   reading?: ReadingSettings
   choose: (item: ChoiceItem) => void
   focusInput: () => void

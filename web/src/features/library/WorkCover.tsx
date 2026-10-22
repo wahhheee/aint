@@ -13,7 +13,7 @@
  * 封面颜色取自传统染色，按作品 ID 稳定选取：同一部作品在任何地方都是同一种颜色。
  * 这是整个界面唯一的"记忆点"，其余元素保持克制。
  *
- * TODO(M2-10)：作品提供 cover 素材时显示封面图。
+ * 作品提供封面图（work.yaml 的 cover）时，图片铺满书面，仍保留右侧装订线，与排版封面同一形制。
  */
 import { cn } from '@/lib/utils'
 
@@ -27,9 +27,11 @@ interface Props {
   dev?: boolean
   /** 缩略图（继续阅读的书签条）：题签留白，不写字 */
   compact?: boolean
+  /** 封面图地址（作品的 cover 素材） */
+  image?: string
 }
 
-export function WorkCover({ id, title, className, dev, compact }: Props) {
+export function WorkCover({ id, title, className, dev, compact, image }: Props) {
   // 题签高度固定，标题越长字越小（容器查询单位 cqw 随封面宽度缩放）
   const len = Math.max(2, Array.from(title).length)
   return (
@@ -44,14 +46,18 @@ export function WorkCover({ id, title, className, dev, compact }: Props) {
       aria-label={title}
       role="img"
     >
-      {/* 布面纹理：极淡的经纬线 */}
-      <div
-        className="absolute inset-0 opacity-[0.07] mix-blend-overlay"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 4px)',
-        }}
-      />
+      {image ? (
+        <img src={`${image}?w=480`} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        /* 布面纹理：极淡的经纬线 */
+        <div
+          className="absolute inset-0 opacity-[0.07] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 4px)',
+          }}
+        />
+      )}
       {/* 光泽：左上微亮 */}
       <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_15%_0%,rgb(255_255_255/0.10),transparent_60%)]" />
 
@@ -67,8 +73,11 @@ export function WorkCover({ id, title, className, dev, compact }: Props) {
         ))}
       </svg>
 
-      {/* 题签 */}
-      <div className="absolute top-[7%] left-[11%] flex h-[60%] w-[23%] justify-center bg-[#ece6d6] p-[2.2cqw] shadow-[0_1px_2px_rgb(0_0_0/0.25)]">
+      {/* 题签（封面图自带标题，不再加题签） */}
+      <div
+        hidden={!!image}
+        className="absolute top-[7%] left-[11%] flex h-[60%] w-[23%] justify-center bg-[#ece6d6] p-[2.2cqw] shadow-[0_1px_2px_rgb(0_0_0/0.25)]"
+      >
         <div className="flex h-full w-full justify-center border border-[#23345a]/25 py-[3cqw]">
           {!compact && (
             <span

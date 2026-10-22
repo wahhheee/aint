@@ -63,6 +63,8 @@ type Env interface {
 	State() map[string]any
 	// UpdateState 原子地执行状态操作（state.Apply）；成功后本回合之后的读取看到新状态，回合提交时写入新快照。
 	UpdateState(ops []state.Op) ([]state.Change, error)
+	// ModelImage 返回发送给主笔模型的图片（按模型的长边上限派生）。
+	ModelImage(ctx context.Context, blob string) (llm.ImageRef, error)
 }
 
 // Result 是一次工具调用的结果。

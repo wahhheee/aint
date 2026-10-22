@@ -10,9 +10,10 @@ description: 你在雾港的邮局醒来，手里攥着一封写给“明天的�
 tags: [悬疑, 群像, 推理]
 content_rating: teen
 license: CC-BY-NC-4.0
+cover: assets/cover.webp
 engine: ">=1.0 <2.0"
 requires:
-  vision: none
+  vision: preferred
 narrator:
   length: medium
   reasoning: low
@@ -37,4 +38,4 @@ presentation:
   stage: true
   text_effects: true  # 开场与演示中用到 <aside>（特效默认关闭，D-23）
 changelog: |
-  0.1.0：内置示例的第一个版本（脚手架阶段：两张场景背景，暂无人物图与音频）。
+  0.1.0：内置示例的第一个版本：两张场景背景、封面、地图、信件扫描件与人物剪影（暂无音频）。

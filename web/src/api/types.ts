@@ -105,6 +105,8 @@ export interface WorkSummary {
   latest: VersionInfo
   save_count: number
   updated_at: number
+  /** 作品提供封面图时的地址；没有时用标题生成排版封面 */
+  cover_url?: string
 }
 
 /** work.FormField（开局表单） */
@@ -333,6 +335,16 @@ export interface Presentation {
     assets: AssetRef[]
     pace: Pace
   }
+}
+
+/** media.Upload（POST /uploads）：玩家上传的图片（服务端已重新编码） */
+export interface Upload {
+  hash: string
+  mime: string
+  width: number
+  height: number
+  size: number
+  url: string
 }
 
 /** runtime.AssetRef：作品素材（作品中的引用写 ID 或路径） */

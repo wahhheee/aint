@@ -114,10 +114,20 @@ func renderMarkup(m *work.Model, fs prompts.FeatureSet) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderAssets 列出素材（20.2）：背景按 ID 列出（供 <scene bg>），其他图片按路径列出（可 read 查看），音频按 ID。
+// renderAssets 列出素材（20.2）：背景按 ID 列出（供 <scene bg>），其他图片写 ID 与路径（<cg src> 用 ID，read 用路径），音频按 ID。
+// 常驻图片已在上下文中，注明以免重复查看。
 func renderAssets(m *work.Model, fs prompts.FeatureSet) string {
+	pinned := map[string]bool{}
+	if fs.Has(prompts.FVision) {
+		for _, a := range m.PinnedImages() {
+			pinned[a.Path] = true
+		}
+	}
 	var bg, images, audio []string
 	for _, a := range m.Assets {
+		if m.IsCover(a) {
+			continue
+		}
 		desc := ""
 		if a.Description != "" {
 			desc = "（" + a.Description + "）"
@@ -126,9 +136,12 @@ func renderAssets(m *work.Model, fs prompts.FeatureSet) string {
 		case a.Kind == "image" && a.Role == "background":
 			bg = append(bg, a.ID+desc)
 		case a.Kind == "image":
-			line := fmt.Sprintf("/work/%s", a.Path)
+			line := fmt.Sprintf("%s：/work/%s", a.ID, a.Path)
 			if a.Description != "" {
 				line += " — " + a.Description
+			}
+			if pinned[a.Path] {
+				line += "（常驻，已在上下文中）"
 			}
 			images = append(images, line)
 		case a.Kind == "audio":

@@ -23,6 +23,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm/fake"
+	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/pkg/logx"
 	"github.com/wahhheee/yanyi/internal/prompts"
@@ -197,15 +198,16 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 		return nil, err
 	}
 	saves := save.NewService(db, blobs, works, tm)
+	images := media.NewStore(db, blobs, filepath.Join(dirs.Cache, "derived"))
 
 	rt := runtime.NewManager(runtime.Deps{
 		Saves: saves, Works: works, Models: providers, Bus: bus,
-		Builder: contextx.NewBuilder(tm), Tools: tools.NewRegistry(), Tmpl: tm,
+		Builder: contextx.NewBuilder(tm, images), Tools: tools.NewRegistry(), Tmpl: tm, Images: images,
 	})
 
 	srv := server.New(server.Deps{
 		Info: info, Bus: bus, Settings: settingsSvc, Works: works, Imports: imports, Saves: saves,
-		Runtime: rt, Providers: providers, Web: web.Dist(),
+		Runtime: rt, Providers: providers, Images: images, Web: web.Dist(),
 	})
 	return &services{server: srv, runtime: rt, tmpl: tm}, nil
 }

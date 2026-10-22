@@ -3,8 +3,10 @@ title: 林舟
 kind: character
 aliases: [阿舟, 林邮差]
 summary: 邮局的年轻邮差，热心但藏着一个秘密
+images: [lin]
 display:
   color: "#3c8d6e"
+  avatar: lin
 ---
 ## 外貌
 瘦高，总穿一件洗得发白的蓝色制服，右手习惯性地揣在口袋里。

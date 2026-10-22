@@ -6,3 +6,16 @@
   id: harbor-night
   description: 夜晚的码头，雾中的灯塔
   role: background
+- path: assets/letters/letter.webp
+  id: letter
+  description: 那封写给“明天的你”的信（扫描件）：行楷竖写，落款被水洇开，邮戳日期是“明日”
+  pin: true
+- path: assets/map/harbor.png
+  id: harbor-map
+  description: 雾港手绘地图：邮局、旧码头、渔市、港外礁石上的灯塔与退潮时可走的石堤
+- path: assets/characters/lin.webp
+  id: lin
+  description: 林舟在雾中的身影：邮差帽、瘦高
+- path: assets/characters/old-chen.webp
+  id: old-chen
+  description: 老陈在雾中的身影：灰呢外套、背微驼

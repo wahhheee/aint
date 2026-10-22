@@ -2,6 +2,7 @@ package work
 
 import (
 	"bytes"
+	"fmt"
 	"path"
 	"regexp"
 	"slices"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/store"
 )
@@ -53,8 +55,8 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.assets()
 	c.templates()
 	c.crossRefs()
+	c.pinnedImages()
 	// TODO(M2-9)：ui/theme.yaml 与 custom.css 校验。
-	// TODO(M2-10)：素材解码校验（E-ASSET）、常驻图片 token 估算（W-PIN-IMAGE）。
 	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
 	return c.m, c.r
 }
@@ -419,6 +421,17 @@ func (c *compiler) assets() {
 		}
 		m := byPath[p]
 		a := Asset{ID: m.ID, Path: p, Kind: kind, Role: m.Role, Description: m.Description, Pin: m.Pin, Blob: c.m.Files[p].Blob}
+		if kind == "image" {
+			data, _ := c.fs.Get(p)
+			info, err := media.Probe(data)
+			if err != nil {
+				if !isLFSPointer(data) { // 指针文件已报告 E-LFS
+					c.r.Errorf(CodeAsset, p, 0, "确认文件完整、扩展名与实际格式一致（支持 png、jpg、webp、gif）", "图片无法解码")
+				}
+				continue
+			}
+			a.Width, a.Height = info.Width, info.Height
+		}
 		if a.ID == "" {
 			a.ID = strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
 		}
@@ -456,7 +469,39 @@ func (c *compiler) crossRefs() {
 		}
 	}
 	c.checkDocLinks()
-	// TODO(M2)：其余素材引用（images、display.avatar）与相对链接的完整性检查。
+	for _, d := range c.m.Docs {
+		for _, ref := range d.Images {
+			if a, ok := c.m.Asset(ref); !ok || a.Kind != "image" {
+				c.r.Errorf(CodeRef, d.Path, 1, "写素材 ID 或 assets/ 下的路径", "images 引用的图片不存在：%s", ref)
+			}
+		}
+		if ref := d.Display.Avatar; ref != "" {
+			if a, ok := c.m.Asset(ref); !ok || a.Kind != "image" {
+				c.r.Errorf(CodeRef, d.Path, 1, "写素材 ID 或 assets/ 下的路径", "display.avatar 引用的图片不存在：%s", ref)
+			}
+		}
+	}
+}
+
+// 常驻图片的建议上限（《03-作品格式规范》18）：张数与发送给模型的长边。
+const (
+	maxPinnedImages = 3
+	pinnedImageEdge = 1568
+)
+
+// pinnedImages 检查常驻图片（W-PIN-IMAGE）：它们每回合都随常驻部分发送，张数多或尺寸大都会增加每回合的成本。
+func (c *compiler) pinnedImages() {
+	pins := c.m.PinnedImages()
+	if len(pins) > maxPinnedImages {
+		c.r.Warnf(CodePinImage, "assets.yaml", 0, "只把每回合都需要看到的图片设为常驻，其余让 AI 需要时用 read 查看",
+			"常驻图片有 %d 张（建议不超过 %d 张）", len(pins), maxPinnedImages)
+	}
+	for _, a := range pins {
+		if max(a.Width, a.Height) > pinnedImageEdge {
+			c.r.Warnf(CodePinImage, a.Path, 0, fmt.Sprintf("发送前会缩放到长边 %d px；预先缩小可以减少导入体积", pinnedImageEdge),
+				"常驻图片尺寸较大（%d×%d）", a.Width, a.Height)
+		}
+	}
 }
 
 func (c *compiler) statePathExists(p string) bool {

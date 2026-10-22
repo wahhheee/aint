@@ -98,6 +98,12 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
                 <span className="text-sm text-ink">{model?.display_name || model?.name || '…'}</span>
               )}
             </div>
+            {/* 作品需要看图而主笔模型不能看图（《02-技术方案》15.1）：提示，但不阻止开始 */}
+            {model && !model.caps.vision && work.requires.vision !== 'none' && (
+              <p className="-mt-2 text-[13px] leading-6 text-warn">
+                {t(work.requires.vision === 'required' ? 'newGame.visionRequired' : 'newGame.visionPreferred')}
+              </p>
+            )}
             <div className="flex items-center justify-between gap-4">
               <Label>{t('newGame.pace')}</Label>
               <ToggleGroup type="single" variant="segmented" size="sm" value={pace} onValueChange={(v) => v && setPace(v)}>

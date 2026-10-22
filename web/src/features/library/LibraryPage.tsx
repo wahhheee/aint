@@ -121,6 +121,7 @@ function ShelfBook({ work }: { work: WorkSummary }) {
         id={work.id}
         title={work.title}
         dev={work.latest.is_dev}
+        image={work.cover_url}
         className="transition-[translate,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-lift"
       />
       <p className="mt-4 truncate font-serif text-[15px] leading-6 font-semibold tracking-[0.04em] text-ink">{work.title}</p>

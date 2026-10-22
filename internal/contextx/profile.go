@@ -45,8 +45,8 @@ func Profile(m *work.Model, st save.Settings, caps llm.Caps, helpersAvailable bo
 	}
 
 	for _, a := range m.Assets {
-		if a.Kind == "font" {
-			continue // 字体只给界面用，不出现在 AI 的资料里
+		if a.Kind == "font" || m.IsCover(a) {
+			continue // 字体与封面只给界面用，不出现在 AI 的资料里
 		}
 		fs[prompts.FAssets] = true
 		set(prompts.FAssetsBG, a.Kind == "image" && a.Role == "background")

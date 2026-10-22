@@ -1,7 +1,10 @@
 package contextx
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/wahhheee/yanyi/internal/llm"
@@ -16,9 +19,15 @@ import (
 
 // Builder 构建模型请求。组装结果（L0、L1、L3）按稳定输入缓存。并发安全。
 type Builder struct {
-	tmpl *tmpl.Engine
+	tmpl   *tmpl.Engine
+	images ImageSource // 常驻图片的派生图；为空时（命令行预览）只保留图片的文字标注
 
 	cache *lru.Cache[string, *prefix]
+}
+
+// ImageSource 提供发送给模型的图片（按模型的长边上限派生，见 media.Store.ForModel）。
+type ImageSource interface {
+	ForModel(ctx context.Context, hash string, maxEdge int) (llm.ImageRef, error)
 }
 
 // prefixCacheSize 是前缀组装结果的缓存条数：每个（作品版本、能力画像、初始状态）一条，
@@ -32,9 +41,9 @@ type prefix struct {
 	fragments []FragmentReport
 }
 
-// NewBuilder 创建构建器。
-func NewBuilder(tm *tmpl.Engine) *Builder {
-	return &Builder{tmpl: tm, cache: lru.New[string, *prefix](prefixCacheSize)}
+// NewBuilder 创建构建器。images 为空时常驻图片只保留文字标注（命令行预览）。
+func NewBuilder(tm *tmpl.Engine, images ImageSource) *Builder {
+	return &Builder{tmpl: tm, images: images, cache: lru.New[string, *prefix](prefixCacheSize)}
 }
 
 // BuildInput 是构建一次请求所需的全部输入。
@@ -60,8 +69,8 @@ type Built struct {
 }
 
 // Build 构建请求：system=[L0][L1]，tools=L2，messages=[L3+L4]…历史…本回合。
-func (b *Builder) Build(in BuildInput) (*Built, error) {
-	p, err := b.prefix(in)
+func (b *Builder) Build(ctx context.Context, in BuildInput) (*Built, error) {
+	p, err := b.prefix(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +115,9 @@ func (b *Builder) Build(in BuildInput) (*Built, error) {
 	return &Built{Request: req, Fragments: p.fragments, PrefixHash: hash}, nil
 }
 
-func (b *Builder) prefix(in BuildInput) (*prefix, error) {
-	key := strings.Join([]string{prompts.Version, in.Work.VersionID, in.Features.Signature(), in.InitialStateHash}, "|")
+func (b *Builder) prefix(ctx context.Context, in BuildInput) (*prefix, error) {
+	key := strings.Join([]string{prompts.Version, in.Work.VersionID, in.Features.Signature(), in.InitialStateHash,
+		strconv.Itoa(in.Model.Caps.ImageMaxEdge)}, "|")
 	if p, ok := b.cache.Get(key); ok {
 		return p, nil
 	}
@@ -125,25 +135,42 @@ func (b *Builder) prefix(in BuildInput) (*prefix, error) {
 
 	p := &prefix{
 		system:    []llm.SystemBlock{{Text: l0}, {Text: l1, CacheMark: true}},
-		l3:        renderL3(in.Work),
+		l3:        b.renderL3(ctx, in),
 		fragments: reports,
 	}
 	b.cache.Put(key, p)
 	return p, nil
 }
 
-// renderL3 渲染常驻资料：load: always 的设定文档正文（按路径排序）。
-// TODO(M2-10)：常驻图片（pin: true 的素材、pin_images 的文档图片）。
-func renderL3(m *work.Model) []llm.Part {
-	var b strings.Builder
-	for _, d := range m.Docs {
+// renderL3 渲染常驻资料：load: always 的设定文档正文（按路径排序），模型能看图时再加上常驻图片
+// （每张图片前一行文字标注路径与说明）。派生失败的图片只记日志、不放进前缀（同一张图片每次都会同样失败，前缀仍然稳定）。
+func (b *Builder) renderL3(ctx context.Context, in BuildInput) []llm.Part {
+	var sb strings.Builder
+	for _, d := range in.Work.Docs {
 		if d.Load != "always" || d.IsIndex {
 			continue
 		}
-		fmt.Fprintf(&b, "<lore path=\"/work/%s\" title=\"%s\">\n%s\n</lore>\n", d.Path, d.Title, strings.TrimSpace(d.Body))
+		fmt.Fprintf(&sb, "<lore path=\"/work/%s\" title=\"%s\">\n%s\n</lore>\n", d.Path, d.Title, strings.TrimSpace(d.Body))
 	}
-	if b.Len() == 0 {
-		return nil
+	var parts []llm.Part
+	if sb.Len() > 0 {
+		parts = append(parts, llm.Text(strings.TrimSpace(sb.String())))
 	}
-	return []llm.Part{llm.Text(strings.TrimSpace(b.String()))}
+	if !in.Features.Has(prompts.FVision) {
+		return parts
+	}
+	for _, a := range in.Work.PinnedImages() {
+		label := fmt.Sprintf("<image path=\"/work/%s\">%s</image>", a.Path, a.Description)
+		if b.images == nil {
+			parts = append(parts, llm.Text(label))
+			continue
+		}
+		ref, err := b.images.ForModel(ctx, a.Blob, in.Model.Caps.ImageMaxEdge)
+		if err != nil {
+			slog.WarnContext(ctx, "常驻图片无法发送给模型", "path", a.Path, "err", err)
+			continue
+		}
+		parts = append(parts, llm.Text(label), llm.Part{Kind: llm.PartImage, Image: &ref})
+	}
+	return parts
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/pkg/logx"
@@ -48,6 +49,7 @@ type Deps struct {
 	Builder *contextx.Builder
 	Tools   *tools.Registry
 	Tmpl    *tmpl.Engine
+	Images  *media.Store // 发送给模型的图片派生、玩家上传
 	Budget  Budget
 }
 
@@ -210,10 +212,16 @@ func (m *Manager) publish(saveID, typ string, data any) {
 	m.d.Bus.Publish(event.SaveTopic(saveID), typ, data)
 }
 
+// MaxAttachments 是一次输入最多附带的图片数。
+const MaxAttachments = 6
+
 func validateInput(in save.TurnInput) error {
+	if len(in.Attachments) > MaxAttachments {
+		return errs.Invalid("一次最多附带 %d 张图片", MaxAttachments)
+	}
 	switch in.Kind {
 	case save.InputFree, save.InputOOC:
-		if in.Text == "" {
+		if in.Text == "" && (in.Kind == save.InputOOC || len(in.Attachments) == 0) {
 			return errs.Invalid("输入内容为空")
 		}
 	case save.InputChoice:

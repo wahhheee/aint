@@ -89,6 +89,16 @@ CREATE VIRTUAL TABLE transcript_fts USING fts5(
   text, node_id UNINDEXED, save_id UNINDEXED, tokenize = 'trigram'
 );
 
+-- 玩家上传的图片（已重新编码，内容在 blobs）。回合输入的附件只能引用登记在这里的图片。
+CREATE TABLE uploads (
+  hash       TEXT PRIMARY KEY REFERENCES blobs(hash),
+  mime       TEXT NOT NULL,
+  width      INTEGER NOT NULL,
+  height     INTEGER NOT NULL,
+  size       INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE providers (
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL,

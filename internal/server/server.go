@@ -19,6 +19,7 @@ import (
 
 	"github.com/wahhheee/yanyi/internal/buildinfo"
 	"github.com/wahhheee/yanyi/internal/event"
+	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/provider"
 	"github.com/wahhheee/yanyi/internal/runtime"
 	"github.com/wahhheee/yanyi/internal/save"
@@ -49,7 +50,8 @@ type Deps struct {
 	Saves     *save.Service
 	Runtime   *runtime.Manager
 	Providers *provider.Service
-	Web       fs.FS // 前端静态资源（web.Dist()）
+	Images    *media.Store // 玩家上传、缩略图
+	Web       fs.FS        // 前端静态资源（web.Dist()）
 }
 
 // Server 是 HTTP 服务。

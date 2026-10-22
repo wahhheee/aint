@@ -121,20 +121,18 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
     return () => window.removeEventListener('keydown', onKey)
   }, [busy, actions])
 
-  const runCommand = useCallback(
-    (text: string, confirmed?: boolean) => void actions.submitText(text, undefined, undefined, confirmed),
-    [actions],
-  )
+  const runCommand = useCallback((text: string, confirmed?: boolean) => void actions.submitText(text, { confirmed }), [actions])
   const ctx = useMemo<ReaderContextValue>(
     () => ({
       saveId,
       ui,
+      vision: presentation.model.vision,
       reading,
       choose: (item) => void actions.choose(item),
       focusInput: () => dockRef.current?.focus(),
       runCommand,
     }),
-    [saveId, ui, reading, actions, runCommand],
+    [saveId, ui, presentation.model.vision, reading, actions, runCommand],
   )
 
   // 舞台背景：进度线上（含进行中的回合）最近一次 <scene bg>

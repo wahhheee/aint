@@ -1,12 +1,14 @@
 package runtime
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/state"
@@ -34,6 +36,7 @@ type draft struct {
 	model    *llm.Model
 	built    *contextx.Built
 	vfs      *vfs.Table   // 本回合的挂载表（buildVFS）
+	images   *media.Store // 发送给模型的图片（read 看图）
 	memory   *vfs.Overlay // 记忆覆盖层（写入随 M3-2；提交时 Dirty 才生成新清单）
 
 	// 状态：以父节点快照为起点，update_state 成功后整体替换（state.Apply 不修改原映射，读取方拿到的快照不会再变）
@@ -80,6 +83,10 @@ func (d *draft) ShowCard(item save.DisplayItem) {
 }
 
 func (d *draft) State() map[string]any { return d.state }
+
+func (d *draft) ModelImage(ctx context.Context, blob string) (llm.ImageRef, error) {
+	return d.images.ForModel(ctx, blob, d.model.Caps.ImageMaxEdge)
+}
 
 func (d *draft) UpdateState(ops []state.Op) ([]state.Change, error) {
 	next, changes, err := state.Apply(d.work.State, d.state, ops)

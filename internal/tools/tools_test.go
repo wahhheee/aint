@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
@@ -28,6 +29,9 @@ func (e *fakeEnv) OfferChoices(save.DisplayItem)  {}
 func (e *fakeEnv) ShowCard(item save.DisplayItem) { e.cards = append(e.cards, item) }
 func (e *fakeEnv) VFS() vfs.FS                    { return nil }
 func (e *fakeEnv) State() map[string]any          { return e.st }
+func (e *fakeEnv) ModelImage(_ context.Context, blob string) (llm.ImageRef, error) {
+	return llm.ImageRef{Blob: blob, MIME: "image/png"}, nil
+}
 func (e *fakeEnv) UpdateState(ops []state.Op) ([]state.Change, error) {
 	next, changes, err := state.Apply(e.w.State, e.st, ops)
 	if err == nil {

@@ -22,6 +22,10 @@ type Envelope struct {
 	Notes       []string
 	Pace        string // 生效的篇幅档位
 	PendingCall string // 上一回合未作答的 offer_choices 调用 ID
+	// Uploads 是本回合附带的图片在 /uploads 中的路径；Images 是发送给模型的图片（与 Uploads 一一对应，
+	// 模型不能看图时为空，只写文字说明）。
+	Uploads []string
+	Images  []llm.ImageRef
 }
 
 // Message 生成本回合的 user 消息。
@@ -54,9 +58,18 @@ func (e Envelope) Message(fs prompts.FeatureSet) llm.Message {
 		}
 		fmt.Fprintf(&b, "<input%s>\n%s\n</input>\n", attrs, e.inputText())
 	}
+	if n := len(e.Uploads); n > 0 {
+		if len(e.Images) == n {
+			fmt.Fprintf(&b, "<attachments>玩家附带了 %d 张图片（%s），见下方。</attachments>\n", n, strings.Join(e.Uploads, "、"))
+		} else {
+			fmt.Fprintf(&b, "<attachments>玩家附带了 %d 张图片，当前模型不能看图，可以请玩家用文字描述。</attachments>\n", n)
+		}
+	}
 	fmt.Fprintf(&b, "<pace>本回合篇幅：%s</pace>", PaceText(e.Pace))
 	parts = append(parts, llm.Text(b.String()))
-	// TODO(M2-10)：玩家上传的图片（Input.Attachments）作为图片块随输入发送；非视觉模型改为文字说明。
+	for i := range e.Images {
+		parts = append(parts, llm.Part{Kind: llm.PartImage, Image: &e.Images[i]})
+	}
 	return llm.Message{Role: llm.RoleUser, Parts: parts}
 }
 

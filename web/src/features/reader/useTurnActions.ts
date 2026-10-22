@@ -12,6 +12,7 @@ import { confirmAction } from '@/components/common/confirm'
 import { useReader } from '@/stores/reader'
 
 import { parseInput } from './commands'
+import type { SubmitOptions } from './input/InputDock'
 
 export function useTurnActions(saveId: string, commands: Command[]) {
   const { t } = useTranslation()
@@ -37,11 +38,11 @@ export function useTurnActions(saveId: string, commands: Command[]) {
   )
 
   /**
-   * 提交输入栏文字（含斜杠命令）；返回 true 表示已提交，可以清空输入框。
+   * 提交输入栏文字（含斜杠命令）与附件；返回 true 表示已提交，可以清空输入框。
    * 作品命令带 confirm 时先确认（输入模式除外：玩家已主动选择了这个模式）；confirmed 表示调用方已经确认过。
    */
   const submitText = useCallback(
-    async (text: string, mode?: string, pace?: string, confirmed = false) => {
+    async (text: string, { mode, pace, attachments, confirmed = false }: SubmitOptions = {}) => {
       const r = parseInput(text, commands, mode)
       if (!r.ok) {
         toast.error(
@@ -57,7 +58,7 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         return true
       }
       if (!confirmed && !(await confirmCommand(r.input, commands))) return false
-      return submit(pace ? { ...r.input, pace } : r.input)
+      return submit({ ...r.input, ...(pace && { pace }), ...(attachments && { attachments }) })
     },
     [commands, submit, t],
   )

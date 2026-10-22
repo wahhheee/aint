@@ -133,6 +133,20 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 		env.Text = in.Text
 	}
 	env.PendingCall = pendingChoiceCall(history)
+	uploads, err := m.uploads(ctx, line, in.Attachments, turnNo+1)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range uploads.current {
+		env.Uploads = append(env.Uploads, u.Path)
+		if features.Has(prompts.FVision) {
+			ref, err := m.d.Images.ForModel(ctx, u.Blob, model.Caps.ImageMaxEdge)
+			if err != nil {
+				return nil, errs.Invalid("附带的图片无法读取：%v", err)
+			}
+			env.Images = append(env.Images, ref)
+		}
+	}
 
 	// 阶段块：目前只有第 0 阶段（开局）。TODO(M3-6)：整理后使用最近一个 compaction 节点的阶段块。
 	memIndex, err := m.d.Saves.MemoryIndex(ctx, root.MemoryHash)
@@ -141,7 +155,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 	}
 	epoch := contextx.RenderEpoch0(features, w.State, initState, memIndex)
 
-	built, err := m.d.Builder.Build(contextx.BuildInput{
+	built, err := m.d.Builder.Build(ctx, contextx.BuildInput{
 		SaveID: sv.ID, Work: w, Features: features, Model: model, Settings: sv.Settings,
 		InitialState: initState, InitialStateHash: root.StateHash, Epoch: epoch,
 		Tools: m.d.Tools.Specs(features, w), History: history, Turn: env.Message(features),
@@ -150,7 +164,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 		return nil, err
 	}
 
-	fsys, memory, err := m.buildVFS(ctx, w, features, head)
+	fsys, memory, err := m.buildVFS(ctx, w, features, head, uploads.all)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +172,8 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 	d := &draft{
 		id: turnID, started: time.Now(), save: sv, parent: head, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
-		state: headState,
-		req:   built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
+		state: headState, images: m.d.Images,
+		req: built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
 	}
 	if item, ok := inputDisplay(env); ok {
 		d.display = append(d.display, item)

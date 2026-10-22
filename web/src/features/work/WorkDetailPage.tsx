@@ -52,7 +52,7 @@ export function WorkDetailPage() {
       <Breadcrumb title={w.title} />
 
       <div className="grid gap-8 sm:grid-cols-[176px_minmax(0,1fr)] md:grid-cols-[208px_minmax(0,1fr)] md:gap-12">
-        <WorkCover id={w.id} title={w.title} dev={w.latest.is_dev} className="w-40 sm:w-full" />
+        <WorkCover id={w.id} title={w.title} dev={w.latest.is_dev} image={w.cover_url} className="w-40 sm:w-full" />
         <div className="min-w-0">
           <h1 className="title-book text-[32px] leading-[1.25] tracking-[0.1em] md:text-[36px]">{w.title}</h1>
           {w.subtitle && <p className="mt-2 font-serif text-base leading-7 text-ink-muted">{w.subtitle}</p>}

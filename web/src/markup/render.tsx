@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 
 import { WorkIcon } from '@/components/common/WorkIcon'
 
-import { MarkupContext, type MarkupContextValue } from './context'
+import { findAsset, MarkupContext, type MarkupContextValue } from './context'
 import { MarkupParser, type Block, type Inline } from './parse'
 import { workTagClasses } from './workStyles'
 
@@ -42,8 +42,8 @@ function renderBlock(b: Block, ctx: MarkupContextValue, isDraftTail: boolean): R
         </div>
       )
     case 'cg': {
-      const a = ctx.assets.get(b.attrs.src ?? '')
-      if (!a) return null
+      const a = findAsset(b.attrs.src, ctx)
+      if (a?.kind !== 'image') return null
       // TODO(M5-2)：点击全屏查看
       return (
         <figure className="cg-card">

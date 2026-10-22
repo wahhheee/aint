@@ -1,6 +1,7 @@
 package contextx_test
 
 import (
+	"context"
 	"io/fs"
 	"regexp"
 	"slices"
@@ -34,9 +35,9 @@ func build(t *testing.T, name string, caps llm.Caps) (*contextx.Built, prompts.F
 	model := fake.Model()
 	model.Caps = caps
 	st := m.State.Defaults()
-	b := contextx.NewBuilder(tmpl.New())
+	b := contextx.NewBuilder(tmpl.New(), nil)
 	env := contextx.Envelope{Input: save.TurnInput{Kind: save.InputFree}, Text: "推开门", Pace: "medium"}
-	built, err := b.Build(contextx.BuildInput{
+	built, err := b.Build(context.Background(), contextx.BuildInput{
 		SaveID: "s1", Work: m, Features: features, Model: model, Settings: settings,
 		InitialState: st, InitialStateHash: "h", Tools: tools.NewRegistry().Specs(features, m),
 		Turn: env.Message(features),
