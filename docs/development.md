@@ -27,6 +27,19 @@ task dev
 - 改了 Go 代码需要重启后端（`task dev:server`）；VS Code 用户可以直接用 `.vscode/launch.json` 里的配置断点调试。
 - 只想看构建后的效果：`task build`，然后运行 `bin/yanyi --data .devdata --fake-llm demo`。
 
+### 2.1 使用真实模型
+
+```bash
+task dev:server:real
+```
+
+- 在设置 → 模型中添加供应商（协议、Base URL、API Key），勾选或手动添加模型，向导最后会做一次连接测试（真实调用，会产生少量费用）。
+  第一个添加的模型自动设为主笔。密钥只写入 `.devdata/secrets.json`，不进数据库、不发给浏览器。
+- 中转站：Base URL 按站点文档填写（OpenAI 协议一般以 `/v1` 结尾）；有分组倍率时填在供应商的"价格倍率"里，模型单价照抄站点标价。
+- DeepSeek 建议用 Responses 协议接入（Anthropic 兼容接口在多轮工具调用上不可靠，见 [api-verification.md](notes/api-verification.md)）。
+- `--trace-llm` 除中立追踪外，还会把**协议原始请求与响应**写到 `<数据目录>/logs/llm-trace/raw/`（鉴权头脱敏），
+  排查"适配器发出去的到底是什么"、制作回放夹具都用它。
+
 ## 3. 调试手册
 
 ### 3.1 日志
@@ -88,7 +101,8 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 | 请求返回 403"请通过 IP 地址或 localhost 访问" | Host 校验（防 DNS 重绑定）：用 `127.0.0.1` 或 `localhost` 访问 |
 | 请求返回 403"跨站请求已被拒绝" | 有副作用的请求 Origin 与 Host 不一致；Vite 代理需保持 `changeOrigin: false` |
 | 从仓库根执行 `pnpm -C web …` 报"configured to use yarn" | 上层目录的 `package.json` 声明了别的包管理器：进入 `web/` 再执行，或用 `task` |
-| 回合返回"功能尚未实现：…适配器" | 真实模型适配器尚未实现（M0/M4），请用 `--fake-llm` |
+| 连接测试"模型列表"一项显示跳过 | 不少兼容接口不提供模型列表，不影响使用；手动填写模型 ID 即可 |
+| 回合失败"请求被模型服务拒绝" | 看 `<数据目录>/logs/llm-trace/raw/` 中该次请求的 `.resp.txt`：中转站常把上游故障也返回成 400；用 curl 重放 `.req.json` 可以判断是请求问题还是上游问题 |
 | 拉取新代码后启动报迁移错误，或数据表缺列 | 首次发布前 `0001_init.sql` 会被直接修改：删除 `.devdata/` 重建 |
 | 接口返回 501，或 AI 说"…暂时不可用" | 功能尚未实现。501 的错误信息里带任务编号；工具的编号写在 `tools/builtins.go` 的 `notYet` 调用中。到 [progress.md](progress.md) 查状态 |
 
@@ -98,9 +112,14 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 task test
 ```
 
-- Go：单元测试与竖切测试（`internal/runtime/runtime_test.go` 用假模型跑完整回合）。测试使用 `t.TempDir()` 中的独立数据库。
-- 前端：Vitest（解析器、事件 reducer、命令解析）。
-- 尚缺：跨回合前缀稳定性（M0-6）、杀进程（M1-12）、分支隔离（M3-10）、Playwright 端到端（M5-12）。完整情况见 [progress.md](progress.md) 第 6 节。
+- Go：单元测试与竖切测试（`internal/runtime/runtime_test.go` 用假模型跑完整回合）；跨回合前缀稳定性（`runtime/prefix_test.go`）；
+  杀进程测试（`runtime/crash_test.go`，重新执行测试二进制作为子进程）；协议适配器用真实录制的 SSE 夹具回放（`internal/llm/*/testdata/`）。
+  测试使用 `t.TempDir()` 中的独立数据库。
+- 前端：Vitest（叙事标记与共享向量 `testdata/markup/`、事件 reducer、命令解析、导入、供应商设置）。
+- 真实模型冒烟测试（会产生费用，默认跳过）：在 `.local/secrets/live.json`（不入库）写好供应商，
+  `YANYI_LIVE=<live.json 的绝对路径> go test ./internal/provider -run TestLive -v`；`YANYI_LIVE_ONLY=名称` 只跑某一个，
+  `YANYI_LIVE_TRACE=<目录>` 同时录制原始报文。
+- 尚缺：分支隔离（M3-10）、Playwright 端到端（M5-12）。完整情况见 [progress.md](progress.md) 第 6 节。
 
 ## 5. 构建与发布
 
