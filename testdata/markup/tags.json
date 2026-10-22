@@ -1,0 +1,209 @@
+{
+  "description": "标签：全部内置标签（技术方案 16.2）与作品样式标签；段首 <scene/>、<cg/> 提升为块级，整段 <aside> 为旁白段落；空元素；嵌套与自动闭合；白名单外与未启用的标签按原文显示（D-21）",
+  "tags": ["scene", "cg", "say", "bgm", "sfx", "pause", "fx", "aside", "act", "gold", "hypo", "red-truth"],
+  "cases": [
+    {
+      "name": "段首的场景切换提升为块级",
+      "input": "<scene bg=\"harbor\" title=\"序章\" transition=\"fade\"/>雾很浓。",
+      "ast": [["scene", {"bg": "harbor", "title": "序章", "transition": "fade"}], ["p", "雾很浓。"]],
+      "plain": "序章\n雾很浓。"
+    },
+    {
+      "name": "只有场景切换的一行",
+      "input": "<scene bg=\"harbor\"/>",
+      "ast": [["scene", {"bg": "harbor"}]],
+      "plain": ""
+    },
+    {
+      "name": "没有属性的场景切换",
+      "input": "<scene/>",
+      "ast": [["scene"]]
+    },
+    {
+      "name": "连续的段首场景与插图都提升，其后的空白去掉",
+      "input": "<scene bg=\"a\"/> <cg src=\"lighthouse\" caption=\"灯塔\"/>　灯亮了。",
+      "ast": [["scene", {"bg": "a"}], ["cg", {"src": "lighthouse", "caption": "灯塔"}], ["p", "灯亮了。"]],
+      "plain": "灯塔\n灯亮了。"
+    },
+    {
+      "name": "段落中间的插图不提升",
+      "input": "他抬头，<cg src=\"lighthouse\" caption=\"灯塔\"/>灯亮了。",
+      "ast": [["p", "他抬头，", ["<cg>", {"src": "lighthouse", "caption": "灯塔"}], "灯亮了。"]],
+      "plain": "他抬头，灯亮了。"
+    },
+    {
+      "name": "空元素不写 / 也按自闭合处理，它们的结束标签忽略",
+      "input": "<scene bg=\"a\">序章</scene>",
+      "ast": [["scene", {"bg": "a"}], ["p", "序章"]]
+    },
+    {
+      "name": "音乐、音效与停顿是行内的空元素",
+      "input": "<bgm src=\"rain\" volume=\"0.6\"/>雨声渐密。<sfx src=\"thunder\"/><pause ms=\"800\"/>他开口了。",
+      "ast": [["p", ["<bgm>", {"src": "rain", "volume": "0.6"}], "雨声渐密。", ["<sfx>", {"src": "thunder"}], ["<pause>", {"ms": "800"}], "他开口了。"]],
+      "plain": "雨声渐密。他开口了。"
+    },
+    {
+      "name": "停止音乐",
+      "input": "<bgm stop=\"true\"/>",
+      "ast": [["p", ["<bgm>", {"stop": "true"}]]],
+      "plain": ""
+    },
+    {
+      "name": "台词",
+      "input": "<say who=\"林舟\" mood=\"冷淡\">「你来了。」</say>",
+      "ast": [["p", ["<say>", {"who": "林舟", "mood": "冷淡"}, "「你来了。」"]]],
+      "plain": "林舟：「你来了。」"
+    },
+    {
+      "name": "台词前后的叙述",
+      "input": "老陈放下杯子。<say who=\"laochen\">「坐。」</say>他说。",
+      "ast": [["p", "老陈放下杯子。", ["<say>", {"who": "laochen"}, "「坐。」"], "他说。"]],
+      "plain": "老陈放下杯子。laochen：「坐。」他说。"
+    },
+    {
+      "name": "没有 who 的台词",
+      "input": "<say>「谁？」</say>",
+      "ast": [["p", ["<say>", "「谁？」"]]],
+      "plain": "「谁？」"
+    },
+    {
+      "name": "文字特效",
+      "input": "<fx type=\"shake\">轰——</fx>门开了。",
+      "ast": [["p", ["<fx>", {"type": "shake"}, "轰——"], "门开了。"]],
+      "plain": "轰——门开了。"
+    },
+    {
+      "name": "整段旁白",
+      "input": "<aside>远处传来汽笛声。</aside>",
+      "ast": [["aside", "远处传来汽笛声。"]],
+      "plain": "远处传来汽笛声。"
+    },
+    {
+      "name": "整段旁白中的行内标记",
+      "input": "<aside>汽笛声**三长一短**。</aside>",
+      "ast": [["aside", "汽笛声", ["**", "三长一短"], "。"]]
+    },
+    {
+      "name": "没有写结束标签的整段旁白",
+      "input": "<aside>远处传来汽笛声。",
+      "ast": [["aside", "远处传来汽笛声。"]]
+    },
+    {
+      "name": "段落中的旁白",
+      "input": "他没有回答。<aside>（雨更大了）</aside>",
+      "ast": [["p", "他没有回答。", ["<aside>", "（雨更大了）"]]]
+    },
+    {
+      "name": "两段旁白不提升",
+      "input": "<aside>甲</aside><aside>乙</aside>",
+      "ast": [["p", ["<aside>", "甲"], ["<aside>", "乙"]]]
+    },
+    {
+      "name": "可点击词（P1）",
+      "input": "你可以<act cmd=\"look 灯塔\">看看灯塔</act>，或者<act fill=\"我想\">说点什么</act>。",
+      "ast": [["p", "你可以", ["<act>", {"cmd": "look 灯塔"}, "看看灯塔"], "，或者", ["<act>", {"fill": "我想"}, "说点什么"], "。"]],
+      "plain": "你可以看看灯塔，或者说点什么。"
+    },
+    {
+      "name": "作品样式标签",
+      "input": "<gold>灯塔守望者在午夜前没有离开过灯室。</gold>",
+      "ast": [["p", ["<gold>", "灯塔守望者在午夜前没有离开过灯室。"]]],
+      "plain": "灯塔守望者在午夜前没有离开过灯室。"
+    },
+    {
+      "name": "标签名可含连字符，必须完整匹配",
+      "input": "<red-truth>犯人不在岛上。</red-truth><golden>金</golden>",
+      "ast": [["p", ["<red-truth>", "犯人不在岛上。"], ["raw", "<golden>"], "金", ["raw", "</golden>"]]]
+    },
+    {
+      "name": "嵌套",
+      "input": "<say who=\"林舟\"><fx type=\"whisper\"><gold>他不是人</gold></fx></say>",
+      "ast": [["p", ["<say>", {"who": "林舟"}, ["<fx>", {"type": "whisper"}, ["<gold>", "他不是人"]]]]],
+      "plain": "林舟：他不是人"
+    },
+    {
+      "name": "嵌套最多 4 层：更深的开始标签与对应的结束标签忽略，内容照常显示",
+      "input": "<say><fx><gold><hypo><aside>五</aside></hypo></gold></fx></say>",
+      "ast": [["p", ["<say>", ["<fx>", ["<gold>", ["<hypo>", "五"]]]]]]
+    },
+    {
+      "name": "空元素不受嵌套层数限制",
+      "input": "<say><fx><gold><hypo>前<pause ms=\"300\"/>后</hypo></gold></fx></say>",
+      "ast": [["p", ["<say>", ["<fx>", ["<gold>", ["<hypo>", "前", ["<pause>", {"ms": "300"}], "后"]]]]]]
+    },
+    {
+      "name": "行内标签在段落结束时自动闭合，不影响下一段",
+      "input": ["<gold>老陈在午夜前", "下一段</gold>"],
+      "ast": [["p", ["<gold>", "老陈在午夜前"]], ["p", "下一段"]]
+    },
+    {
+      "name": "结束标签闭合最近的同名元素，其中未闭合的元素随之闭合",
+      "input": "<gold>甲<hypo>乙</gold>丙</hypo>",
+      "ast": [["p", ["<gold>", "甲", ["<hypo>", "乙"]], "丙"]]
+    },
+    {
+      "name": "交错嵌套",
+      "input": "<gold><hypo>甲</gold>乙</hypo>",
+      "ast": [["p", ["<gold>", ["<hypo>", "甲"]], "乙"]]
+    },
+    {
+      "name": "同名嵌套",
+      "input": "<gold>外<gold>内</gold>外</gold>",
+      "ast": [["p", ["<gold>", "外", ["<gold>", "内"], "外"]]]
+    },
+    {
+      "name": "找不到开始标签的结束标签忽略（前后的文字连在一起）",
+      "input": "前文</gold></say>后文",
+      "ast": [["p", "前文后文"]]
+    },
+    {
+      "name": "自闭合的普通标签",
+      "input": "<gold/>与<gold />",
+      "ast": [["p", ["<gold>"], "与", ["<gold>"]]]
+    },
+    {
+      "name": "结束标签上的属性忽略",
+      "input": "<gold>甲</gold x=\"1\">乙",
+      "ast": [["p", ["<gold>", "甲"], "乙"]]
+    },
+    {
+      "name": "标签与中文标点",
+      "input": "「<gold>是你</gold>」——他说，<hypo>……也许</hypo>。",
+      "ast": [["p", "「", ["<gold>", "是你"], "」——他说，", ["<hypo>", "……也许"], "。"]]
+    },
+    {
+      "name": "白名单外的标签按原文显示",
+      "input": "他说<unknown a=\"1\">什么</unknown>",
+      "ast": [["p", "他说", ["raw", "<unknown a=\"1\">"], "什么", ["raw", "</unknown>"]]],
+      "plain": "他说<unknown a=\"1\">什么</unknown>"
+    },
+    {
+      "name": "未启用的内置标签按原文显示（D-21）",
+      "tags": ["gold"],
+      "input": "<say who=\"林舟\">「走。」</say><pause ms=\"500\"/>",
+      "ast": [["p", ["raw", "<say who=\"林舟\">"], "「走。」", ["raw", "</say>"], ["raw", "<pause ms=\"500\"/>"]]]
+    },
+    {
+      "name": "未启用的场景切换不提升",
+      "tags": ["gold"],
+      "input": "<scene bg=\"a\"/>雾。",
+      "ast": [["p", ["raw", "<scene bg=\"a\"/>"], "雾。"]]
+    },
+    {
+      "name": "未启用的旁白不提升",
+      "tags": [],
+      "input": "<aside>汽笛</aside>",
+      "ast": [["p", ["raw", "<aside>"], "汽笛", ["raw", "</aside>"]]]
+    },
+    {
+      "name": "名称不合法的不是标签，按文字显示",
+      "input": "<Gold>大写</Gold>、<1a>、<-x>、< gold>、<gold!>、<>",
+      "ast": [["p", "<Gold>大写</Gold>、<1a>、<-x>、< gold>、<gold!>、<>"]]
+    },
+    {
+      "name": "标签不跨行",
+      "input": ["<gold", "title=\"x\">文字"],
+      "ast": [["p", "<gold"], ["p", "title=\"x\">文字"]]
+    }
+  ]
+}

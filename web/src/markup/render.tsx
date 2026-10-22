@@ -1,28 +1,43 @@
 /**
  * 叙事标记 AST → React（《02-技术方案》16.2，《04-交互与界面设计》8.4）。
  */
-import { Fragment, useContext, useMemo, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, memo, useContext, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { WorkIcon } from '@/components/common/WorkIcon'
 
 import { MarkupContext, type MarkupContextValue } from './context'
-import { parseMarkup, type Block, type Inline } from './parse'
+import { MarkupParser, type Block, type Inline } from './parse'
 import { workTagClasses } from './workStyles'
 
-/** 渲染一段叙事标记源码。drafting：流式中，最后一段带光标。 */
+/**
+ * 渲染一段叙事标记源码。drafting：流式中，最后一段带光标。
+ *
+ * 流式中 source 每帧变长：增量解析器只重新解析尾部，已完成的块保持同一个对象，
+ * BlockView 据此跳过重渲染——一万字的长回合每帧也只更新最后一段。
+ */
 export function Markup({ source, drafting = false }: { source: string; drafting?: boolean }) {
   const ctx = useContext(MarkupContext)
-  const blocks = useMemo(() => parseMarkup(source, { tags: ctx.tags, drafting }), [source, ctx.tags, drafting])
-  return <>{blocks.map((b, i) => renderBlock(b, i, ctx, drafting && i === blocks.length - 1))}</>
+  const parser = useMemo(() => new MarkupParser(ctx.tags), [ctx.tags])
+  const blocks = useMemo(() => parser.parse(source, drafting), [parser, source, drafting])
+  return <Blocks blocks={blocks} drafting={drafting} />
 }
 
-function renderBlock(b: Block, key: number, ctx: MarkupContextValue, isDraftTail: boolean): ReactNode {
+function Blocks({ blocks, drafting }: { blocks: Block[]; drafting: boolean }) {
+  return blocks.map((b, i) => <BlockView key={i} block={b} isDraftTail={drafting && i === blocks.length - 1} />)
+}
+
+const BlockView = memo(function BlockView({ block, isDraftTail }: { block: Block; isDraftTail: boolean }) {
+  const ctx = useContext(MarkupContext)
+  return renderBlock(block, ctx, isDraftTail)
+})
+
+function renderBlock(b: Block, ctx: MarkupContextValue, isDraftTail: boolean): ReactNode {
   const tail = isDraftTail ? 'is-drafting' : undefined
   switch (b.type) {
     case 'divider':
       return (
-        <div key={key} className="scene-divider" role="separator" aria-hidden>
+        <div className="scene-divider" role="separator" aria-hidden>
           ◇
         </div>
       )
@@ -31,7 +46,7 @@ function renderBlock(b: Block, key: number, ctx: MarkupContextValue, isDraftTail
       if (!a) return null
       // TODO(M5-2)：点击全屏查看
       return (
-        <figure key={key} className="cg-card">
+        <figure className="cg-card">
           <img src={a.url} alt={b.attrs.caption ?? a.description ?? ''} loading="lazy" />
           {b.attrs.caption && <figcaption>{b.attrs.caption}</figcaption>}
         </figure>
@@ -39,31 +54,19 @@ function renderBlock(b: Block, key: number, ctx: MarkupContextValue, isDraftTail
     }
     case 'scene':
       // 背景切换由舞台层负责（features/reader/stage），这里只显示标题卡。TODO(M5-2)：转场（fade / cut / blur）。
-      return b.attrs.title ? (
-        <h3 key={key} className="scene-title">
-          {b.attrs.title}
-        </h3>
-      ) : null
+      return b.attrs.title ? <h3 className="scene-title">{b.attrs.title}</h3> : null
     case 'quote':
-      return (
-        <blockquote key={key} className={tail}>
-          {renderInline(b.children, ctx)}
-        </blockquote>
-      )
+      return <blockquote className={tail}>{renderInline(b.children, ctx)}</blockquote>
     case 'aside':
-      return (
-        <p key={key} className={`mk-aside mk-aside-block ${tail ?? ''}`}>
-          {renderInline(b.children, ctx)}
-        </p>
-      )
+      return <p className={`mk-aside mk-aside-block ${tail ?? ''}`}>{renderInline(b.children, ctx)}</p>
     case 'p':
-      return (
-        <p key={key} className={tail}>
-          {renderInline(b.children, ctx)}
-        </p>
-      )
+      return <p className={tail}>{renderInline(b.children, ctx)}</p>
     case 'ooc':
-      return <OOCBlock key={key}>{b.children.map((c, i) => renderBlock(c, i, ctx, isDraftTail && i === b.children.length - 1))}</OOCBlock>
+      return (
+        <OOCBlock>
+          <Blocks blocks={b.children} drafting={isDraftTail} />
+        </OOCBlock>
+      )
   }
 }
 
