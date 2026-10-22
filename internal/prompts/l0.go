@@ -20,7 +20,7 @@ var L0 = []Fragment{
 	{ID: "res.uploads", Section: "资料", When: Requires(FVision), Text: `- 玩家上传的图片在 /uploads，用 read 打开即可看到。`},
 	{ID: "res.recall", Section: "资料", Text: `- 回忆细节时，可以先看 /memory，再 search /transcript；查不到的部分按"不确定"来处理。`},
 
-	{ID: "write.direct", Section: "写作", Text: `- 正文直接输出，不需要输出正文无关的内容。`},
+	{ID: "write.direct", Section: "写作", Text: `- 正文直接输出，不需要输出正文无关的内容。工具直接调用即可，正文里不需要写出工具名或参数。`},
 	{ID: "write.tags", Section: "写作", When: Requires(FTags), Text: `- 需要特殊呈现时，可以使用"叙事标记"一节中的标签。`},
 	{ID: "write.pace", Section: "写作", Text: `- 篇幅参考玩家消息末尾的 <pace>。一个回合可以写很多段，中途随时可以调用工具，写完再交还决定权。`},
 	{ID: "write.dice", Section: "写作", When: Requires(FDice), Text: `- 需要随机结果时，可以用 roll_dice 掷骰，再按结果写出相应的正文。`},
@@ -35,9 +35,9 @@ var L0 = []Fragment{
 	{ID: "memory.layout", Section: "记忆", Text: `- 可以这样组织：/memory/index.md 是总索引（每个文件一行说明）；chronicle/ 放章节纪要（关键事件与回合号）；characters/ 放人物的现状、关系与认知；threads/ 放伏笔、承诺与悬念（写明埋设回合与打算如何回收）；world/ 放游玩中新确立的设定；player.md 记玩家的偏好与选择倾向。{{if has "memory.guide"}}作品在"记忆约定"中另有安排时，以作品为准。{{end}}`},
 
 	{ID: "handoff.free", Section: "交还决定权", When: Requires(FFreeInput),
-		Text: `- 一段叙事告一段落、需要玩家决定时，可以调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，随后结束本回合；玩家也可以自由输入。暂时没有合适的选项时，写完直接结束即可。`},
+		Text: `- 一段叙事告一段落、需要玩家决定时，可以调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，随后结束本回合。选项会以按钮显示给玩家，正文里不需要再列出；玩家也可以自由输入。暂时没有合适的选项时，写完直接结束即可。`},
 	{ID: "handoff.forced", Section: "交还决定权", When: Cond{None: []Feature{FFreeInput}},
-		Text: `- 每个回合的结尾，请调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，玩家通过选项{{if has "commands"}}和命令{{end}}行动。`},
+		Text: `- 每个回合的结尾，请调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，玩家通过选项{{if has "commands"}}和命令{{end}}行动。选项会以按钮显示给玩家，正文里不需要再列出。`},
 	{ID: "handoff.command", Section: "交还决定权", When: Requires(FCommands), Text: `- 选项可以附带命令（command），玩家选中时会执行该命令。`},
 	{ID: "handoff.timed", Section: "交还决定权", When: Requires(FTimed), Text: `- 情势紧迫时，可以给选项设置时限（timeout_seconds）和超时默认项（default_choice）。`},
 
