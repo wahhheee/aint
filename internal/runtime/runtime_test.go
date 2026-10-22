@@ -2,6 +2,7 @@ package runtime_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -42,7 +43,10 @@ func (g gatedProvider) Stream(ctx context.Context, m *llm.Model, req *llm.Reques
 	return g.Provider.Stream(ctx, m, req)
 }
 
+// env 是测试用的最小应用装配：依赖关系与 app.wire 相同，模型换成假模型。
 type env struct {
+	db    *store.DB
+	blobs *store.Blobs
 	saves *save.Service
 	mgr   *runtime.Manager
 	bus   *event.Bus
@@ -55,15 +59,23 @@ func setup(t *testing.T, script *fake.Script) *env {
 
 func setupWith(t *testing.T, provider llm.Provider) *env {
 	t.Helper()
-	ctx := context.Background()
-	dir := t.TempDir()
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	e, err := openEnv(context.Background(), t.TempDir(), provider)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = e.close() })
+	return e
+}
+
+// openEnv 在数据目录 dir 上装配服务（目录中已有数据时沿用）。不依赖 testing.T：杀进程测试的子进程也用它。
+func openEnv(ctx context.Context, dir string, provider llm.Provider) (*env, error) {
+	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	if err != nil {
+		return nil, err
+	}
 	if err := db.Migrate(ctx, filepath.Join(dir, "backup")); err != nil {
-		t.Fatal(err)
+		_ = db.Close()
+		return nil, err
 	}
 	blobs := store.NewBlobs(filepath.Join(dir, "blobs"))
 	tm := tmpl.New()
@@ -75,8 +87,14 @@ func setupWith(t *testing.T, provider llm.Provider) *env {
 		Saves: saves, Works: works, Models: fakeModels{provider}, Bus: bus,
 		Builder: contextx.NewBuilder(tm), Tools: tools.NewRegistry(), Tmpl: tm,
 	})
-	t.Cleanup(func() { _ = mgr.Shutdown(context.Background()) })
-	return &env{saves: saves, mgr: mgr, bus: bus}
+	return &env{db: db, blobs: blobs, saves: saves, mgr: mgr, bus: bus}, nil
+}
+
+// close 等运行中的回合结束（已生成的内容以 interrupted 提交），再关闭数据库。
+func (e *env) close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return errors.Join(e.mgr.Shutdown(ctx), e.db.Close())
 }
 
 // waitFor 等待存档主题上出现指定类型的事件。

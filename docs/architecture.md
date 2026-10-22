@@ -134,8 +134,8 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 
 | 不变量（技术方案第 25 节） | 代码位置 | 测试 |
 | --- | --- | --- |
-| 前缀稳定 | `contextx`（只依赖稳定输入、确定性序列化、历史只读） | `contextx/builder_test.go`（TODO(M0-6)：跨回合的字节前缀测试） |
-| 原子提交 | `save.CommitTurn`（单事务）、`runtime/draft.go`（生成只在内存） | `runtime/runtime_test.go`（TODO(M1-12)：杀进程测试） |
+| 前缀稳定 | `contextx`（只依赖稳定输入、确定性序列化、历史只读）；适配器只追加、不重写已发送内容 | `contextx/builder_test.go`、`runtime/prefix_test.go`（跨回合：中立请求逐条字节相等，三个适配器的内容块序列只追加） |
+| 原子提交 | `save.CommitTurn`（单事务）、`runtime/draft.go`（生成只在内存） | `runtime/runtime_test.go`、`runtime/crash_test.go`（回合各阶段杀进程：首字前、流式中、工具中、提交事务中、COMMIT 时、提交后） |
 | 分支隔离 | `save.ProgressLine`（递归 CTE 只取祖先链） | TODO(M3-10) |
 | 状态类型正确 | `state.Check` / `state.Set` | `state/schema_test.go` |
 | 单一写者 | `runtime.Manager.Submit`（会话锁）+ `app` 单实例检测 + 写连接池单连接 | `runtime/runtime_test.go` |
