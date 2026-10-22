@@ -73,8 +73,14 @@ func setupWith(t *testing.T, provider llm.Provider) *env {
 	return e
 }
 
-// openEnv 在数据目录 dir 上装配服务（目录中已有数据时沿用）。不依赖 testing.T：杀进程测试的子进程也用它。
+// openEnv 在数据目录 dir 上装配服务（目录中已有数据时沿用），所有存档使用 provider。
+// 不依赖 testing.T：杀进程测试的子进程也用它。
 func openEnv(ctx context.Context, dir string, provider llm.Provider) (*env, error) {
+	return openEnvWith(ctx, dir, fakeModels{provider})
+}
+
+// openEnvWith 同 openEnv，模型由 models 解析（评测用真实模型）。
+func openEnvWith(ctx context.Context, dir string, models runtime.ModelResolver) (*env, error) {
 	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
 	if err != nil {
 		return nil, err
@@ -91,7 +97,7 @@ func openEnv(ctx context.Context, dir string, provider llm.Provider) (*env, erro
 	images := media.NewStore(db, blobs, "")
 	bus := event.NewBus(0)
 	mgr := runtime.NewManager(runtime.Deps{
-		Saves: saves, Works: works, Models: fakeModels{provider}, Bus: bus,
+		Saves: saves, Works: works, Models: models, Bus: bus,
 		Builder: contextx.NewBuilder(tm, images), Tools: tools.NewRegistry(), Tmpl: tm, Images: images,
 	})
 	return &env{db: db, blobs: blobs, saves: saves, mgr: mgr, bus: bus, images: images}, nil
@@ -326,19 +332,14 @@ func TestReadAndListTools(t *testing.T) {
 	}
 }
 
-// update_state / get_state：修改原子生效、结果回填、turn.state 事件、提交时写入新快照；失败时整体不生效。
+// update_state / get_state：每次调用改一项、即时生效，结果回填，推送 turn.state，提交时写入新快照；类型不符时不生效。
 func TestStateTools(t *testing.T) {
 	script := &fake.Script{Responses: []fake.Response{
 		{DelayMS: 1, ToolCalls: []fake.ToolCall{
-			{Name: "update_state", Args: map[string]any{"ops": []any{
-				map[string]any{"op": "inc", "path": "day", "value": 1},
-				map[string]any{"op": "append", "path": "clues", "value": "柜门上的新划痕"},
-				map[string]any{"op": "set", "path": "trust.林舟", "value": 3},
-			}}},
-			{Name: "update_state", Args: map[string]any{"ops": []any{
-				map[string]any{"op": "set", "path": "day", "value": "第三天"},
-				map[string]any{"op": "set", "path": "weather", "value": "暴雨"},
-			}}},
+			{Name: "update_state", Args: map[string]any{"op": "inc", "path": "day", "value": 1}},
+			{Name: "update_state", Args: map[string]any{"op": "append", "path": "clues", "value": "柜门上的新划痕"}},
+			{Name: "update_state", Args: map[string]any{"op": "set", "path": "trust.林舟", "value": 3}},
+			{Name: "update_state", Args: map[string]any{"op": "set", "path": "day", "value": "第三天"}},
 		}},
 		{DelayMS: 1, ToolCalls: []fake.ToolCall{{Name: "get_state", Args: map[string]any{"paths": []any{"day", "weather"}}}}},
 		{Text: "雨下了一夜。", ChunkRunes: 50, DelayMS: 1},
@@ -356,7 +357,7 @@ func TestStateTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes := waitFor(t, sub, event.TurnState).Data.(event.TurnStateData).Changes.([]state.Change)
-	if len(changes) != 3 || changes[0].Path != "day" || changes[0].After != float64(2) {
+	if len(changes) != 1 || changes[0].Path != "day" || changes[0].After != float64(2) {
 		t.Fatalf("turn.state 的变化记录：%+v", changes)
 	}
 	waitFor(t, sub, event.TurnCommitted)
@@ -371,11 +372,12 @@ func TestStateTools(t *testing.T) {
 		return out
 	}
 	first := toolText(reqs[1].Messages[len(reqs[1].Messages)-1])
-	if len(first) != 2 || first[0] != "# update_state\n已更新：day 1 → 2；clues 追加「柜门上的新划痕」；trust.林舟 2 → 3" {
+	want := []string{"# update_state\n已更新：day 1 → 2", "# update_state\n已更新：clues 追加「柜门上的新划痕」", "# update_state\n已更新：trust.林舟 2 → 3"}
+	if len(first) != 4 || strings.Join(first[:3], "|") != strings.Join(want, "|") {
 		t.Fatalf("update_state 结果：%q", first)
 	}
-	if !strings.HasPrefix(first[1], "未执行：第 1 个操作（set day）：day 是数字字段") {
-		t.Fatalf("类型不符时整体不执行并说明原因：%q", first[1])
+	if !strings.HasPrefix(first[3], "未执行：day 是数字字段") {
+		t.Fatalf("类型不符时不执行并说明原因：%q", first[3])
 	}
 	second := toolText(reqs[2].Messages[len(reqs[2].Messages)-1])
 	if len(second) != 1 || second[0] != "# get_state\nday: 2\nweather: 浓雾" {

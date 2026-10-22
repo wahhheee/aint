@@ -1,7 +1,7 @@
 # 决策记录：脚手架评审（2026-10-20）
 
 本文记录当前决策及其代码位置。
-编号与 `.local/docs/README.md` 的决策记录一致（D-23～D-52）。
+编号与 `.local/docs/README.md` 的决策记录一致（D-23～D-53）。
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
@@ -59,3 +59,9 @@
 | D-50 | 作品导入：①导入的版本总是成为作品的"最新版本"（不按 semver 比较）；②始终忽略 `__MACOSX`（macOS 压缩生成）；③`DELETE /works/import/{task}` 放弃导入并删除暂存；④并发导入不设上限（本地单用户）；⑤zip 炸弹判定：单个条目解压后超过 1 MiB 且压缩比超过 100 倍；⑥没有 UTF-8 标记的 zip 文件名按 GB18030 解码（中文 Windows 自带压缩工具），`golang.org/x/text` 作为直接依赖 | `internal/work/{importer,archive,ignore,fileset}.go` |
 | D-51 | 叙事标记语法细节：①反斜杠转义 `\\ \* \< \> \-` 得到字符本身；②只有**行首**的 `<ooc>` 开始可跨行的场外块，段中的 `<ooc>` 是行内标签、到段末自动闭合；③服务端纯文本（原文索引）保留场景标题、插图说明与场景分隔，去掉所有名称合法的标签（含作品没声明的）；④属性名区分大小写；⑤`scene` `cg` `bgm` `sfx` `pause` 是空元素；找不到开始标签的结束标签忽略；嵌套超过 4 层时忽略更深的开始标签 | `internal/markup`、`web/src/markup/parse.ts`、`testdata/markup/` |
 | D-52 | 截断续写去重的重叠下限为 8 字：8 字以内的重合视为巧合，不删正文 | `internal/runtime/continuation.go` |
+
+## M2 实现（2026-10-23）
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-53 | `update_state` 每次调用改**一项**（参数 `{op, path, value, reason}`），多项变化在同一次回复中多次调用。原因：实测 Claude Sonnet 5.5（中转站 A）把"操作对象数组"参数写成 JSON 字符串，且字符串内部引号未转义，无法解析（4 / 4 次；给 value 加类型、放宽额外字段均无效），单个操作的参数 2 / 2 次正确，并能在一次回复中并行调用。工具参数解码时，把写成 JSON 字符串的数组 / 对象参数还原后再解码一次（能还原的照常执行） | `internal/tools/builtins.go`、`internal/tools/args.go` |

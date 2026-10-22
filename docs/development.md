@@ -112,13 +112,18 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 task test
 ```
 
-- Go：单元测试与竖切测试（`internal/runtime/runtime_test.go` 用假模型跑完整回合）；跨回合前缀稳定性（`runtime/prefix_test.go`）；
+- Go：单元测试与竖切测试（`internal/runtime/runtime_test.go` 用假模型跑完整回合）；测试作品 T3 的原语回归（`runtime/t3_test.go`）；
+  跨回合前缀稳定性（`runtime/prefix_test.go`）；
   杀进程测试（`runtime/crash_test.go`，重新执行测试二进制作为子进程）；协议适配器用真实录制的 SSE 夹具回放（`internal/llm/*/testdata/`）。
   测试使用 `t.TempDir()` 中的独立数据库。
 - 前端：Vitest（叙事标记与共享向量 `testdata/markup/`、事件 reducer、命令解析、导入、供应商设置）。
 - 真实模型冒烟测试（会产生费用，默认跳过）：在 `.local/secrets/live.json`（不入库）写好供应商，
   `YANYI_LIVE=<live.json 的绝对路径> go test ./internal/provider -run TestLive -v`；`YANYI_LIVE_ONLY=名称` 只跑某一个，
   `YANYI_LIVE_TRACE=<目录>` 同时录制原始报文。
+- 测试作品评测（会产生费用，默认跳过）：按 `testdata/eval/<作品>.yaml` 的行动序列用真实模型游玩一遍，检查每回合提交、工具调用、
+  交还选项、状态维护与面板渲染，并以场外提问检查事实召回（答案写进报告，人工核对）：
+  `YANYI_EVAL=<live.json 的绝对路径> YANYI_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
+  报告在 `.local/eval/<时间>/story.md`（`YANYI_EVAL_OUT` 可指定），`YANYI_EVAL_TRACE=<目录>` 录制原始报文。
 - 尚缺：分支隔离（M3-10）、Playwright 端到端（M5-12）。完整情况见 [progress.md](progress.md) 第 6 节。
 
 ## 5. 构建与发布

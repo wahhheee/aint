@@ -13,6 +13,11 @@ panels:
     template: ui/panels/sealed.liquid
     format: html
     order: 2
+  - id: people
+    title: 人物
+    place: drawer
+    template: ui/panels/people.liquid
+    format: html
   - id: day
     place: float
     template: ui/panels/day.liquid

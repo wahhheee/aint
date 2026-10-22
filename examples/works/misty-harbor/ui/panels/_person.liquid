@@ -1,0 +1,6 @@
+<div class="person">
+{%- if img != "" %}<ui-image src="{{ img }}" alt="{{ name }}" size="sm"></ui-image>{% endif %}
+<ui-bar label="{{ name }}" value="{{ trust | plus: 10 }}" max="20"></ui-bar>
+{%- if following == name %}<p><small>叙述正跟随{{ name }}</small></p>
+{%- else %}<ui-button command="/follow" args="{{ name }}">跟随{{ name }}</ui-button>{% endif %}
+</div>

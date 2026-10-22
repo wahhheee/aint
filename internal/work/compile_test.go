@@ -43,7 +43,7 @@ func TestCompileMistyHarbor(t *testing.T) {
 	if m.State.Empty() || m.State.Fields["trust"].Values.Type != "number" {
 		t.Fatal("状态定义解析不对")
 	}
-	if len(m.Commands) != 2 || len(m.Tags) != 3 || len(m.Layout.Panels) != 4 {
+	if len(m.Commands) != 3 || len(m.Tags) != 3 || len(m.Layout.Panels) != 5 {
 		t.Fatalf("命令/标签/面板数量不对：%d/%d/%d", len(m.Commands), len(m.Tags), len(m.Layout.Panels))
 	}
 }

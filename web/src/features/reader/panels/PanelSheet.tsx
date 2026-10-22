@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import type { PanelMeta, PanelRender } from '@/api/types'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
 
 import { byPlace } from './layout'
 import { PanelHTML } from './PanelHTML'
@@ -38,7 +39,8 @@ export function PanelSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={phone ? 'bottom' : 'right'}
-        className={phone ? 'max-h-[75dvh] gap-0 rounded-t-2xl bg-paper px-5 pb-6' : 'w-[340px] gap-0 bg-paper px-6'}
+        // 抽屉渲染在页面之外（portal），加上 work-root 使作品主题与样式标签在抽屉中同样生效
+        className={cn('work-root gap-0 bg-paper', phone ? 'max-h-[75dvh] rounded-t-2xl px-5 pb-6' : 'w-[340px] px-6')}
       >
         <SheetHeader className="px-0 pt-5 pb-3">
           <SheetTitle className="title-book text-base">{title}</SheetTitle>

@@ -119,14 +119,14 @@ func specGetState(prompts.FeatureSet, *work.Model) (string, map[string]any) {
 	})
 }
 
+// specUpdateState 每次调用改一项。参数刻意不用"操作数组"：实测 Claude Sonnet 5.5 会把对象数组参数写成
+// （内部引号未转义的）JSON 字符串，而单个操作的参数总是正确；多项变化在同一次回复中多次调用即可。
 func specUpdateState(prompts.FeatureSet, *work.Model) (string, map[string]any) {
-	op := object([]string{"op", "path"}, map[string]any{
-		"op":    map[string]any{"type": "string", "enum": []string{"set", "inc", "append", "remove", "delete"}},
-		"path":  str("字段路径，如 day、trust.林舟"),
-		"value": map[string]any{"description": "新值（set）、增量（inc）或列表元素（append / remove）"},
-	})
-	return "更新作品状态。多个操作一起生效。", object([]string{"ops"}, map[string]any{
-		"ops":    map[string]any{"type": "array", "items": op, "minItems": 1},
+	return "更新一项作品状态；有多项变化时，在同一次回复中多次调用。", object([]string{"op", "path"}, map[string]any{
+		"op": map[string]any{"type": "string", "enum": []string{"set", "inc", "append", "remove", "delete"},
+			"description": "set 设值；inc 数字加减；append / remove 列表追加 / 按值移除；delete 删除映射的键，其他字段恢复默认值"},
+		"path":   str("字段路径，如 day、trust.林舟"),
+		"value":  map[string]any{"description": "新值（set）、增量（inc）或列表元素（append / remove）"},
 		"reason": str("简短说明（只用于调试记录）"),
 	})
 }
@@ -175,7 +175,7 @@ type offerArgs struct {
 
 func handleOfferChoices(_ context.Context, env Env, raw jsonx.Value) Result {
 	var a offerArgs
-	if err := jsonx.Unmarshal(raw, &a); err != nil {
+	if err := decodeArgs(raw, &a); err != nil {
 		return NotExecuted("参数格式不对（%v），choices 可以写成 [{\"id\": \"a\", \"label\": \"……\"}]。", err)
 	}
 	if len(a.Choices) == 0 || len(a.Choices) > 6 {

@@ -2,7 +2,7 @@
 title: 跟随
 description: 让叙述转而跟随某个人物，从其视角与所知继续讲述。
 args:
-  - {name: who, hint: 人物名, options: [沈遥, 林舟, 老陈], required: true}
+  - {name: who, hint: 人物名, options: [沈遥, 林舟, 老陈, 周看守], required: true}
 present: [slash, button]
 icon: eye
 ---

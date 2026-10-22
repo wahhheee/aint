@@ -132,7 +132,7 @@ type rollArgs struct {
 
 func handleRollDice(_ context.Context, env Env, raw jsonx.Value) Result {
 	var a rollArgs
-	if err := jsonx.Unmarshal(raw, &a); err != nil {
+	if err := decodeArgs(raw, &a); err != nil {
 		return NotExecuted("参数格式不对（%v），可以写成 {\"expr\": \"2d6+1\", \"reason\": \"……\"}。", err)
 	}
 	terms, canon, err := parseDice(a.Expr)

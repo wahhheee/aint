@@ -24,11 +24,11 @@ responses:
       <gold>老陈在午夜前从未离开过柜台。</gold>
     tool_calls:
       - name: update_state
-        args:
-          ops:
-            - {op: append, path: sealed, value: 老陈在午夜前从未离开过柜台。}
-            - {op: append, path: clues, value: 林舟袖口有一道新鲜的擦痕}
-            - {op: set, path: situation, value: 林舟也收到了信；老陈的椅子空着。}
+        args: {op: append, path: sealed, value: 老陈在午夜前从未离开过柜台。}
+      - name: update_state
+        args: {op: append, path: clues, value: 林舟袖口有一道新鲜的擦痕}
+      - name: update_state
+        args: {op: set, path: situation, value: 林舟也收到了信；老陈的椅子空着。}
       - name: offer_choices
         args:
           prompt: 雾还在变浓。
@@ -52,10 +52,9 @@ responses:
       <say who="lin">「这是在缆绳下面捡到的。就在今天傍晚，老陈不见之前。」</say>
     tool_calls:
       - name: update_state
-        args:
-          ops:
-            - {op: append, path: clues, value: 林舟在缆绳下捡到一把银色钥匙}
-            - {op: inc, path: trust.林舟, value: 2}
+        args: {op: append, path: clues, value: 林舟在缆绳下捡到一把银色钥匙}
+      - name: update_state
+        args: {op: inc, path: trust.林舟, value: 2}
       - name: offer_choices
         args:
           prompt: 钥匙在灯下泛着冷光。
@@ -81,10 +80,9 @@ responses:
       - name: roll_dice
         args: {expr: 1d20, reason: 在柜脚的阴影里摸索}
       - name: update_state
-        args:
-          ops:
-            - {op: append, path: clues, value: 信件柜第三格被清空，柜脚有一片日期为明天的邮票}
-            - {op: set, path: situation, value: 有人抢先清空了信件柜。}
+        args: {op: append, path: clues, value: 信件柜第三格被清空，柜脚有一片日期为明天的邮票}
+      - name: update_state
+        args: {op: set, path: situation, value: 有人抢先清空了信件柜。}
       - name: offer_choices
         args:
           choices:

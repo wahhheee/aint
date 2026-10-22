@@ -1,0 +1,9 @@
+{%- comment -%} 抽屉中的人物页：头像、对玩家的信任与"跟随"按钮；每个人物由 _person 片段渲染 {%- endcomment -%}
+{%- for p in state.trust -%}
+  {%- case p[0] -%}
+    {%- when "林舟" -%}{%- assign img = "lin" -%}
+    {%- when "老陈" -%}{%- assign img = "old-chen" -%}
+    {%- else -%}{%- assign img = "" -%}
+  {%- endcase -%}
+  {% render 'panels/_person', name: p[0], trust: p[1], img: img, following: state.follow %}
+{%- endfor -%}

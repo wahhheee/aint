@@ -23,7 +23,7 @@ type readArgs struct {
 
 func handleRead(ctx context.Context, env Env, raw jsonx.Value) Result {
 	var a readArgs
-	if err := jsonx.Unmarshal(raw, &a); err != nil {
+	if err := decodeArgs(raw, &a); err != nil {
 		return NotExecuted("参数格式不对（%v），可以写成 {\"path\": \"/memory/index.md\"}。", err)
 	}
 	res, err := env.VFS().Read(ctx, a.Path, a.Offset, a.Limit)
@@ -69,7 +69,7 @@ type listArgs struct {
 
 func handleList(ctx context.Context, env Env, raw jsonx.Value) Result {
 	var a listArgs
-	if err := jsonx.Unmarshal(raw, &a); err != nil {
+	if err := decodeArgs(raw, &a); err != nil {
 		return NotExecuted("参数格式不对（%v），可以写成 {\"path\": \"/memory\"}。", err)
 	}
 	if strings.TrimSpace(a.Path) == "" {

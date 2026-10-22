@@ -17,7 +17,7 @@ import (
 //	  - 柜门上的新划痕
 //
 //	# update_state
-//	已更新：day 2 → 3；clues 追加「柜门上的新划痕」
+//	已更新：day 2 → 3
 
 type getStateArgs struct {
 	Paths []string `json:"paths"`
@@ -25,7 +25,7 @@ type getStateArgs struct {
 
 func handleGetState(_ context.Context, env Env, raw jsonx.Value) Result {
 	var a getStateArgs
-	if err := jsonx.Unmarshal(raw, &a); err != nil {
+	if err := decodeArgs(raw, &a); err != nil {
 		return NotExecuted("参数格式不对（%v），可以写成 {} 读取全部字段，或 {\"paths\": [\"day\"]}。", err)
 	}
 	var paths []string
@@ -42,16 +42,19 @@ func handleGetState(_ context.Context, env Env, raw jsonx.Value) Result {
 }
 
 type updateStateArgs struct {
-	Ops    []state.Op `json:"ops"`
-	Reason string     `json:"reason"`
+	state.Op
+	Reason string `json:"reason"`
 }
 
 func handleUpdateState(_ context.Context, env Env, raw jsonx.Value) Result {
 	var a updateStateArgs
-	if err := jsonx.Unmarshal(raw, &a); err != nil {
-		return NotExecuted("参数格式不对（%v），可以写成 {\"ops\": [{\"op\": \"set\", \"path\": \"day\", \"value\": 2}]}。", err)
+	if err := decodeArgs(raw, &a); err != nil {
+		return NotExecuted("参数格式不对（%v），可以写成 {\"op\": \"set\", \"path\": \"day\", \"value\": 2}。", err)
 	}
-	changes, err := env.UpdateState(a.Ops)
+	if a.Op.Op == "" {
+		return NotExecuted("缺少 op，可以写成 {\"op\": \"set\", \"path\": \"day\", \"value\": 2}；有多项变化时多次调用。")
+	}
+	changes, err := env.UpdateState([]state.Op{a.Op})
 	if err != nil {
 		return NotExecuted("%v。", err)
 	}

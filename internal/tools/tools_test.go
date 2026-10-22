@@ -96,14 +96,35 @@ func TestStateHandlers(t *testing.T) {
 	if got := run(t, handleGetState, env, `{}`); got != "# get_state\nday: 1\nweather: 雾\ntrust: {}" {
 		t.Fatalf("get_state：%q", got)
 	}
-	got := run(t, handleUpdateState, env, `{"ops":[{"op":"set","path":"weather","value":"暴雨"},{"op":"set","path":"trust.林舟","value":2},{"op":"delete","path":"day"}],"reason":"入夜"}`)
-	if got != "# update_state\n已更新：weather 「雾」 → 「暴雨」；trust.林舟 设为 2；day 恢复默认值 1" {
-		t.Fatalf("update_state：%q", got)
+	for args, want := range map[string]string{
+		`{"op":"set","path":"weather","value":"暴雨","reason":"入夜"}`: "# update_state\n已更新：weather 「雾」 → 「暴雨」",
+		`{"op":"set","path":"trust.林舟","value":2}`:                 "# update_state\n已更新：trust.林舟 设为 2",
+		`{"op":"inc","path":"day","value":1}`:                      "# update_state\n已更新：day 1 → 2",
+		`{"op":"delete","path":"day"}`:                             "# update_state\n已更新：day 恢复默认值 1",
+		`{"op":"append","path":"day","value":"x"}`:                 "未执行：day 是数字字段，append 只用于列表字段；可以改用 set。",
+	} {
+		if got := run(t, handleUpdateState, env, args); got != want {
+			t.Errorf("update_state %s：%q", args, got)
+		}
 	}
 	if got := run(t, handleGetState, env, `{"paths":["nope"]}`); !strings.HasPrefix(got, "未执行：没有状态字段 nope，可用的字段有：day、weather、trust") {
 		t.Fatalf("未知路径：%q", got)
 	}
-	if got := run(t, handleUpdateState, env, `{"ops":[]}`); !strings.HasPrefix(got, "未执行：ops 为空") {
-		t.Fatalf("空操作：%q", got)
+	if got := run(t, handleUpdateState, env, `{"path":"day"}`); !strings.HasPrefix(got, "未执行：缺少 op") {
+		t.Fatalf("缺少 op：%q", got)
+	}
+}
+
+// 部分模型把数组参数写成 JSON 字符串：能还原的照常执行。
+func TestDecodeStringifiedArgs(t *testing.T) {
+	var a struct {
+		Paths []string `json:"paths"`
+		N     int      `json:"n"`
+	}
+	if err := decodeArgs(jsonx.Value(`{"paths":"[\"day\", \"weather\"]","n":2}`), &a); err != nil || len(a.Paths) != 2 || a.N != 2 {
+		t.Fatalf("应还原字符串化的数组：%+v %v", a, err)
+	}
+	if err := decodeArgs(jsonx.Value(`{"paths":"[\"未转义的"引号\"]"}`), &a); err == nil {
+		t.Fatal("无法还原时应报告原来的错误")
 	}
 }

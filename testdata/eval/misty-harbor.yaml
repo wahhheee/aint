@@ -1,0 +1,33 @@
+# 《雾港来信》（测试作品 T3）的评测脚本：固定的玩家行动序列 + 检查问题（实施计划第 4 节）。
+# 用真实模型运行（会产生费用）：
+#   YANYI_EVAL=.local/secrets/live.json YANYI_EVAL_MODEL=claude@gemai go test ./internal/runtime -run TestEval -v -timeout 60m
+# 每一步一个回合：choice（选项 ID；auto 表示依次选第 1、2、3 个）、free（自由输入）、command（/命令 参数）、
+# mode + text（输入模式）、ooc（场外）。checks 在全部步骤之后以场外提问，答案写入报告供人工核对。
+work: yanyi.misty-harbor
+form: {player.name: 沈遥, player.trait: 观察}
+steps:
+  - choice: a                                   # 拆开那封信
+  - free: 我把信封翻过来，仔细看邮戳和落款的字迹。
+  - choice: auto
+  - command: /follow 林舟
+  - choice: auto
+  - mode: 推论
+    text: 林舟手里那把银色钥匙是老陈的。
+  - free: 我问林舟，三年前“北星号”出事的那个晚上他在哪里。
+  - choice: auto
+  - free: 我去信件柜第三格看看那些无法投递的信，收信人都是谁。
+  - choice: auto
+  - free: 退潮了，我拿上钥匙，沿着石堤去灯塔。
+  - choice: auto
+  - choice: auto
+  - command: /揭晓
+  - choice: auto
+checks:
+  - q: 林舟的银色钥匙是在哪里捡到的？它能打开什么？
+    expect: 旧码头的缆绳下；灯室（老陈替周看守保管的备用钥匙）
+  - q: 目前有哪些封印陈述？
+    expect: 与封印面板（sealed 状态）一致
+  - q: 老陈为什么在午夜前离开了柜台？
+    expect: 去灯塔取回一封三年前没能寄出的信
+  - q: 北星号的遇难名单为什么只有十个人？
+    expect: 周晚偷偷上船，不在乘客名单上
