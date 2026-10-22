@@ -31,8 +31,8 @@
 | 编排 | `runtime` | 存档会话（单一写者）、回合循环、预算、取消、提交、事件发布 |
 | 引擎 | `contextx` `tools` `panel` `compact` `helper` | 上下文分层构建与按需组装；工具注册与执行；面板渲染；整理（TODO(M3-6)）；后台助手（TODO(M5-8)） |
 | 存档 | `save` | 存档、节点树、进度线、建档、回合提交事务、时间线 |
-| 领域 | `work` `settings` `provider` `usage` | 作品编译与导入；全局设置；供应商与模型配置、密钥；用量记录 |
-| 基础 | `llm`（含适配器子包）`event` `store` `prompts` `tmpl` `state` `markup` `vfs` `media` `pkg/*` `buildinfo` | 中立模型层；事件总线；SQLite 与 blob；平台提示词；作者模板；状态类型；叙事标记；虚拟文件系统；图片 |
+| 领域 | `work` `settings` `provider` `usage` | 作品编译与导入；全局设置；供应商与模型配置、密钥、内置模型预设、连接测试；用量记录 |
+| 基础 | `llm`（含 `wire` 与适配器子包）`event` `store` `prompts` `tmpl` `state` `markup` `vfs` `media` `pkg/*` `buildinfo` | 中立模型层与三协议适配器；事件总线；SQLite 与 blob；平台提示词；作者模板（隔离工作进程）；状态类型；叙事标记；虚拟文件系统；图片 |
 
 几条贯穿性的约定：
 
@@ -40,7 +40,7 @@
 - **业务错误用 `pkg/errs`**：`Message` 是面向玩家的中文，`Details` 放排查信息；`server/respond.go` 统一映射 HTTP 状态码。
 - **JSON 一律经 `pkg/jsonx`**（`encoding/json/v2`，确定性序列化）——前缀缓存稳定、内容寻址去重都依赖于此。
 - **ID 一律 UUID v7**（`pkg/ids`，标准库 `uuid`），时间有序。
-- **作者内容不可信**：作者模板走 `tmpl`（Liquid，限时限量）；平台提示词走 `text/template`（`prompts` + `contextx`）。两者刻意分开。
+- **作者内容不可信**：作者模板走 `tmpl`（Liquid，服务端在可终止的隔离工作进程中渲染，D-46）；平台提示词走 `text/template`（`prompts` + `contextx`）。两者刻意分开。
 
 ## 3. 一个回合的生命周期
 
@@ -48,8 +48,8 @@
 POST /saves/{id}/turns
   └─ runtime.Manager.Submit            会话加锁：同一存档同时只有一个回合（409）；回合 ID = 提交后的节点 ID
        └─ goroutine: runTurn           与 HTTP 请求脱钩；ctx 带 save_id / turn_id 日志字段
-            ├─ prepare                 读进度线 → 作品模型 → 解析模型 → 能力画像 → 封装玩家消息 → contextx.Build
-            ├─ loop                    llm.Stream → 正文增量（turn.text）→ 工具（tools.Execute）
+            ├─ prepare                 读进度线 → 作品模型 → 解析模型 → 能力画像 → 封装玩家消息 → contextx.Build → 挂载 VFS
+            ├─ loop                    llm.Stream → 正文增量（turn.text）→ 工具（tools.Execute：read / list 经 VFS）
             │                          → 终止型 offer_choices / 截断续写 / 预算 / 取消 / 错误
             └─ commit                  save.CommitTurn：单事务写节点、消息与显示项 blob、原文索引、用量、head
                                        → 让出写者槽位 → turn.committed → 面板重新渲染（panels）
@@ -69,16 +69,35 @@ user   : [L3 常驻设定] [L4 阶段块（contextx/epoch.go）]  …历史回�
 
 - **按需组装**：`contextx.Profile` 计算能力画像（作品用到了什么、模型能做什么、存档开了什么）；每个提示词片段、
   每节 L1、每个工具及其参数都声明启用条件，作品没用到的功能不留任何痕迹。节内无片段则整节连同标题省略。
-- **前缀稳定**：组装只依赖稳定输入，按 `(提示词版本, 作品版本, 能力签名, 初始状态)` 缓存；`Built.PrefixHash` 记录在节点 meta。
+- **前缀稳定**：组装只依赖稳定输入，按 `(提示词版本, 作品版本, 能力签名, 初始状态)` 缓存（64 条 LRU）；`Built.PrefixHash` 记录在节点 meta。
+- **缓存断点**：`Part.CacheMark` / `SystemBlock.CacheMark` 只标稳定层的边界（L1、L3、L4 末尾）；"最新消息末尾"的滚动断点由适配器按协议放置
+  （Anthropic 显式 `cache_control`、OpenAI GPT-5.6 起的隐式断点、Gemini 隐式缓存）。
 - **可观察**：`Built.Fragments` 列出每个片段的启用情况与原因；`yanyi work prompt <目录>` 在终端打印组装结果。
 - 测试：`contextx/builder_test.go`（最小作品的裁切、文本提到的工具都已注册、没有空标题、前缀哈希稳定）。
 
 ## 5. 模型适配层（`llm`）
 
-- 上层只认识中立类型（`Request`、`Message`、`Part`、`Event`、`StopReason`、`Usage`）；SDK 类型只出现在 `llm/<协议>` 包内。
-- 能力以装饰器叠加（`provider.Service.decorate`）：`WithTrace(WithRetry(适配器))`。
-- `llm/fake` 是脚本化假模型：开发、测试、复现问题都用它（`--fake-llm demo` 或脚本文件）。
-- 三家真实适配器目前是占位，TODO 中列出了 M0 需要实测确认的要点（进度见 [progress.md](progress.md) 的 M0、M4）。
+```
+runtime ──► llm.Provider（中立类型）
+              WithTrace(WithRetry(适配器))          provider.Service.decorate
+                 ├─ llm/anthropic   Messages        ┐
+                 ├─ llm/openai      Responses       ├─ 只做"中立类型 ⇄ 协议 JSON"的转换（D-44：标准库手写，不用 SDK）
+                 ├─ llm/gemini      generateContent ┘
+                 │     └─ llm/wire  HTTP 端点、SSE 读取、错误归一、原始报文追踪
+                 └─ llm/fake        脚本化假模型
+```
+
+- 上层只认识中立类型（`Request`、`Message`、`Part`、`Event`、`StopReason`、`Usage`）；协议 JSON 只出现在 `llm/<协议>` 包内。
+- **Native**：助手消息的协议原生内容（Anthropic 内容块含 thinking 签名、Responses 输出项含加密推理、Gemini 部件含 thoughtSignature）
+  按 `"<协议>/<模型>"` 存在 `Message.Native`；同协议同模型时原样回传，否则按中立内容重建（推理丢弃）。
+- **能力矩阵**（`llm.Caps`）决定请求怎么写：`Reasoning` + `ReasoningMap`（推理档位 → 协议参数，如 Claude Sonnet 5.5 的 off 写作
+  `between_tools`）、`Cache`（breakpoints / implicit / none）、看图与工具结果含图。内置预设在 `provider/presets.go`，添加模型时按名字预填。
+- 请求体由 `jsonx` 确定性序列化，每个适配器导出 `Body()` 便于测试与前缀比对。
+- 调试：`--trace-llm` 写中立追踪（`logs/llm-trace/`）与协议原始报文（`logs/llm-trace/raw/`，鉴权头脱敏，可直接做回放夹具）。
+- 测试：真实录制的 SSE 夹具回放（`llm/*/testdata/`）；真实调用冒烟测试 `provider/live_test.go`（默认跳过，D-45）；实测结论见
+  [api-verification.md](notes/api-verification.md)。
+- 供应商与模型：`provider` 管理增删改、密钥（`secrets.json`）、价格倍率（运行时解析模型时乘好，D-48）、连接测试（模型列表 → 文本 →
+  工具往返 → 看图）。
 
 ## 6. 前端结构（`web/src`）
 
@@ -124,7 +143,9 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 新增一段平台提示词 | `prompts/l0.go` 加片段（声明 `When` 条件）；新条件在 `prompts/features.go` 加特征、在 `contextx/profile.go` 计算；**递增 `prompts.Version`** |
 | 新增作品文件类型或字段 | `work/manifest.go` 或 `work/model.go` → `work/compile.go`（解析 + 校验代码）→ 示例作品 → JSON Schema（TODO(M6-4)） |
 | 新增数据库表或列 | 首次发布前直接改 `store/migrations/0001_init.sql`（D-43）；发布后追加 `NNNN_说明.sql`（编号递增，已发布的脚本不改）→ 对应包的 `repo.go` |
-| 新增模型协议 | `llm/<协议>/` 实现 `llm.Provider` → `provider/service.go` 的 `providerFor` 中登记 |
+| 新增模型协议 | `llm/<协议>/` 实现 `llm.Provider`（HTTP 与 SSE 用 `llm/wire`，导出 `Body()`）→ `provider/service.go` 的 `NewAdapter` 中登记 → 录制夹具与 `live_test.go` 子测试 |
+| 新增内置模型预设 | `provider/presets.go`（窗口、输出上限、能力与推理映射、官方价格；同一模型经不同协议接入时用 `ReasoningBy`） |
+| 新增 VFS 挂载点 | 实现 `vfs.Source`（`Files` / `Open`）→ `runtime/vfs.go` 的 `buildVFS` 中挂载；暂不可用的挂载点 `Source` 留空 |
 | 新增设置项 | `settings/settings.go`（字段 + 默认值）→ `web/src/api/types.ts` → 设置页 |
 | 新增页面文案 | `web/src/i18n/zh-CN.ts`（不在组件里写死中文） |
 
@@ -139,6 +160,6 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 分支隔离 | `save.ProgressLine`（递归 CTE 只取祖先链） | TODO(M3-10) |
 | 状态类型正确 | `state.Check` / `state.Set` | `state/schema_test.go` |
 | 单一写者 | `runtime.Manager.Submit`（会话锁）+ `app` 单实例检测 + 写连接池单连接 | `runtime/runtime_test.go` |
-| 作品不执行 | `tmpl`（Liquid 限时限量）、前端 DOMPurify 白名单（`features/reader/panels/PanelHTML.tsx`）、素材只按媒体类型提供并带 CSP sandbox（`server/api_assets.go`） | `server/api_assets_test.go` |
-| 密钥不出后端 | `provider/secrets.go`（0600）、`ProviderView.KeyMasked`、`logx.Secret`；数据目录新建目录 0750、日志与追踪文件 0600（`fsx.DirPerm` / `PrivateFilePerm`） | — |
+| 作品不执行 | `tmpl`（隔离工作进程、超时即杀、include / render 不读宿主文件、输入输出上限）、导入安全限制（`work/archive.go`、`fileset.go`）、前端 DOMPurify 白名单（`features/reader/panels/PanelHTML.tsx`）、素材只按媒体类型提供并带 CSP sandbox（`server/api_assets.go`） | `tmpl/tmpl_test.go`、`work/archive_test.go`、`server/api_assets_test.go` |
+| 密钥不出后端 | `provider/secrets.go`（0600）、`ProviderView.KeyMasked`、额外请求头不允许放密钥、`logx.Secret`；原始报文追踪中鉴权头脱敏（`llm/wire/trace.go`）；数据目录新建目录 0750、日志与追踪文件 0600（`fsx.DirPerm` / `PrivateFilePerm`）；真实调用测试的密钥只放 `.local/secrets/` | `provider/service_test.go`（掩码、secrets.json） |
 | 存档不膨胀 | 游玩只追加节点；存档条目只在 `save.Create` 产生 | — |

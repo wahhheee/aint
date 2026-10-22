@@ -72,7 +72,6 @@ git grep -nE "M3-1([^0-9]|$)"
 2. **M3-2** 记忆写入（write / edit / remove 进回合覆盖层，随回合提交）：真实游玩中模型在开场与关键回合都会尝试写记忆，目前白费一次调用。
 3. **M3-3 / M3-4** `/transcript` 虚拟文件与 `search`：长篇回忆的基础。
 4. **M4-4** 用量汇总与 `GET /usage`，接上顶栏费用浮层（M5-7）。
-5. 处理已知问题 K8（弱模型把工具调用写进正文），需要先定方案。
 
 ## 4. 按功能找任务
 
@@ -108,7 +107,7 @@ git grep -nE "M3-1([^0-9]|$)"
 | M0-2 | 缓存实测（同前缀 10 次请求；Anthropic 断点与 TTL；OpenAI 缓存键；Gemini 隐式缓存） | ✅ 完成 | 按 D-45 以同前缀两次请求验证：Claude 6254 / GPT 3820 / Gemini 8154（约 1.1 万 token 前缀）/ DeepSeek 3072 均命中；T1 真实游玩中缓存读取占输入约 98%（[api-verification.md](notes/api-verification.md)） | 中转站 B 的 Gemini 未观察到命中（上游轮换账号）；Anthropic 断点 ④（长回合回溯）未实现 |
 | M0-3 | SQLite：FTS5 + trigram、WAL、6 平台交叉编译与运行 | ✅ 完成 | 结论：trigram 可用，不需要备选方案。CI 中 Windows/amd64、Linux/amd64、macOS/arm64 测试通过（`TestFTSTrigram`），6 平台交叉编译通过 | Windows/Linux arm64 与 macOS/amd64 上的运行按测试矩阵在发布前手动冒烟 |
 | M0-4 | Liquid 库评估 | ✅ 完成 | 结论：保留 Go 服务端渲染，在可终止的隔离工作进程中渲染（D-46，`internal/tmpl`）；include / render 不读宿主文件；输出写满上限即中止；渲染库 panic 转为模板错误；实测单次渲染进程内约 16 µs、经工作进程约 41 µs | `for` 循环次数上限、`{% render %}` 限定读取作品 ui/（M2-8） |
-| M0-5 | 叙事标记解析器（TS 增量 + Go）与共享测试向量 | ✅ 完成 | Go 正式解析器（`internal/markup/parse.go`）、TS 增量解析（`MarkupParser`，已完成的行与场外块复用对象引用）；`testdata/markup/` 7 个文件 165 个用例两端共用；Go 模糊测试 | `stage/scene.ts` 仍用正则找 `<scene bg>`；`<say who>` 纯文本化时人物 ID 换人物名（M3-3）；单段上万字仍整段重解析；几处语法细节待用户定（见进度日志） |
+| M0-5 | 叙事标记解析器（TS 增量 + Go）与共享测试向量 | ✅ 完成 | Go 正式解析器（`internal/markup/parse.go`）、TS 增量解析（`MarkupParser`，已完成的行与场外块复用对象引用）；`testdata/markup/` 7 个文件 165 个用例两端共用；Go 模糊测试 | `stage/scene.ts` 仍用正则找 `<scene bg>`；`<say who>` 纯文本化时人物 ID 换人物名（M3-3）；单段上万字仍整段重解析；语法细节已按实现确认（D-51） |
 | M0-6 | 前缀稳定性原型 | ✅ 完成 | `runtime/prefix_test.go`：选项作答、工具往返、自由输入、截断续写、场外、中断回合等相邻请求的 system / tools 不变、消息逐条字节相等；三个适配器的内容块序列只追加 | — |
 | M0-7 | 汇总 `docs/notes/api-verification.md`，按结论修订技术方案 | ✅ 完成 | [api-verification.md](notes/api-verification.md)：核对清单 1–18 项、真实游玩结果、M0-4 结论；技术方案第 2.1、7.4 节与实施计划已按 D-44～D-48 修订 | — |
 
@@ -239,7 +238,7 @@ git grep -nE "M3-1([^0-9]|$)"
 | K4 | ~~叙事标记每帧全量重解析；Go 端纯文本化用正则~~ | 已解决：增量解析、Go 正式解析器与共享向量（单段上万字仍整段重解析） | — |
 | K5 | 部分内存缓存没有上限（作品模型、事件主题）；前缀缓存与会话已解决 | 长时间运行内存增长 | M2 / M5 |
 | K6 | 时间线先取整条进度线再切片 | 2,000 回合级存档的性能 | M5 |
-| K8 | 弱模型把工具调用写进正文：deepseek-flash 经 Anthropic 兼容接口在长对话中、经 Responses 接口在带自定义标签的作品（《雾港来信》）中，把 `<offer_choices>{…}` `<update_state>{…}` 写成正文、不真正调用工具；Claude / GPT / Gemini 未出现 | 玩家看到 XML 文本、没有选项按钮、状态不更新；出现后会被后续回合模仿 | 待定：运行时识别并剥离（或转换为工具调用），或在模型预设中标注不适合；见 api-verification.md |
+| K8 | 弱模型把工具调用写进正文：deepseek-flash 经 Anthropic 兼容接口在长对话中、经 Responses 接口在带自定义标签的作品（《雾港来信》）中，把 `<offer_choices>{…}` `<update_state>{…}` 写成正文、不真正调用工具；Claude / GPT / Gemini 未出现 | 玩家看到 XML 文本、没有选项按钮、状态不更新；出现后会被后续回合模仿 | 暂不处理（D-49）：DeepSeek 用 Responses 接入；带自定义标签的作品用 Claude / GPT / Gemini。若常见再考虑运行时识别 |
 | K9 | 复用的读连接上执行 `PRAGMA integrity_check` 时，FTS5 检查会用到连接缓存的索引结构，其他连接写入后可能误报 checksum mismatch（数据与检索结果都正确） | 只影响诊断：需要检查完整性时用新连接 | 已在杀进程测试中处理；以后做"存档体检"功能时注意 |
 | K7 | CI 使用的 checkout@v4、setup-go@v5、golangci-lint-action@v8 等运行在已弃用的 Node 20 上（CI 警告） | 运行器停用 Node 20 后 CI 失败 | 升级到当前主版本，注意各 action 的输入参数变化 |
 
@@ -253,14 +252,13 @@ git grep -nE "M3-1([^0-9]|$)"
 - 决策 D-44～D-48（[decisions.md](notes/decisions.md)）：适配器标准库手写；真实调用最小化；Liquid 隔离工作进程；OpenAI Responses 缓存方式；供应商价格倍率。
 - LLM 层：`llm/wire` + 三个协议适配器（`eaa60b7`）；供应商与模型管理、连接测试、设置页向导（`0eb029e`）。
 - 真实游玩发现并修复：模型把选项写进正文 → 提示词说明选项以按钮呈现（`22628b5`，提示词版本 2026.10.22-2）；上游 5xx 时玩家看到"回合运行出错" → 保留原始错误再分类（`cfaded0`）。
-  未解决：弱模型把工具调用写进正文（K8，待定方案）。
+  弱模型把工具调用写进正文（K8）暂不处理（D-49）。
 - M3-1 VFS 与 read / list（`f9aaa15`）；M1-12 杀进程测试、M0-6 跨回合前缀测试，并修复静态开场写入原文索引的是标记原文（`1eb3f81`）；
   M0-4 Liquid 隔离工作进程（`c5b39ec`）；会话只在回合运行时存在、前缀缓存 LRU（`eda842c`）；M1-4 / M1-10 作品导入（合并 `1a086ba`）；
   M0-5 标记解析器与 165 个共享向量（合并 `f566764`）。
 - 设计文档（`.local/docs`）已同步：README 决策表、技术方案 2.1 / 7.4、实施计划 M0-1 / M0-6 与风险表。
-- 子任务中提出、待用户定的问题：导入时旧版本会成为"最新版本"（是否按 semver）；`__MACOSX` 是否写进格式规范的忽略清单；
-  新增的 `DELETE /works/import/{task}` 是否写进技术方案；并发导入不限制；zip 炸弹阈值（> 1 MiB 且压缩比 > 100）；
-  叙事标记的反斜杠转义（建议写进 16.1）；段中 `<ooc>` 是否也切出场外块；原文索引保留场景标题等；属性名区分大小写。
+- 待定事项按现有实现确认（D-49～D-52：K8 暂不处理、导入细节、叙事标记语法细节、续写去重下限 8 字），open-questions 清空；
+  设计文档（`.local/docs` 全部五份）与 architecture.md 按现有实现同步。
 
 ### 2026-10-21
 

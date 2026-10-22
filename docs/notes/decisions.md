@@ -50,3 +50,14 @@
 | D-46 | 作者模板（Liquid）在**可终止的隔离工作进程**中渲染：yanyi 自身以隐藏子命令 `__tmpl-worker` 运行，超时（1 秒）即杀掉并重启；渲染核心进程内与工作进程共用，语义一致；保留 Go 服务端渲染，不拆成前端 LiquidJS。用户确认 | `internal/tmpl` |
 | D-47 | OpenAI Responses 的缓存：GPT-5.6 起（Caps.Cache = breakpoints）用 `prompt_cache_options {mode: implicit, ttl}`（隐式断点自动落在最新消息末尾，相当于滚动断点），并在 L1 / L3 / L4 末尾加显式断点；顶层 `instructions` 不能带断点，所以 L0+L1 放首条 developer 消息。早期模型与兼容接口（如 DeepSeek）用 `instructions` + `prompt_cache_key`（DeepSeek 把 developer 当 user）。缓存保留时长改为中立的 short / long（Anthropic 5m / 1h、OpenAI 30m / 12h） | `internal/llm/openai`、`llm.CacheShort/CacheLong` |
 | D-48 | 供应商增加**价格倍率**（中转站的分组倍率）：模型单价照抄站点标价，实际费用 = 单价 × 倍率；运行时解析模型时已乘好，设置页显示单价与倍率。用户确认 | `providers.price_multiplier`、`llm.Price.Scaled` |
+
+## M0 / M1 待定事项的结论（2026-10-22）
+
+M0、M1 实现中提出的待定事项，用户确认**保持现有实现**，设计文档按实现同步。
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-49 | 弱模型把工具调用写进正文（progress.md K8）：**暂不在运行时剥离或转换**，正文原样显示与回传。文档中说明：DeepSeek 建议用 Responses 协议接入；带自定义标签的作品宜用工具调用可靠的模型（Claude / GPT / Gemini 实测未出现） | — |
+| D-50 | 作品导入：①导入的版本总是成为作品的"最新版本"（不按 semver 比较）；②始终忽略的文件加 `__MACOSX`（macOS 压缩生成）；③增加 `DELETE /works/import/{task}` 放弃导入并删除暂存；④并发导入不设上限（本地单用户）；⑤zip 炸弹判定：单个条目解压后超过 1 MiB 且压缩比超过 100 倍；⑥没有 UTF-8 标记的 zip 文件名按 GB18030 解码（中文 Windows 自带压缩工具），`golang.org/x/text` 作为直接依赖 | `internal/work/{importer,archive,ignore,fileset}.go` |
+| D-51 | 叙事标记语法细节：①反斜杠转义 `\\ \* \< \> \-` 得到字符本身；②只有**行首**的 `<ooc>` 开始可跨行的场外块，段中的 `<ooc>` 是行内标签、到段末自动闭合；③服务端纯文本（原文索引）保留场景标题、插图说明与场景分隔，去掉所有名称合法的标签（含作品没声明的）；④属性名区分大小写；⑤`scene` `cg` `bgm` `sfx` `pause` 是空元素；找不到开始标签的结束标签忽略；嵌套超过 4 层时忽略更深的开始标签 | `internal/markup`、`web/src/markup/parse.ts`、`testdata/markup/` |
+| D-52 | 截断续写去重的重叠下限为 8 字（原 open-questions 第 1 条）：8 字以内的重合视为巧合，不删正文 | `internal/runtime/continuation.go` |

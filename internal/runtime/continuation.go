@@ -10,9 +10,8 @@ import (
 const (
 	// maxOverlap 是重叠检测的最大长度（字符）。
 	maxOverlap = 200
-	// minOverlap 是认定为"重复"的最小长度（字符）。技术方案未规定下限：太短的重合多半是巧合
+	// minOverlap 是认定为"重复"的最小长度（字符，D-52）：太短的重合多半是巧合
 	// （如上一段以"好"结尾、续写以"好像"开头），宁可少去一点重复，也不能吞掉正文。
-	// TODO(待确认)：下限取值，见 docs/notes/open-questions.md 第 1 条。
 	minOverlap = 8
 )
 

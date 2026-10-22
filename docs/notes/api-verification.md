@@ -111,7 +111,7 @@
 - **带叙事标记的作品**：《雾港来信》（作品定义了 `<say>` `<gold>` 等标签与状态）上，deepseek-flash（Responses）连续 8 个回合都把
   `<update_state>{…}</update_state>`、`<offer_choices>{…}</offer_choices>` 写进正文、从不真正调用工具（只调用过 read）；
   在"叙事标记"说明中补充"标签只用于正文呈现，状态与选项通过工具完成"后仍是 5/5，已撤回该改动。同一作品上 claude 正常
-  （标签与工具调用都正确）。结论：deepseek-flash 在"作品自定义 XML 标签 + 工具"的组合下不可靠。处理方式待定（见 progress.md 已知问题 K8）。
+  （标签与工具调用都正确）。结论：deepseek-flash 在"作品自定义 XML 标签 + 工具"的组合下不可靠。暂不在运行时处理（D-49，progress.md K8）。
 - **失败提示**：上游 5xx 重试耗尽时玩家看到的是"回合运行出错"，原因是运行器只保存了错误文字；已改为保留原始错误再分类。
 - 首回合常调用 list / read / write：read / list 已实现（M3-1）；write 等记忆写入随 M3-2，目前返回"暂时不可用"，每次多花一次调用。
 
