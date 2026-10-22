@@ -54,7 +54,7 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/v1/saves/{id}/exit", todo("退出存档与标题生成（M5-13）"))
 	m.HandleFunc("POST /api/v1/saves/{id}/title", todo("生成存档标题（M5-13）"))
 	m.HandleFunc("POST /api/v1/saves/{id}/compact", todo("手动整理（M3-6）"))
-	m.HandleFunc("GET /api/v1/saves/{id}/state", todo("状态查看（M2-1）"))
+	m.HandleFunc("GET /api/v1/saves/{id}/state", s.h(s.saveState))
 	m.HandleFunc("PATCH /api/v1/saves/{id}/state", todo("状态编辑（M3-9）"))
 	m.HandleFunc("GET /api/v1/saves/{id}/memory", todo("记忆列表（M3-9）"))
 	m.HandleFunc("GET /api/v1/saves/{id}/memory/{path...}", todo("读取记忆（M3-9）"))

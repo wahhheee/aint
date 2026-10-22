@@ -287,7 +287,7 @@ export type DisplayItem =
   | { t: 'input'; kind: InputKind; mode?: string; text?: string; attachments?: string[] }
   | { t: 'text'; markup: string }
   | { t: 'tools'; summary: string }
-  | { t: 'dice'; expr: string; rolls: number[]; total: number }
+  | { t: 'dice'; expr: string; rolls: number[]; total: number; text?: string }
   | { t: 'image'; source: 'work' | 'upload' | 'generated'; asset: string; status: 'pending' | 'ready' | 'failed' }
   | { t: 'choices'; prompt?: string; items: ChoiceItem[]; free?: boolean; selected?: string }
   | { t: 'notice'; level: 'info' | 'warn' | 'error'; text: string }
@@ -360,6 +360,36 @@ export interface Character {
   aliases?: string[]
   color?: string
   avatar?: string
+}
+
+/** state.Change：update_state 的一个操作实际产生的变化 */
+export interface StateChange {
+  op: 'set' | 'inc' | 'append' | 'remove' | 'delete'
+  path: string
+  /** append / remove 的元素 */
+  value?: unknown
+  before: unknown
+  after: unknown
+}
+
+/** state.Field：状态字段定义 */
+export interface StateField {
+  name: string
+  type: 'boolean' | 'number' | 'string' | 'list' | 'map' | 'object'
+  default: unknown
+  desc?: string
+  items?: StateField
+  values?: StateField
+  fields?: Record<string, StateField>
+  order?: string[]
+}
+
+/** runtime.StateView（GET /saves/{id}/state）：head 处的状态与状态定义 */
+export interface StateView {
+  node_id: string
+  turn_no: number
+  state: Record<string, unknown>
+  schema: { fields: Record<string, StateField>; order: string[] }
 }
 
 /** event.PanelRender */

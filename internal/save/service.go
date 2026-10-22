@@ -251,7 +251,8 @@ type TurnCommit struct {
 	Input         TurnInput
 	Messages      []llm.Message // 本回合产生的消息（发送形态）
 	Display       []DisplayItem
-	StateHash     string // 未变化时传父节点的哈希
+	StateHash     string         // 未变化时传父节点的哈希
+	State         map[string]any // 非 nil 时在同一事务中写入新的状态快照，StateHash 取其哈希
 	MemoryHash    string
 	WorkVersionID string
 	Status        NodeStatus
@@ -281,6 +282,11 @@ func (s *Service) commitTx(ctx context.Context, tx *sql.Tx, c TurnCommit) (*Node
 	dispHash, err := s.blobs.PutJSON(ctx, tx, c.Display)
 	if err != nil {
 		return nil, err
+	}
+	if c.State != nil {
+		if c.StateHash, err = s.blobs.PutJSON(ctx, tx, c.State); err != nil {
+			return nil, err
+		}
 	}
 	id := c.NodeID
 	if id == "" {

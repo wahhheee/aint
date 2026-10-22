@@ -1,6 +1,6 @@
 # 项目进度
 
-> 最后核对：**2026-10-22**（M0、M1 完成；Gemini 安全设置与真实验证、注释与文档写法已核对）。想知道"做到哪了、下一步做什么、某个功能的代码在哪"，从这里开始。
+> 最后核对：**2026-10-22**（M0、M1 完成；M2 进行中：状态工具、掷骰已完成）。想知道"做到哪了、下一步做什么、某个功能的代码在哪"，从这里开始。
 > 任务编号与实施计划（`.local/docs/05-实施计划.md`，不入库）一致；本文收录了每个任务的名称，不看实施计划也能读懂。
 
 ## 怎么用
@@ -37,12 +37,12 @@ git grep -nE "M3-1([^0-9]|$)"
 | --- | --- | --: | --: | --: | --: | --: | --- |
 | [M0](#m0-技术验证) 技术验证 | 消除关键不确定性 | 7 | 0 | 0 | 0 | 0 | ✅ 已达到：核对清单 18 项均有结论（[api-verification.md](notes/api-verification.md)）；三家适配器完成"文本 → 工具 → 结果 → 续写"；6 平台交叉编译通过 |
 | [M1](#m1-运行时竖切) 运行时竖切 | 端到端可玩 | 12 | 0 | 0 | 0 | 0 | ✅ 已达到：T1 用真实供应商玩通 20 回合（DeepSeek Responses）；杀进程测试无半提交 |
-| [M2](#m2-作品能力) 作品能力 | 声明式原语全部可用 | 0 | 9 | 0 | 1 | 0 | T3（玩法型）玩通；校验器覆盖全部文件类型 |
+| [M2](#m2-作品能力) 作品能力 | 声明式原语全部可用 | 2 | 7 | 0 | 1 | 0 | T3（玩法型）玩通；校验器覆盖全部文件类型 |
 | [M3](#m3-记忆与整理) 记忆与整理 | 长期游玩与分支 | 1 | 1 | 5 | 4 | 0 | 假模型 200 回合不变量测试通过；真实模型 100 回合内整理 ≥ 2 次且续写连贯 |
 | [M4](#m4-三协议与供应商) 三协议与供应商 | 供应商自由 | 3 | 5 | 0 | 0 | 0 | 三协议均能玩通 T1、T3；用量与供应商控制台读数误差 ≤ 2% |
 | [M5](#m5-体验打磨) 体验打磨 | 演出与交互达到发布质量 | 0 | 8 | 4 | 1 | 0 | 交互设计验收清单通过；Playwright 端到端全绿 |
 | [M6](#m6-分发与创作者工具) 分发与创作者工具 | 可发布 | 0 | 3 | 2 | 6 | 0 | 需求文档第 9 节成功标准全部验证；发布候选版构建 |
-| **合计** | 72 项 | **23** | **26** | **11** | **12** | **0** | |
+| **合计** | 72 项 | **25** | **24** | **11** | **12** | **0** | |
 
 依赖：M0 → M1 → {M2, M3, M4 可并行} → M5（需 M2、M3）→ M6。
 
@@ -132,13 +132,13 @@ git grep -nE "M3-1([^0-9]|$)"
 
 | ID | 任务 | 状态 | 已有 | 缺口 |
 | --- | --- | --- | --- | --- |
-| M2-1 | 状态定义与类型校验；`get_state` / `update_state`；开局表单 | 🟡 部分 | `state.yaml` 解析、类型检查、默认值；开局表单写入初始状态 | `state.Apply` 与两个工具；`GET /saves/{id}/state` |
+| M2-1 | 状态定义与类型校验；`get_state` / `update_state`；开局表单 | ✅ 完成 | `state.yaml` 解析、类型检查、默认值；开局表单写入初始状态；`state.Apply`（set / inc / append / remove / delete，原子执行，失败时说明哪个操作、可以怎么写）；`get_state` / `update_state`；回合内修改即时生效并推送 `turn.state`、面板去抖 100 ms 重渲染；提交时写入新快照；`GET /saves/{id}/state` | 状态抽屉与玩家编辑（M3-9）；存档升级后的 `$orphan` 键（M6-6） |
 | M2-5 | 命令：解析、参数与候选项、模板展开、呈现方式、内置命令 | 🟡 部分 | 解析、Liquid 模板展开、斜杠 / 模式 / 按钮、命令面板、`/ooc` `/continue` `/help` | `/compact`（M3-6）；命令的 `confirm` 确认 |
 | M2-7 | 叙事标记：内置标签 + 作品样式标签；服务端纯文本化；`inline: false` 警告 | 🟡 部分 | 内置标签渲染、样式标签 CSS 生成与深色近似调整、`<ooc>` 场外块、原文纯文本化 | 对比度计算、`inline: false` 警告、`<pause>` 与音频（M5）、`<act>`（P1） |
 | M2-8 | 面板：Liquid 服务端渲染、推送、前端净化、`ui-*` 组件、`ui-button` 触发命令 | 🟡 部分 | sidebar / topbar / float 面板、SSE 推送、DOMPurify、ui-stat / bar / badge / button / collapse / tooltip | drawer 面板、回合内状态变化去抖重渲染、模板校验（E-TEMPLATE）、style 白名单、ui-image、应用内确认框 |
 | M2-9 | 主题：`theme.yaml` → CSS 变量；`custom.css` 校验与作用域；字体 | ⬜ 未开始 | 阅读区 CSS 变量分层已预留（`styles/reading.css`） | 全部 |
 | M2-10 | 素材与多模态：素材索引、常驻图片、`read` 图片、玩家上传、派生缩放、非视觉降级 | 🟡 部分 | 素材索引与服务（`GET /assets/{hash}`，只按媒体类型提供并带 CSP sandbox）、舞台背景、插图卡片 | 常驻图片、看图、玩家上传、派生缩放、非视觉降级、封面图 |
-| M2-11 | 开场（static / generate）、掷骰 | 🟡 部分 | 静态开场（以初始状态渲染、初始选项）、生成式开场（前端自动提交） | `roll_dice` 与骰子卡片 |
+| M2-11 | 开场（static / generate）、掷骰 | ✅ 完成 | 静态开场（以初始状态渲染、初始选项）、生成式开场（前端自动提交）；`roll_dice`（`NdM±K`、`d%`，多项相加减，上限 8 项 / 50 颗 / 1000 面）与骰子卡片（`turn.display` 实时推送） | — |
 | M2-12 | 校验器：全部文件类型、引用完整性、名称冲突、token 估算、组装一致性测试 | 🟡 部分 | 清单、提示词、状态、设定、命令、标签、布局、素材、交叉引用、文档链接、engine；`TestAssemblyConsistency` | token 估算、Liquid 模板解析、主题、素材解码、LFS、BOM 提示、报告接口（501） |
 | M2-13 | 输入栏：模式、斜杠命令面板、附件、篇幅 | 🟡 部分 | 输入模式、命令面板、篇幅、命令栏 | 附件（随 M2-10） |
 | M2-14 | 测试作品 T3（玩法型）与回归用例 | 🟡 部分 | 《雾港来信》作为 T3 初稿 | 评测脚本与回归用例 |
@@ -215,16 +215,16 @@ git grep -nE "M3-1([^0-9]|$)"
 | 前缀稳定 | `TestPrefixHashStable`、`TestPrefixStableAcrossTurns` | ✅ |
 | 原子提交 | `TestCancelKeepsContent`、`TestKillMidTurn`（六个阶段） | ✅ |
 | 分支隔离 | — | ⬜ M3-10 |
-| 状态类型正确 | `state/schema_test.go` | 🟡 `update_state` 未实现（M2-1） |
+| 状态类型正确 | `state/schema_test.go`、`state/ops_test.go`、`TestStateTools` | ✅ |
 | 单一写者 | `TestTurnVerticalSlice`（回合进行中再提交返回冲突） | ✅ |
 | 作品不执行 | `tmpl/tmpl_test.go`（include 不读文件、输入输出上限、超时杀进程）、导入安全测试 | 🟡 前端净化缺专门测试（测试作品 T5） |
 | 密钥不出后端 | — | ⬜ |
 | 存档不膨胀 | — | ⬜ |
 
-**测试分布**：Go 测试在 `contextx` `event` `llm/*` `markup` `panel` `pkg/lru` `provider` `runtime` `server` `state` `store` `tmpl` `vfs` `work`；
+**测试分布**：Go 测试在 `contextx` `event` `llm/*` `markup` `panel` `pkg/lru` `provider` `runtime` `server` `state` `store` `tmpl` `tools` `vfs` `work`；
 前端测试在 `markup`、`stores/reader`、`reader/commands`、`features/library`（导入）、`features/settings/providers`。
 真实模型冒烟测试：`YANYI_LIVE=<live.json> go test ./internal/provider -run TestLive -v`（会产生费用，默认跳过，见 api-verification.md）。
-尚无测试的重要包：`save`（提交事务、时间线）、`llm`（重试、追踪装饰器）、`server`（中间件、错误映射、SSE）、`tools`（除 read / list 外）、`settings`。
+尚无测试的重要包：`save`（提交事务、时间线）、`llm`（重试、追踪装饰器）、`server`（中间件、错误映射、SSE）、`settings`。
 
 **静态检查**：`task lint` 与 CI 相同（golangci-lint 2.15.0，检查集与理由见 `.golangci.yml`），当前 0 个问题；提交前跑 `task check`。
 
@@ -247,6 +247,9 @@ git grep -nE "M3-1([^0-9]|$)"
 
 ### 2026-10-22
 
+- **M2-1 完成**：`state.Apply`（五种操作原子执行，失败时说明哪个操作、可以怎么写）、`get_state` / `update_state`、回合内状态即时生效并推送 `turn.state`（载荷为变化列表）、
+  面板去抖 100 ms 以草稿状态重渲染、提交时写入新快照、`GET /saves/{id}/state`；L0"状态"节说明之后的数值以 update_state 结果为准、可用 get_state 查看（提示词版本 2026.10.22-3）。
+  **M2-11 完成**：`roll_dice` 与骰子卡片（`turn.display`）；《雾港来信》开启掷骰（执笔指令说明何时掷 1d20）；假模型演示脚本加入状态更新与掷骰。
 - 增加注释与文档写法约定，清理代码注释、决策说明、验证文档及本地设计文档中的修改经过和指令来源表述，整理进度日志；`task check` 通过。任务状态与总览计数不变（本提交：`docs: 规范注释与文档写法`）。
 - M4-1：Gemini 请求显式关闭六类可配置安全过滤（含 CIVIC_INTEGRITY / JAILBREAK）；中转站 A / B 的 gemini-3.8-flash 复用现有天气工具往返测试均通过，五份原始请求（含一次 429 重试）均确认携带完整设置；`task check` 通过。任务状态与总览计数不变（本提交：`fix(gemini): 显式关闭可配置安全过滤`）。
 - **M0、M1 完成**，两个里程碑均达到退出标准（见总览）。真实调用的结论与数据见 [api-verification.md](notes/api-verification.md)。

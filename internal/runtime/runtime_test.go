@@ -15,6 +15,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/llm/fake"
 	"github.com/wahhheee/yanyi/internal/runtime"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/store"
 	"github.com/wahhheee/yanyi/internal/tmpl"
 	"github.com/wahhheee/yanyi/internal/tools"
@@ -316,5 +317,83 @@ func TestReadAndListTools(t *testing.T) {
 	}
 	if !strings.HasPrefix(results[2], "未执行：/work/lore/characters/lin 不存在。相近的路径有 /work/lore/characters/lin.md") {
 		t.Fatalf("漏写扩展名应给出相近路径：\n%s", results[2])
+	}
+}
+
+// update_state / get_state：修改原子生效、结果回填、turn.state 事件、提交时写入新快照；失败时整体不生效。
+func TestStateTools(t *testing.T) {
+	script := &fake.Script{Responses: []fake.Response{
+		{DelayMS: 1, ToolCalls: []fake.ToolCall{
+			{Name: "update_state", Args: map[string]any{"ops": []any{
+				map[string]any{"op": "inc", "path": "day", "value": 1},
+				map[string]any{"op": "append", "path": "clues", "value": "柜门上的新划痕"},
+				map[string]any{"op": "set", "path": "trust.林舟", "value": 3},
+			}}},
+			{Name: "update_state", Args: map[string]any{"ops": []any{
+				map[string]any{"op": "set", "path": "day", "value": "第三天"},
+				map[string]any{"op": "set", "path": "weather", "value": "暴雨"},
+			}}},
+		}},
+		{DelayMS: 1, ToolCalls: []fake.ToolCall{{Name: "get_state", Args: map[string]any{"paths": []any{"day", "weather"}}}}},
+		{Text: "雨下了一夜。", ChunkRunes: 50, DelayMS: 1},
+	}}
+	var reqs []*llm.Request
+	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
+	ctx := context.Background()
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _, _ := e.bus.Subscribe(event.SaveTopic(sv.ID), 0)
+	defer sub.Close()
+	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputFree, Text: "过了一夜"}); err != nil {
+		t.Fatal(err)
+	}
+	changes := waitFor(t, sub, event.TurnState).Data.(event.TurnStateData).Changes.([]state.Change)
+	if len(changes) != 3 || changes[0].Path != "day" || changes[0].After != float64(2) {
+		t.Fatalf("turn.state 的变化记录：%+v", changes)
+	}
+	waitFor(t, sub, event.TurnCommitted)
+
+	toolText := func(msg llm.Message) []string {
+		var out []string
+		for _, p := range msg.Parts {
+			if p.Kind == llm.PartToolResult {
+				out = append(out, p.ToolResult.Parts[0].Text)
+			}
+		}
+		return out
+	}
+	first := toolText(reqs[1].Messages[len(reqs[1].Messages)-1])
+	if len(first) != 2 || first[0] != "# update_state\n已更新：day 1 → 2；clues 追加「柜门上的新划痕」；trust.林舟 2 → 3" {
+		t.Fatalf("update_state 结果：%q", first)
+	}
+	if !strings.HasPrefix(first[1], "未执行：第 1 个操作（set day）：day 是数字字段") {
+		t.Fatalf("类型不符时整体不执行并说明原因：%q", first[1])
+	}
+	second := toolText(reqs[2].Messages[len(reqs[2].Messages)-1])
+	if len(second) != 1 || second[0] != "# get_state\nday: 2\nweather: 浓雾" {
+		t.Fatalf("get_state 应读到本回合已生效的修改：%q", second)
+	}
+
+	v, err := e.mgr.State(ctx, sv.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.State["day"] != float64(2) || v.State["weather"] != "浓雾" || v.State["trust"].(map[string]any)["林舟"] != float64(3) {
+		t.Fatalf("提交后的状态：%+v", v.State)
+	}
+	_, line, _ := e.saves.ProgressLine(ctx, sv.ID)
+	if line[len(line)-1].StateHash == line[len(line)-2].StateHash {
+		t.Fatal("状态有变化时应写入新快照")
+	}
+	panels, err := e.mgr.Panels(ctx, sv.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range panels {
+		if p.ID == "day" && !strings.Contains(p.HTML, "第 2 天") {
+			t.Fatalf("面板应以新状态渲染：%s", p.HTML)
+		}
 	}
 }

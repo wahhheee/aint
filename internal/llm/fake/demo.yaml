@@ -1,5 +1,5 @@
 # 内置演示脚本（yanyi --fake-llm demo）。
-# 内容配合内置示例《雾港来信》，覆盖：场景标记、台词、作品样式标签、场景分隔、选项、场外回应。
+# 内容配合内置示例《雾港来信》，覆盖：场景标记、台词、作品样式标签、场景分隔、状态更新（面板随之刷新）、掷骰、选项、场外回应。
 responses:
   - first_delay_ms: 700
     chunk_runes: 3
@@ -23,6 +23,12 @@ responses:
 
       <gold>老陈在午夜前从未离开过柜台。</gold>
     tool_calls:
+      - name: update_state
+        args:
+          ops:
+            - {op: append, path: sealed, value: 老陈在午夜前从未离开过柜台。}
+            - {op: append, path: clues, value: 林舟袖口有一道新鲜的擦痕}
+            - {op: set, path: situation, value: 林舟也收到了信；老陈的椅子空着。}
       - name: offer_choices
         args:
           prompt: 雾还在变浓。
@@ -45,6 +51,11 @@ responses:
 
       <say who="lin">「这是在缆绳下面捡到的。就在今天傍晚，老陈不见之前。」</say>
     tool_calls:
+      - name: update_state
+        args:
+          ops:
+            - {op: append, path: clues, value: 林舟在缆绳下捡到一把银色钥匙}
+            - {op: inc, path: trust.林舟, value: 2}
       - name: offer_choices
         args:
           prompt: 钥匙在灯下泛着冷光。
@@ -67,6 +78,13 @@ responses:
 
       你蹲下身，在柜脚边发现了一小片撕下的邮票。邮票上的日期，是明天。
     tool_calls:
+      - name: roll_dice
+        args: {expr: 1d20, reason: 在柜脚的阴影里摸索}
+      - name: update_state
+        args:
+          ops:
+            - {op: append, path: clues, value: 信件柜第三格被清空，柜脚有一片日期为明天的邮票}
+            - {op: set, path: situation, value: 有人抢先清空了信件柜。}
       - name: offer_choices
         args:
           choices:

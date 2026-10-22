@@ -20,12 +20,13 @@ func builtins() []*Def {
 		{Name: "edit", Kind: KindWrite, Display: DisplayHidden, Spec: specEdit, Handle: notYet("edit", "M3-2")},
 		{Name: "remove", Kind: KindWrite, Display: DisplayHidden, Spec: specRemove, Handle: notYet("remove", "M3-2")},
 		{Name: "get_state", Kind: KindRead, Display: DisplayHidden, When: prompts.Requires(prompts.FState),
-			Spec: specGetState, Handle: notYet("get_state", "M2-1")},
+			Spec: specGetState, Handle: handleGetState},
 		{Name: "update_state", Kind: KindWrite, Display: DisplayHidden, When: prompts.Requires(prompts.FState),
-			Spec: specUpdateState, Handle: notYet("update_state", "M2-1")},
+			Spec: specUpdateState, Handle: handleUpdateState},
 		{Name: "offer_choices", Kind: KindTerminal, Display: DisplayCustom, Spec: specOfferChoices, Handle: handleOfferChoices},
-		{Name: "roll_dice", Kind: KindRead, Display: DisplayCard, When: prompts.Requires(prompts.FDice),
-			Spec: specRollDice, Handle: notYet("roll_dice", "M2-11")},
+		// roll_dice 归入写类（串行）：它在正文流中追加骰子卡片，按调用顺序执行，卡片顺序与调用顺序一致
+		{Name: "roll_dice", Kind: KindWrite, Display: DisplayCard, When: prompts.Requires(prompts.FDice),
+			Spec: specRollDice, Handle: handleRollDice},
 		{Name: "delegate", Kind: KindDelegate, Display: DisplaySubtle, When: prompts.Requires(prompts.FHelpers),
 			Spec: specDelegate, Handle: notYet("delegate", "M5-8")},
 	}
@@ -202,8 +203,8 @@ func handleOfferChoices(_ context.Context, env Env, raw jsonx.Value) Result {
 // 其他
 
 func specRollDice(prompts.FeatureSet, *work.Model) (string, map[string]any) {
-	return "掷骰，返回每颗骰子的点数与总和。", object([]string{"expr"}, map[string]any{
-		"expr":   str(`骰子表达式，如 "2d6+1"、"d100"`),
+	return "掷骰，返回每颗骰子的点数与总和；玩家会看到骰子卡片。", object([]string{"expr"}, map[string]any{
+		"expr":   str(`骰子表达式，如 "2d6+1"、"d100"、"1d20-2"`),
 		"reason": str("为什么掷骰（显示在骰子卡片上）"),
 	})
 }

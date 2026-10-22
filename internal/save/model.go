@@ -135,7 +135,7 @@ type DisplayItem struct {
 	Kind        string   `json:"kind,omitzero"`
 	Mode        string   `json:"mode,omitzero"`
 	Attachments []string `json:"attachments,omitzero"`
-	// input / notice 共用
+	// input / notice：文字；dice：掷骰原因
 	Text string `json:"text,omitzero"`
 	// text：叙事标记源码
 	Markup string `json:"markup,omitzero"`

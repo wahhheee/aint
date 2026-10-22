@@ -1,7 +1,7 @@
 /**
  * SSE 事件契约（与 internal/event/types.go 同步）。
  */
-import type { ChoiceItem, DisplayItem, PanelRender, TurnInput, Usage } from './types'
+import type { ChoiceItem, DisplayItem, PanelRender, StateChange, TurnInput, Usage } from './types'
 
 export interface EventMap {
   'turn.started': { turn_id: string; parent_id: string; input: TurnInput }
@@ -9,7 +9,7 @@ export interface EventMap {
   'turn.tool': { turn_id: string; call_id: string; name: string; phase: 'start' | 'done' | 'error'; display?: string }
   'turn.display': { turn_id: string; item: DisplayItem }
   'turn.choices': { turn_id: string; choices: { t: 'choices'; prompt?: string; items: ChoiceItem[]; free?: boolean } }
-  'turn.state': { turn_id: string; patch: unknown }
+  'turn.state': { turn_id: string; changes: StateChange[] }
   'turn.usage': { turn_id: string; usage: Usage; context: { used: number; threshold: number } }
   'turn.committed': { turn_id: string; node_id: string; status: 'committed' | 'interrupted' }
   'turn.failed': { turn_id: string; code: string; message: string; recoverable: boolean }

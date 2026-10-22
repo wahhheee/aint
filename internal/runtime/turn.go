@@ -16,6 +16,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/tools"
 	"github.com/wahhheee/yanyi/internal/usage"
 	"github.com/wahhheee/yanyi/internal/work"
@@ -36,7 +37,16 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID string, in save.Tu
 	m.publish(saveID, event.TurnStarted, event.TurnStartedData{TurnID: turnID, ParentID: d.parent.ID, Input: d.input})
 
 	d.release = release
+	refresh := m.panelRefresher(d)
+	d.onState = func(changes []state.Change) {
+		m.publish(saveID, event.TurnState, event.TurnStateData{TurnID: turnID, Changes: changes})
+		refresh.schedule(d.state)
+	}
+	d.onCard = func(item save.DisplayItem) {
+		m.publish(saveID, event.TurnDisplay, event.TurnDisplayData{TurnID: turnID, Item: item})
+	}
 	m.loop(ctx, d)
+	refresh.stop()
 	m.commit(ctx, d)
 }
 
@@ -148,7 +158,8 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 	d := &draft{
 		id: turnID, started: time.Now(), save: sv, parent: head, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
-		req: built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
+		state: headState,
+		req:   built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
 	}
 	if item, ok := inputDisplay(env); ok {
 		d.display = append(d.display, item)
@@ -388,10 +399,14 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		d.display = append(d.display, *d.choices)
 	}
 
-	// TODO(M2-1/M3-2)：状态与记忆有变化时写入新快照（目前工具尚未实现，沿用父节点）。
+	// 状态有变化时写入新快照，否则沿用父节点的哈希。TODO(M3-2)：记忆有变化时写入新清单。
+	var newState map[string]any
+	if d.stateChanged {
+		newState = d.state
+	}
 	node, err := m.d.Saves.CommitTurn(ctx, save.TurnCommit{
 		SaveID: d.save.ID, Parent: d.parent, TurnNo: d.turnNo, Input: d.input, Messages: d.turnMsgs, Display: d.display,
-		StateHash: d.parent.StateHash, MemoryHash: d.parent.MemoryHash, WorkVersionID: d.parent.WorkVersionID,
+		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, WorkVersionID: d.parent.WorkVersionID,
 		Status: d.status, Usage: &d.usage, PlainText: markup.PlainText(d.markupText()), UsageRecords: d.records, NodeID: d.id,
 		Meta: save.NodeMeta{
 			Model: d.model.Name, Stop: d.stop, StopRaw: d.stopRaw, Calls: d.calls, ToolCalls: d.toolCalls,

@@ -18,7 +18,7 @@ import (
 )
 
 // Version 是平台提示词版本，记录在节点 meta 中，便于把模型行为与提示词版本对应起来。
-const Version = "2026.10.22-2"
+const Version = "2026.10.22-3"
 
 // Feature 是能力画像中的一个特征（《02-技术方案》8.6）。
 type Feature string

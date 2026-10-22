@@ -20,6 +20,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/vfs"
 	"github.com/wahhheee/yanyi/internal/work"
 )
@@ -53,10 +54,15 @@ type Env interface {
 	Work() *work.Model
 	// OfferChoices 记录本回合给出的选项（offer_choices）。
 	OfferChoices(item save.DisplayItem)
+	// ShowCard 在正文流中追加一个展示项（骰子卡片等），并实时推送给玩家。只由写类工具调用（串行）。
+	ShowCard(item save.DisplayItem)
 	// VFS 是本回合的虚拟文件系统（/work /memory /transcript /uploads）。
 	// TODO(M3-2)：写入（write / edit / remove 进回合覆盖层）。
 	VFS() vfs.FS
-	// TODO(M2-1)：State() —— 当前状态的读取与原子修改。
+	// State 返回本回合当前的状态（以父节点快照为起点，含本回合已生效的修改）。只读：不得修改返回的映射。
+	State() map[string]any
+	// UpdateState 原子地执行状态操作（state.Apply）；成功后本回合之后的读取看到新状态，回合提交时写入新快照。
+	UpdateState(ops []state.Op) ([]state.Change, error)
 }
 
 // Result 是一次工具调用的结果。

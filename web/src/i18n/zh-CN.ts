@@ -181,6 +181,10 @@ const zhCN = {
     helpBody: '输入 / 可以打开命令面板。',
     commandNotFound: '没有这个命令：/{{name}}',
     commandArgMissing: '命令 /{{name}} 需要参数：{{arg}}',
+    dice: {
+      title: '掷骰',
+      label: '掷骰 {{expr}}，合计 {{total}}',
+    },
     builtin: {
       ooc: '场外对话：与执笔者交流，不算作故事里的行动',
       continue: '不做新行动，请执笔者接着写',

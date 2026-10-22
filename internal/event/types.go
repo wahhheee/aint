@@ -14,7 +14,7 @@ const (
 	TurnTool      = "turn.tool"      // TurnToolData
 	TurnDisplay   = "turn.display"   // TurnDisplayData：骰子卡等展示项
 	TurnChoices   = "turn.choices"   // TurnChoicesData
-	TurnState     = "turn.state"     // TurnStateData：状态草稿变更
+	TurnState     = "turn.state"     // TurnStateData：回合内的状态修改（草稿）
 	TurnUsage     = "turn.usage"     // TurnUsageData
 	TurnCommitted = "turn.committed" // TurnCommittedData：回合已提交，前端应以时间线接口为准
 	TurnFailed    = "turn.failed"    // TurnFailedData
@@ -64,9 +64,10 @@ type TurnChoicesData struct {
 	Choices any    `json:"choices"` // save.DisplayItem（t=choices）
 }
 
+// TurnStateData 是回合内的一次状态修改（update_state 成功后发出；回合提交前为草稿）。
 type TurnStateData struct {
-	TurnID string `json:"turn_id"`
-	Patch  any    `json:"patch"` // TODO(M2)：JSON Patch（RFC 6902）
+	TurnID  string `json:"turn_id"`
+	Changes any    `json:"changes"` // []state.Change：每个操作的路径与前后值
 }
 
 type TurnUsageData struct {

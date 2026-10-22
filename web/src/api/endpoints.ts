@@ -16,6 +16,7 @@ import type {
   Save,
   SaveSettings,
   Settings,
+  StateView,
   SystemInfo,
   TestReport,
   Timeline,
@@ -60,6 +61,7 @@ export const api = {
     timeline: (id: string, before?: string, limit = 50) =>
       http.get<Timeline>(`/saves/${id}/timeline?limit=${limit}${before ? `&before=${before}` : ''}`),
     panels: (id: string) => http.get<{ panels: PanelRender[] }>(`/saves/${id}/panels`),
+    state: (id: string) => http.get<StateView>(`/saves/${id}/state`),
     submit: (id: string, input: TurnInput) => http.post<{ turn_id: string }>(`/saves/${id}/turns`, input),
     cancel: (id: string, turnId: string) => http.post<void>(`/saves/${id}/turns/${turnId}/cancel`),
   },

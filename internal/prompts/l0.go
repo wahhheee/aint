@@ -27,7 +27,7 @@ var L0 = []Fragment{
 	{ID: "write.player", Section: "写作", Text: `- 玩家的输入代表玩家的意图；玩家角色的关键决定和关键台词，留给玩家来做（作品或玩家另有约定时，以约定为准）。`},
 
 	{ID: "state.usage", Section: "状态", When: Requires(FState),
-		Text: `- 作品状态是展示在界面上的结构化记录，含义见"状态说明"，阶段开始时的数值见"当前状态"。故事里相应的事情有了变化，可以用 update_state 同步更新。`},
+		Text: `- 作品状态是展示在界面上的结构化记录，含义见"状态说明"。阶段开始时的数值在阶段块的 <state> 中，之后以 update_state 的结果为准，需要确认时可以用 get_state 查看当前值。故事里相应的事情有了变化，可以用 update_state 同步更新。`},
 
 	{ID: "memory.when", Section: "记忆", Text: `- 这些时刻值得记下：确立了新的设定事实；人物的处境、关系或认知有了变化；埋下伏笔、许下承诺、留下悬念；玩家作出影响深远的选择。可以用 write / edit 记到 /memory。`},
 	{ID: "memory.how", Section: "记忆", Text: `- 记要点就好。优先更新已有文件，让每个文件保持简短，并维护 /memory/index.md；写上对应的回合号，方便以后回查原文。`},

@@ -12,18 +12,19 @@ func (s *Schema) Lookup(path string) (*Field, error) {
 	if !ok {
 		return nil, fmt.Errorf("没有状态字段 %s，可用的字段有：%s", parts[0], strings.Join(s.Order, "、"))
 	}
-	for _, part := range parts[1:] {
+	for i, part := range parts[1:] {
+		at := strings.Join(parts[:i+1], ".") // 已走过的路径，用于说明
 		switch f.Type {
 		case Object:
 			sub, ok := f.Fields[part]
 			if !ok {
-				return nil, fmt.Errorf("%s 没有字段 %s，可用的字段有：%s", f.Name, part, strings.Join(f.Order, "、"))
+				return nil, fmt.Errorf("%s 没有字段 %s，可用的字段有：%s", at, part, strings.Join(f.Order, "、"))
 			}
 			f = sub
 		case Map:
 			f = f.Values
 		default:
-			return nil, fmt.Errorf("%s 是%s字段，没有下级字段", f.Name, typeLabel(f.Type))
+			return nil, fmt.Errorf("%s 是%s字段，没有下级字段", at, typeLabel(f.Type))
 		}
 	}
 	return f, nil

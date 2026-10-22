@@ -6,6 +6,7 @@ import { Markup } from '@/markup/render'
 
 import { useReaderContext } from '../ReaderContext'
 import { ChoiceList, PastChoices } from './ChoiceList'
+import { DiceCard } from './DiceCard'
 import { Notice, QuietLine } from './Notice'
 import { PlayerLine } from './PlayerLine'
 
@@ -50,12 +51,7 @@ export function TurnView({ items, drafting, interactive, selected, noticeActions
               </Notice>
             )
           case 'dice':
-            // TODO(M2-11)：骰子卡片（结果与算式）
-            return (
-              <QuietLine key={i}>
-                {it.expr} = {it.total}
-              </QuietLine>
-            )
+            return <DiceCard key={i} item={it} />
           case 'image':
             // TODO(M5-2)：插图卡片
             return <QuietLine key={i}>{t('common.notImplemented')}</QuietLine>

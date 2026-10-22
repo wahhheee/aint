@@ -3,12 +3,15 @@ package runtime
 import (
 	"context"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/panel"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -145,6 +148,92 @@ func (m *Manager) Panels(ctx context.Context, saveID string) ([]event.PanelRende
 		return nil, err
 	}
 	return panel.Render(m.d.Tmpl, w, panel.Vars{State: st, Turn: head.TurnNo, WorkTitle: w.Manifest.Title, SaveTitle: sv.Title}), nil
+}
+
+// StateView 是存档当前的状态（GET /saves/{id}/state）：head 节点的状态快照与作品的状态定义。
+type StateView struct {
+	NodeID string         `json:"node_id"`
+	TurnNo int            `json:"turn_no"`
+	State  map[string]any `json:"state"`
+	Schema *state.Schema  `json:"schema"`
+}
+
+// State 返回存档 head 处的状态。回合进行中的修改是草稿，提交后才在这里出现（草稿经 turn.state 事件推送）。
+func (m *Manager) State(ctx context.Context, saveID string) (*StateView, error) {
+	_, line, err := m.d.Saves.ProgressLine(ctx, saveID)
+	if err != nil {
+		return nil, err
+	}
+	head := line[len(line)-1]
+	w, err := m.d.Works.Model(ctx, head.WorkVersionID)
+	if err != nil {
+		return nil, err
+	}
+	st, err := m.d.Saves.LoadState(ctx, head.StateHash)
+	if err != nil {
+		return nil, err
+	}
+	return &StateView{NodeID: head.ID, TurnNo: head.TurnNo, State: st, Schema: w.State}, nil
+}
+
+// panelDebounce 是回合内状态变化后重新渲染面板的去抖间隔（《02-技术方案》17）：
+// 一次工具调用批次里的多次修改只渲染一次。
+const panelDebounce = 100 * time.Millisecond
+
+// panelRefresher 在回合内状态变化后去抖重渲染面板，以本回合当前的状态（草稿）推送 panels 事件。
+type panelRefresher struct {
+	m *Manager
+	d *draft
+
+	mu      sync.Mutex
+	timer   *time.Timer
+	pending map[string]any // 待渲染的状态快照（state.Apply 产生的新映射，之后不会再被修改）
+	stopped bool
+}
+
+func (m *Manager) panelRefresher(d *draft) *panelRefresher {
+	return &panelRefresher{m: m, d: d}
+}
+
+// schedule 记下最新的状态，间隔内的多次调用合并为一次渲染。
+func (r *panelRefresher) schedule(st map[string]any) {
+	if len(r.d.work.Layout.Panels) == 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.stopped {
+		return
+	}
+	r.pending = st
+	if r.timer == nil {
+		r.timer = time.AfterFunc(panelDebounce, r.fire)
+	}
+}
+
+func (r *panelRefresher) fire() {
+	r.mu.Lock()
+	st := r.pending
+	r.timer = nil
+	stopped := r.stopped
+	r.mu.Unlock()
+	if stopped || st == nil {
+		return
+	}
+	d := r.d
+	panels := panel.Render(r.m.d.Tmpl, d.work, panel.Vars{State: st, Turn: d.turnNo, WorkTitle: d.work.Manifest.Title, SaveTitle: d.save.Title})
+	r.m.publish(d.save.ID, event.Panels, event.PanelsData{Panels: panels})
+}
+
+// stop 取消尚未触发的渲染：回合结束后由提交后的 publishPanels 以已提交的状态推送。
+func (r *panelRefresher) stop() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.stopped = true
+	if r.timer != nil {
+		r.timer.Stop()
+		r.timer = nil
+	}
 }
 
 func (m *Manager) publishPanels(ctx context.Context, saveID string) {

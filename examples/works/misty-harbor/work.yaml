@@ -31,7 +31,7 @@ new_game:
       options: [观察, 话术, 记忆]
       default: 观察
 features:
-  dice: false
+  dice: true
 presentation:
   dialogue: tagged
   stage: true

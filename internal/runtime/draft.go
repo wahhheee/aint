@@ -9,6 +9,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/tools"
 	"github.com/wahhheee/yanyi/internal/usage"
 	"github.com/wahhheee/yanyi/internal/vfs"
@@ -34,6 +35,13 @@ type draft struct {
 	built    *contextx.Built
 	vfs      *vfs.Table   // 本回合的挂载表（buildVFS）
 	memory   *vfs.Overlay // 记忆覆盖层（写入随 M3-2；提交时 Dirty 才生成新清单）
+
+	// 状态：以父节点快照为起点，update_state 成功后整体替换（state.Apply 不修改原映射，读取方拿到的快照不会再变）
+	state        map[string]any
+	stateChanged bool
+	stateLog     []state.Change
+	onState      func(changes []state.Change) // 状态变化后的通知：推送 turn.state、去抖重渲染面板
+	onCard       func(item save.DisplayItem)  // 追加展示项后的通知：推送 turn.display
 
 	// 本回合产生的内容
 	req      *llm.Request  // 随调用追加消息
@@ -63,6 +71,27 @@ func (d *draft) Work() *work.Model            { return d.work }
 func (d *draft) VFS() vfs.FS                  { return d.vfs }
 func (d *draft) OfferChoices(item save.DisplayItem) {
 	d.choices = &item
+}
+func (d *draft) ShowCard(item save.DisplayItem) {
+	d.display = append(d.display, item)
+	if d.onCard != nil {
+		d.onCard(item)
+	}
+}
+
+func (d *draft) State() map[string]any { return d.state }
+
+func (d *draft) UpdateState(ops []state.Op) ([]state.Change, error) {
+	next, changes, err := state.Apply(d.work.State, d.state, ops)
+	if err != nil {
+		return nil, err
+	}
+	d.state, d.stateChanged = next, true
+	d.stateLog = append(d.stateLog, changes...)
+	if d.onState != nil {
+		d.onState(changes)
+	}
+	return changes, nil
 }
 
 // ---------------------------------------------------------------------------

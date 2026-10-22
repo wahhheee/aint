@@ -140,6 +140,16 @@ func (s *Server) panels(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// saveState：GET /saves/{id}/state，head 处的状态与状态定义（状态抽屉、调试）。
+func (s *Server) saveState(w http.ResponseWriter, r *http.Request) error {
+	v, err := s.d.Runtime.State(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, v)
+	return nil
+}
+
 func (s *Server) saveEvents(w http.ResponseWriter, r *http.Request) error {
 	id := r.PathValue("id")
 	if _, err := s.d.Saves.Get(r.Context(), id); err != nil {
