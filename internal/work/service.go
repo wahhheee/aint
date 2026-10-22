@@ -36,7 +36,7 @@ type Service struct {
 	blobs *store.Blobs
 
 	mu    sync.Mutex
-	cache map[string]*Model // 版本 ID → 编译结果（TODO(M1)：改为 LRU，限制内存）
+	cache map[string]*Model // 版本 ID → 编译结果（TODO(M1)：缓存需要 LRU 淘汰与容量上限）
 }
 
 // NewService 创建作品服务。

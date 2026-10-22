@@ -137,6 +137,7 @@ task build
   做完按该文档顶部的"更新规则"更新进度。
 
 - 注释使用简体中文；尚未完成的地方写 `TODO(任务编号)：说明`，编号对应实施计划（如 `TODO(M3-6)`），文档冲突写 `TODO(待确认)`。
+- 注释与普通文档描述当前行为和有明确依据的原因；写法见 [AGENTS.md 的“注释与文档写法”](../AGENTS.md#注释与文档写法)。
 - 提交信息：Conventional Commits + 简体中文，例如 `feat(runtime): 回合截断续写`、`fix(web): 选项键盘快捷键冲突`。
 - Go：`task fmt` 格式化（gofmt + goimports，本项目的包单独成组）；包级注释写清"职责 / 不负责什么 / 调试方法"。
 - 前端：ESLint + Prettier；文案进 `i18n/zh-CN.ts`；`components/ui` 是 shadcn 生成的组件，可以按设计语言修改。

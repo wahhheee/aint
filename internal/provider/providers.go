@@ -164,7 +164,7 @@ func (s *Service) Update(ctx context.Context, id string, in ProviderInput) (Prov
 		return cur, err
 	}
 	if key := strings.TrimSpace(in.APIKey); key != "" {
-		if strings.HasPrefix(ref, "env:") { // 从环境变量读取的密钥改为写入 secrets.json
+		if strings.HasPrefix(ref, "env:") { // 手动输入的密钥存入 secrets.json，使用供应商专属引用
 			ref = secretKey(id)
 		}
 		if err := s.secrets.Set(ref, key); err != nil {
