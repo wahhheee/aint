@@ -64,4 +64,5 @@
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
-| D-53 | `update_state` 每次调用改**一项**（参数 `{op, path, value, reason}`），多项变化在同一次回复中多次调用。原因：实测 Claude Sonnet 5.5（中转站 A）把"操作对象数组"参数写成 JSON 字符串，且字符串内部引号未转义，无法解析（4 / 4 次；给 value 加类型、放宽额外字段均无效），单个操作的参数 2 / 2 次正确，并能在一次回复中并行调用。工具参数解码时，把写成 JSON 字符串的数组 / 对象参数还原后再解码一次（能还原的照常执行） | `internal/tools/builtins.go`、`internal/tools/args.go` |
+| D-53 | `update_state` 每次调用改**一项**（参数 `{op, path, value, reason}`），多项变化在同一次回复中多次调用。原因：实测 Claude Sonnet 5.5（中转站 A）把"操作对象数组"参数写成 JSON 字符串，且字符串内部引号未转义，无法解析（4 / 4 次；给 value 加类型、放宽额外字段均无效），单个操作的参数 2 / 2 次正确，并能在一次回复中并行调用。评测中发现这只在文字含 ASCII 双引号时发生，`offer_choices` 也会遇到：
+工具参数解码失败时，把写成 JSON 字符串的数组 / 对象参数还原（必要时按"引号后面不是 , : } ] 就是文字里的引号"修复未转义的引号）后再解码一次 | `internal/tools/builtins.go`、`internal/tools/args.go` |

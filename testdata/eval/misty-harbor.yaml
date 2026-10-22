@@ -21,7 +21,7 @@ steps:
   - choice: auto
   - choice: auto
   - command: /揭晓
-  - choice: auto
+  - free: 天亮之前，我回到邮局，把那封信放回第三格。
 checks:
   - q: 林舟的银色钥匙是在哪里捡到的？它能打开什么？
     expect: 旧码头的缆绳下；灯室（老陈替周看守保管的备用钥匙）

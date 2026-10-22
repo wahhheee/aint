@@ -124,7 +124,14 @@ func TestDecodeStringifiedArgs(t *testing.T) {
 	if err := decodeArgs(jsonx.Value(`{"paths":"[\"day\", \"weather\"]","n":2}`), &a); err != nil || len(a.Paths) != 2 || a.N != 2 {
 		t.Fatalf("应还原字符串化的数组：%+v %v", a, err)
 	}
-	if err := decodeArgs(jsonx.Value(`{"paths":"[\"未转义的"引号\"]"}`), &a); err == nil {
+	if err := decodeArgs(jsonx.Value(`{"paths":"[\"a\", 1"}`), &a); err == nil {
 		t.Fatal("无法还原时应报告原来的错误")
+	}
+
+	// 实测样本（Claude Sonnet 5.5）：文字里的 ASCII 引号没有转义
+	var c offerArgs
+	raw := `{"choices":"[{\"id\": \"a\", \"label\": \"先把信给他看\", \"detail\": \"把手里那封写给\"明天的你\"的信递过去\"}, {\"id\": \"b\", \"label\": \"离开\"}]"}`
+	if err := decodeArgs(jsonx.Value(raw), &c); err != nil || len(c.Choices) != 2 || c.Choices[0].Detail != `把手里那封写给"明天的你"的信递过去` {
+		t.Fatalf("应修复未转义的引号：%+v %v", c, err)
 	}
 }
