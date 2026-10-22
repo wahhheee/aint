@@ -137,3 +137,25 @@ func TestEncodingWarnings(t *testing.T) {
 		t.Fatal("带 BOM 的文件应照常读取")
 	}
 }
+
+func TestAssetMagic(t *testing.T) {
+	set := NewFileSet()
+	_ = set.Add("work.yaml", []byte("format: 1\nid: test.assets\nversion: 0.1.0\ntitle: 素材\n"))
+	_ = set.Add("assets/rain.ogg", []byte("OggS\x00\x02"))
+	_ = set.Add("assets/fake.mp3", []byte("<html>not audio</html>"))
+	_ = set.Add("assets/font.woff2", []byte("wOF2\x00\x01"))
+	_ = set.Add("assets/broken.png", []byte("\x89PNG\r\n\x1a\nbroken"))
+	m, rep := Compile(set)
+	var bad []string
+	for _, i := range rep.Issues {
+		if i.Code == CodeAsset {
+			bad = append(bad, i.Path)
+		}
+	}
+	if strings.Join(bad, ",") != "assets/broken.png,assets/fake.mp3" {
+		t.Fatalf("应报告无法解码的图片与内容不符的音频：%v", rep.Issues)
+	}
+	if len(m.Assets) != 2 {
+		t.Fatalf("有问题的素材不进入素材索引：%+v", m.Assets)
+	}
+}

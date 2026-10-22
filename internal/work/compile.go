@@ -15,6 +15,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/yanyi/internal/vfs"
 )
 
 var (
@@ -55,6 +56,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.markup()
 	c.layout()
 	c.assets()
+	c.memoryTemplates()
 	c.templates()
 	c.crossRefs()
 	c.pinnedImages()
@@ -425,6 +427,44 @@ var assetKinds = map[string]string{
 	".mp3": "audio", ".ogg": "audio", ".m4a": "audio", ".woff2": "font",
 }
 
+// memoryTemplates 检查记忆初始模板（memory/，复制到每个新存档的 /memory）：与 AI 写记忆的约束相同（E-NAME），
+// 否则 AI 之后无法修改这些文件。
+func (c *compiler) memoryTemplates() {
+	total := 0
+	for _, p := range c.fs.Paths() {
+		rest, ok := strings.CutPrefix(p, "memory/")
+		if !ok {
+			continue
+		}
+		if err := vfs.Writable("/memory/" + rest); err != nil {
+			c.r.Errorf(CodeName, p, 0, "记忆模板与 AI 写的记忆遵守同样的约束", "记忆模板不合规：%v", err)
+		}
+		data, _ := c.fs.Get(p)
+		if len(data) > vfs.MaxMemoryFile {
+			c.r.Errorf(CodeName, p, 0, "拆成几个小文件", "记忆模板超过 %d KiB", vfs.MaxMemoryFile>>10)
+		}
+		total += len(data)
+	}
+	if total > vfs.MaxMemoryTotal {
+		c.r.Errorf(CodeName, "memory", 0, "精简初始记忆", "记忆模板合计超过 %d MiB", vfs.MaxMemoryTotal>>20)
+	}
+}
+
+// matchesMagic 按文件头判断音频与字体的格式是否与扩展名一致（图片由 media.Probe 解码检查）。
+func matchesMagic(ext string, b []byte) bool {
+	switch ext {
+	case ".mp3": // ID3 标签或 MPEG 帧同步
+		return bytes.HasPrefix(b, []byte("ID3")) || len(b) > 1 && b[0] == 0xFF && b[1]&0xE0 == 0xE0
+	case ".ogg":
+		return bytes.HasPrefix(b, []byte("OggS"))
+	case ".m4a":
+		return len(b) > 8 && string(b[4:8]) == "ftyp"
+	case ".woff2":
+		return bytes.HasPrefix(b, []byte("wOF2"))
+	}
+	return true
+}
+
 func (c *compiler) assets() {
 	type meta struct {
 		Path        string `yaml:"path"`
@@ -459,16 +499,20 @@ func (c *compiler) assets() {
 		}
 		m := byPath[p]
 		a := Asset{ID: m.ID, Path: p, Kind: kind, Role: m.Role, Description: m.Description, Pin: m.Pin, Blob: c.m.Files[p].Blob}
-		if kind == "image" {
-			data, _ := c.fs.Get(p)
+		data, _ := c.fs.Get(p)
+		switch {
+		case isLFSPointer(data): // 已报告 E-LFS
+			continue
+		case kind == "image":
 			info, err := media.Probe(data)
 			if err != nil {
-				if !isLFSPointer(data) { // 指针文件已报告 E-LFS
-					c.r.Errorf(CodeAsset, p, 0, "确认文件完整、扩展名与实际格式一致（支持 png、jpg、webp、gif）", "图片无法解码")
-				}
+				c.r.Errorf(CodeAsset, p, 0, "确认文件完整、扩展名与实际格式一致（支持 png、jpg、webp、gif）", "图片无法解码")
 				continue
 			}
 			a.Width, a.Height = info.Width, info.Height
+		case !matchesMagic(ext, data):
+			c.r.Errorf(CodeAsset, p, 0, "确认文件完整、扩展名与实际格式一致（音频支持 mp3、ogg、m4a，字体支持 woff2）", "文件内容与扩展名 %s 不符", ext)
+			continue
 		}
 		if a.ID == "" {
 			a.ID = strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
