@@ -1,0 +1,22 @@
+/* 雾港来信：封印陈述像盖在纸上的金色印记，低语随潮水起伏 */
+.mk-gold {
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid color-mix(in oklab, currentColor 40%, transparent);
+}
+
+.mk-whisper {
+  animation: tide 3.2s ease-in-out infinite alternate;
+}
+
+.scene-title {
+  letter-spacing: 0.4em;
+}
+
+.cg-card img {
+  filter: sepia(0.12) contrast(0.96);
+}
+
+@keyframes tide {
+  from { opacity: 0.6; }
+  to { opacity: 0.85; }
+}

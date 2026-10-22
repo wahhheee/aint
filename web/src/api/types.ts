@@ -333,8 +333,28 @@ export interface Presentation {
     commands: Command[]
     characters: Character[]
     assets: AssetRef[]
+    theme: WorkTheme
     pace: Pace
   }
+}
+
+/** work.Theme：作品主题（作用域限于 .work-root 的 CSS + 排版数值） */
+export interface WorkTheme {
+  css?: string
+  reading: ThemeReading
+}
+
+/** work.ThemeReading：主题中的排版数值；缺省表示沿用平台默认 */
+export interface ThemeReading {
+  /** serif | sans | 作品字体的 font-family 名 */
+  font?: string
+  heading_font?: string
+  max_width?: string
+  line_height?: number
+  paragraph_spacing?: string
+  indent?: string
+  /** 有背景图（.work-backdrop） */
+  backdrop?: boolean
 }
 
 /** media.Upload（POST /uploads）：玩家上传的图片（服务端已重新编码） */

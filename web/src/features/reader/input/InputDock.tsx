@@ -81,13 +81,23 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
   useEffect(() => {
     if (text) localStorage.setItem(storageKey, text)
     else localStorage.removeItem(storageKey)
-    // 自适应高度（1–6 行）
-    const ta = taRef.current
-    if (ta) {
-      ta.style.height = 'auto'
-      ta.style.height = `${Math.min(ta.scrollHeight, 6 * 26)}px`
-    }
+    fitHeight(taRef.current)
   }, [text, storageKey])
+
+  // 宽度变化（窗口缩放、页面在隐藏状态下完成首次布局）后重新计算高度
+  useEffect(() => {
+    const ta = taRef.current
+    if (!ta || typeof ResizeObserver === 'undefined') return
+    let width = ta.clientWidth
+    const ro = new ResizeObserver(() => {
+      if (ta.clientWidth !== width) {
+        width = ta.clientWidth
+        fitHeight(ta)
+      }
+    })
+    ro.observe(ta)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => setActive(0), [query])
 
@@ -303,3 +313,10 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
     </div>
   )
 })
+
+/** 输入框自适应高度（1–6 行）。 */
+function fitHeight(ta: HTMLTextAreaElement | null) {
+  if (!ta) return
+  ta.style.height = 'auto'
+  ta.style.height = `${Math.min(ta.scrollHeight, 6 * 26)}px`
+}

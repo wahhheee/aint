@@ -27,8 +27,10 @@ type Model struct {
 	Files map[string]FileRef
 	// Partials 是 ui/ 下的全部 .liquid 模板（路径 → 源码）：渲染作品模板时提供给 {% render %}（tmpl.RenderWith）。
 	Partials map[string]string
+	// Theme 是作品主题（ui/theme.yaml 与 custom.css）编译后的 CSS 与排版数值；没有主题时为零值。
+	Theme Theme
 
-	// TODO(M2-9)：Theme（ui/theme.yaml）与 custom.css。
+	uiAssets map[string]bool // 只给界面用的素材路径（见 UIOnly）
 }
 
 // FileRef 引用作品中的一个文件（内容在 blob 存储中）。
@@ -50,11 +52,9 @@ type Asset struct {
 	Height      int    `json:"height,omitzero"`
 }
 
-// IsCover 判断素材是否是作品封面（work.yaml 的 cover）。封面只用于书架展示，不出现在 AI 的素材索引中。
-func (m *Model) IsCover(a Asset) bool {
-	ref := m.Manifest.Cover
-	return ref != "" && (a.ID == ref || a.Path == ref)
-}
+// UIOnly 判断素材是否只给界面用：作品封面（work.yaml 的 cover）与主题背景图。它们不出现在 AI 的素材索引中，
+// 也不启用 <cg> 等标签。
+func (m *Model) UIOnly(a Asset) bool { return m.uiAssets[a.Path] }
 
 // PinnedImages 返回常驻 AI 上下文的图片（L3）：assets.yaml 中 pin: true 的图片（按 ID），
 // 再加上 pin_images 文档的关联图片（按文档顺序）；同一张图片只出现一次。

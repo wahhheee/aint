@@ -2,7 +2,7 @@
  * 作品样式标签 → CSS（《02-技术方案》17）。生成 .mk-<tag> 类，作用域限定在阅读区 .work-root 内。
  *
  * 缺少 dark_color 时，用 color-mix 在 OKLCH 空间提亮作为深色模式颜色。
- * TODO(M2-7)：按规范计算到对比度 ≥ 4.5 为止（目前是固定比例的近似）；作品 custom.css 的作用域隔离（M2-9）。
+ * TODO(M2-7)：按规范计算到对比度 ≥ 4.5 为止（目前是固定比例的近似）。
  */
 import type { TagDef } from '@/api/types'
 

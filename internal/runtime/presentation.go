@@ -45,6 +45,7 @@ type UI struct {
 	Commands    []work.Command `json:"commands"`
 	Characters  []Character    `json:"characters"` // <say who> 的说话人样式
 	Assets      []AssetRef     `json:"assets"`     // 素材（舞台背景、插图、头像）
+	Theme       work.Theme     `json:"theme"`      // 作品主题：CSS（作用域限于 .work-root）与排版数值
 	Pace        string         `json:"pace"`
 }
 
@@ -116,6 +117,7 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 		Commands:    nonNil(w.Commands),
 		Characters:  []Character{},
 		Assets:      []AssetRef{},
+		Theme:       w.Theme,
 		Pace:        firstNonEmpty(sv.Settings.Pace, mf.Narrator.Length),
 	}
 	for _, pd := range w.Layout.Panels {

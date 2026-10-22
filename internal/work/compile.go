@@ -56,7 +56,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.templates()
 	c.crossRefs()
 	c.pinnedImages()
-	// TODO(M2-9)：ui/theme.yaml 与 custom.css 校验。
+	c.theme()
 	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
 	return c.m, c.r
 }
@@ -464,8 +464,10 @@ func (c *compiler) crossRefs() {
 		}
 	}
 	if cover := c.m.Manifest.Cover; cover != "" {
-		if _, ok := c.m.Asset(cover); !ok {
+		if a, ok := c.m.Asset(cover); !ok || a.Kind != "image" {
 			c.r.Errorf(CodeRef, "work.yaml", 0, "", "封面素材不存在：%s", cover)
+		} else {
+			c.m.markUIOnly(a)
 		}
 	}
 	c.checkDocLinks()
@@ -502,6 +504,13 @@ func (c *compiler) pinnedImages() {
 				"常驻图片尺寸较大（%d×%d）", a.Width, a.Height)
 		}
 	}
+}
+
+func (m *Model) markUIOnly(a Asset) {
+	if m.uiAssets == nil {
+		m.uiAssets = map[string]bool{}
+	}
+	m.uiAssets[a.Path] = true
 }
 
 func (c *compiler) statePathExists(p string) bool {

@@ -68,6 +68,7 @@ export function ReaderPage() {
       timeline={timeline.data}
       panels={panels.data?.panels}
       reading={settings.data?.reading}
+      workTheme={settings.data?.use_work_theme !== false}
       devTools={!!settings.data?.developer || presentation.data.dev_work}
     />
   )
@@ -79,11 +80,13 @@ type ViewProps = {
   timeline: ReturnType<typeof useTimeline>['data']
   panels: NonNullable<ReturnType<typeof usePanels>['data']>['panels'] | undefined
   reading: ReaderContextValue['reading']
+  /** 使用作品主题（设置中可关闭；样式标签不受影响） */
+  workTheme: boolean
   /** 显示开发者工具（检查器等）：开发者选项开启，或作品来自开发目录 */
   devTools: boolean
 }
 
-function ReaderView({ saveId, presentation, timeline, panels, reading, devTools }: ViewProps) {
+function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme, devTools }: ViewProps) {
   const { ui, save } = presentation
   const actions = useTurnActions(saveId, ui.commands)
   const busy = useReader(selectBusy)
@@ -95,8 +98,9 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const markupCtx = useMarkupContext(ui.builtin_tags, ui.tags, ui.characters, ui.assets)
-  const readingStyle = useReadingStyle(reading)
-  useWorkStyles(workTagCSS(ui.tags))
+  const theme = workTheme ? ui.theme : undefined
+  const readingStyle = useReadingStyle(reading, theme?.reading)
+  useWorkStyles(workTagCSS(ui.tags) + (theme?.css ? '\n' + theme.css : ''))
 
   // 还没有任何回合（生成式开场或作品没有开场）：自动开始故事
   const openedRef = useRef(false)
@@ -164,6 +168,8 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
     <ReaderContext.Provider value={ctx}>
       <MarkupProvider value={markupCtx}>
         <div className="work-root relative isolate flex h-dvh overflow-hidden bg-paper" style={readingStyle}>
+          {/* 作品主题的背景图（低透明度的纸纹、雾气等），在舞台背景之下 */}
+          {theme?.reading.backdrop && <div aria-hidden className="work-backdrop pointer-events-none absolute inset-0 bg-cover bg-center" />}
           {/* 舞台背景铺满整页（侧栏是半透明的磨砂面，背景从下面透出来） */}
           <StageBackground asset={stageAsset} intensity={reading?.stage_intensity} />
 
@@ -222,7 +228,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
   )
 }
 
-/** 注入作品样式标签的 CSS，离开阅读页时移除。 */
+/** 注入作品的 CSS（样式标签与主题），离开阅读页时移除。 */
 function useWorkStyles(css: string) {
   useEffect(() => {
     const el = document.createElement('style')

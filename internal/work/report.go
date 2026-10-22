@@ -21,6 +21,7 @@ const (
 	CodeState        = "E-STATE"
 	CodeLFS          = "E-LFS"
 	CodeAsset        = "E-ASSET"
+	CodeTheme        = "E-THEME" // ui/theme.yaml 取值或 custom.css 不合法
 	CodeParse        = "E-PARSE" // YAML / frontmatter 语法错误（规范中未单列，归入对应文件）
 	CodeUnknownField = "W-UNKNOWN-FIELD"
 	CodePrefixLarge  = "W-PREFIX-LARGE"

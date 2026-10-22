@@ -1,0 +1,16 @@
+# 雾港来信的主题：灰白的雾、旧纸、灯塔的暖光
+fonts:
+  body: serif
+  heading: serif
+colors:
+  light: {background: "#f3f1ec", text: "#2a2826", muted: "#78716a", accent: "#8a6a2b", panel: "#ebe7df"}
+  dark:  {background: "#0b0e10", text: "#e1ddd5", muted: "#968f86", accent: "#d4a85a", panel: "#13181b"}
+reading:
+  max_width: 38em
+  line_height: 1.95
+  paragraph_spacing: 0.9em
+  indent: 2em
+background:
+  image: assets/bg/fog.webp
+  opacity: 0.08
+custom_css: ui/custom.css

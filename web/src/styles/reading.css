@@ -1,8 +1,9 @@
 /*
  * 正文排版（阅读区 .work-root）
  *
- * 变量由三层决定，后者覆盖前者：平台默认 → 作品主题（theme.yaml，TODO(M2-9)）→ 玩家阅读设置。
- * 阅读设置写在 .work-root 的 style 上（features/reader/useReadingStyle.ts）。
+ * 变量由三层决定，后者覆盖前者：平台默认 → 作品主题（theme.yaml）→ 玩家阅读设置，
+ * 合并后写在 .work-root 的 style 上（features/reader/useReadingStyle.ts）。作品配色与 custom.css 另以
+ * <style data-work> 注入，作用域限于 .work-root（服务端 work.ScopeCSS）。
  */
 
 .work-root {
@@ -12,6 +13,7 @@
   --reading-gap: 0.9em;
   --reading-indent: 2em;
   --reading-width: 40em;
+  --reading-heading-font: var(--reading-font);
 }
 
 .prose-book {
@@ -51,6 +53,7 @@
 
 /* 场景标题卡（<scene title>）：大字号、上下留白 */
 .prose-book .scene-title {
+  font-family: var(--reading-heading-font);
   margin: 2.2em 0 1.6em;
   text-align: center;
   text-indent: 0;

@@ -125,7 +125,7 @@ func renderAssets(m *work.Model, fs prompts.FeatureSet) string {
 	}
 	var bg, images, audio []string
 	for _, a := range m.Assets {
-		if m.IsCover(a) {
+		if m.UIOnly(a) {
 			continue
 		}
 		desc := ""
