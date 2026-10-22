@@ -145,6 +145,13 @@ func TestBody(t *testing.T) {
 		`{"role":"model","parts":` + string(native) + `}`,
 		`{"role":"user","parts":[{"functionResponse":{"id":"c1","name":"read","response":{"output":"内容"}}},{"text":"<input>继续</input>"}]}`,
 		`"tools":[{"functionDeclarations":[{"name":"read","description":"读取","parametersJsonSchema":{"type":"object"}}]}]`,
+		`"safetySettings":[` +
+			`{"category":"HARM_CATEGORY_HARASSMENT","threshold":"OFF"},` +
+			`{"category":"HARM_CATEGORY_HATE_SPEECH","threshold":"OFF"},` +
+			`{"category":"HARM_CATEGORY_SEXUALLY_EXPLICIT","threshold":"OFF"},` +
+			`{"category":"HARM_CATEGORY_DANGEROUS_CONTENT","threshold":"OFF"},` +
+			`{"category":"HARM_CATEGORY_CIVIC_INTEGRITY","threshold":"OFF"},` +
+			`{"category":"HARM_CATEGORY_JAILBREAK","threshold":"OFF"}]`,
 		`"generationConfig":{"maxOutputTokens":1000,"thinkingConfig":{"thinkingLevel":"low"}}`,
 	} {
 		if !strings.Contains(s, want) {

@@ -83,6 +83,17 @@
     CONTINUATION（Gemini 4 单次输出上限 65,536，可用 `continuationToken` 接续；目前按截断续写处理）。
     函数调用现在会返回 `id`；缺少时中立层生成 `gsyn_` 前缀的 ID，回传时不写入。3.8 / 4 系列思考档位只有 low / medium / high。
 
+2026-10-22 补充：**安全设置**（M4-1）按用户要求在每次请求的 `safetySettings` 中显式发送
+`HARM_CATEGORY_HARASSMENT`、`HARM_CATEGORY_HATE_SPEECH`、`HARM_CATEGORY_SEXUALLY_EXPLICIT`、
+`HARM_CATEGORY_DANGEROUS_CONTENT`、`HARM_CATEGORY_CIVIC_INTEGRITY`、`HARM_CATEGORY_JAILBREAK`，阈值全部为 `OFF`。
+类别与阈值依据 [generateContent API](https://ai.google.dev/api/generate-content#safetysetting)；其中 CIVIC_INTEGRITY 已标记弃用，但仍列在支持的类别中。
+这些设置仅控制 API 可配置的过滤器；[模型内建且不可调整的保护](https://ai.google.dev/gemini-api/docs/safety-settings)没有可降低的阈值。
+
+验证使用 `.local/scripts/test_gemini_safety.py`（不入库），读取 `.local/secrets/live.json`，复用
+`TestLive/<Gemini 接入>/roundtrip` 的天气工具场景。中转站 A / B 的 gemini-3.8-flash 均完成两个并行工具调用与结果回填后的回答；
+五份原始请求全部携带上述设置（四次成功，一次上游 429 经现有重试成功），未遇到需要改用更高拦截阈值的参数限制。
+日志与原始报文保存在 `.local/probe/gemini-safety/`（不入库）。
+
 ### 库
 
 17. `modernc.org/sqlite`：FTS5 + trigram 可用，6 平台交叉编译通过（M0-3）。

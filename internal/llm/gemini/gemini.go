@@ -3,6 +3,7 @@
 // 请求（《02-技术方案》7.4）：
 //   - POST /v1beta/models/{model}:streamGenerateContent?alt=sse；systemInstruction = L0、L1 两个文本部件；
 //     工具用 functionDeclarations + parametersJsonSchema（直接使用作品工具的 JSON Schema）；
+//   - safetySettings 显式关闭全部可配置类别的安全过滤；
 //   - contents 中 user / model 交替，相邻同角色合并；
 //   - 同协议同模型的模型消息原样回传 Native 中的部件（含 thoughtSignature；Gemini 3 起工具调用缺签名会报错）；
 //     跨模型重建时，每条模型消息的第一个 functionCall 部件带官方文档给出的占位签名 skip_thought_signature_validator；
@@ -94,10 +95,16 @@ func (p *Provider) ListModels(ctx context.Context) ([]llm.RemoteModel, error) {
 // 请求
 
 type request struct {
-	SystemInstruction *content    `json:"systemInstruction,omitzero"`
-	Contents          []content   `json:"contents"`
-	Tools             []toolGroup `json:"tools,omitzero"`
-	GenerationConfig  *generation `json:"generationConfig,omitzero"`
+	SystemInstruction *content        `json:"systemInstruction,omitzero"`
+	Contents          []content       `json:"contents"`
+	Tools             []toolGroup     `json:"tools,omitzero"`
+	SafetySettings    []safetySetting `json:"safetySettings"`
+	GenerationConfig  *generation     `json:"generationConfig,omitzero"`
+}
+
+type safetySetting struct {
+	Category  string `json:"category"`
+	Threshold string `json:"threshold"`
 }
 
 type content struct {
@@ -166,7 +173,14 @@ type functionResponse struct {
 // Body 构建请求体（确定性 JSON）。导出供测试与前缀比对使用。
 func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]byte, error) {
 	key := llm.NativeKey(llm.ProtocolGemini, m.Name)
-	out := request{}
+	out := request{SafetySettings: []safetySetting{
+		{Category: "HARM_CATEGORY_HARASSMENT", Threshold: "OFF"},
+		{Category: "HARM_CATEGORY_HATE_SPEECH", Threshold: "OFF"},
+		{Category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", Threshold: "OFF"},
+		{Category: "HARM_CATEGORY_DANGEROUS_CONTENT", Threshold: "OFF"},
+		{Category: "HARM_CATEGORY_CIVIC_INTEGRITY", Threshold: "OFF"},
+		{Category: "HARM_CATEGORY_JAILBREAK", Threshold: "OFF"},
+	}}
 	var sys content
 	for _, s := range req.System {
 		if s.Text != "" {
