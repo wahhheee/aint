@@ -40,3 +40,13 @@
 | D-43 | 首次发布前**不考虑向后兼容**。前后端在同一仓库、随同一个可执行文件发布，彼此是唯一的使用方：契约（types / events / errors / routes）直接改名、删字段、改结构，前后端在同一次改动中一起改；不保留旧字段、旧路由或别名，不加 API 版本号，不写"旧格式也接受"的分支与降级逻辑。程序自己的数据同理：表结构直接改 `0001_init.sql`（K1），本地数据删 `.devdata/` 重建；设置、作品格式改定义时同步改示例作品与测试。**不包括**产品功能中的版本机制：作品 `format` / `engine` 检查、存档绑定作品版本、存档升级（M6-6）是需求本身，照常实现。首次发布后再定兼容策略。原因：没有需要兼容的旧版本，兼容代码只会增加分支、测试与理解成本 | `AGENTS.md` |
 
 另：D-08 修订为"Liquid 用于开场、执笔指令（只引用初始状态）、命令文本与面板；平台不设条件表达式类字段，模板内部的 `if`/`for` 不受此限"。
+
+## M0 / M1 实现（2026-10-22）
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-44 | 三协议适配器用**标准库手写**（`net/http` + 自写 SSE 解析），不使用官方 SDK（修订 D-06 中"三家官方 Go SDK"的部分；"自研运行器、不引入 Agent 框架"不变）。原因：请求体由 `jsonx` 确定性序列化，前缀字节完全可控；`Native` 原样存取协议内容块（推理签名、带签名的空文本都不丢）；中转站的非标字段与新特性（`between_tools`、`prompt_cache_options` 等）不受 SDK 版本限制；不引入 genai 带来的 grpc / cloud auth 等依赖；录制夹具就是原始 SSE 字节。用户确认 | `internal/llm/wire`、`internal/llm/{anthropic,openai,gemini}` |
+| D-45 | 真实模型验证**以最少的调用完成**：缓存用"同前缀连续两次请求"验证，不做每协议 10 次重复请求；真实调用测试默认跳过、按需运行；密钥与中转站地址只放 `.local/secrets/`（不入库），文档中中转站只写代号。用户要求 | `internal/provider/live_test.go`、`docs/notes/api-verification.md` |
+| D-46 | 作者模板（Liquid）在**可终止的隔离工作进程**中渲染：yanyi 自身以隐藏子命令 `__tmpl-worker` 运行，超时（1 秒）即杀掉并重启；渲染核心进程内与工作进程共用，语义一致；保留 Go 服务端渲染，不拆成前端 LiquidJS。用户确认 | `internal/tmpl` |
+| D-47 | OpenAI Responses 的缓存：GPT-5.6 起（Caps.Cache = breakpoints）用 `prompt_cache_options {mode: implicit, ttl}`（隐式断点自动落在最新消息末尾，相当于滚动断点），并在 L1 / L3 / L4 末尾加显式断点；顶层 `instructions` 不能带断点，所以 L0+L1 放首条 developer 消息。早期模型与兼容接口（如 DeepSeek）用 `instructions` + `prompt_cache_key`（DeepSeek 把 developer 当 user）。缓存保留时长改为中立的 short / long（Anthropic 5m / 1h、OpenAI 30m / 12h） | `internal/llm/openai`、`llm.CacheShort/CacheLong` |
+| D-48 | 供应商增加**价格倍率**（中转站的分组倍率）：模型单价照抄站点标价，实际费用 = 单价 × 倍率；运行时解析模型时已乘好，设置页显示单价与倍率。用户确认 | `providers.price_multiplier`、`llm.Price.Scaled` |

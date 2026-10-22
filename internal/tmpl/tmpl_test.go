@@ -97,6 +97,10 @@ func TestRenderErrors(t *testing.T) {
 					t.Fatalf("%s 不应读到文件：%q %v", src, out, err)
 				}
 			}
+			// 渲染库 panic 时转为模板错误，不拖垮进程
+			if _, err := e.Render("t", `{% assign forloop = 1 %}{% cycle 'a' %}`, nil); kindOf(err) != ErrTemplate {
+				t.Fatalf("panic 应转为模板错误：%v", err)
+			}
 			// 输出超限立即中止
 			if _, err := e.Render("t", `{% for i in (1..100000) %}{{ "0123456789" }}{% endfor %}`, nil); kindOf(err) != ErrTooLarge {
 				t.Fatalf("输出超限：%v", err)
