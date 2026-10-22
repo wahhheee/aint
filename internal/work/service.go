@@ -21,8 +21,8 @@ import (
 // Source 记录作品版本的来源（work_versions.source）。
 type Source struct {
 	Type   string `json:"type"`            // zip | dir | github | url | dev | builtin
-	Name   string `json:"name,omitzero"`   // builtin 名称、zip 文件名
-	Path   string `json:"path,omitzero"`   // dir / dev 的本机路径
+	Name   string `json:"name,omitzero"`   // builtin 名称、zip 文件名、浏览器上传的文件夹名
+	Path   string `json:"path,omitzero"`   // dev 的本机路径（dir 是浏览器上传的文件夹，没有路径）
 	Repo   string `json:"repo,omitzero"`   // github：owner/repo
 	Ref    string `json:"ref,omitzero"`    // github：分支/标签/提交
 	Commit string `json:"commit,omitzero"` // github：实际提交 SHA
@@ -318,11 +318,36 @@ func AssetURL(a Asset) string {
 	return "/api/v1/assets/" + strings.TrimPrefix(a.Blob, "sha256:")
 }
 
-// TODO(M1-4/M6-1)：Import(ctx, ImportRequest) 两段式导入（先解析校验返回报告与任务 ID，确认后写入）：
-//   - zip：archive/zip 安全解压（路径穿越、符号链接、体积与数量上限）→ LocateRoot → FromFS；
-//   - 目录：os.DirFS(path) → LocateRoot → FromFS；
-//   - GitHub：链接解析、ref 歧义处理、codeload 归档下载、LFS 检测（技术方案 5.4）；
-//   - URL：下载大小上限、超时（P1）。
+// existing 查询书架上的同 ID 作品，以及同内容（同文件树哈希）的已有版本。没有同 ID 作品时返回 nil。
+func (s *Service) existing(ctx context.Context, workID, treeHash string) (*ImportExisting, error) {
+	q := s.db.Read()
+	w, err := getWork(ctx, q, workID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ex := &ImportExisting{}
+	if latest, err := getVersion(ctx, q, w.LatestVersionID); err == nil {
+		ex.Title, ex.LatestVersion = latest.Manifest.Title, latest.Version
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	same, err := findVersionByHash(ctx, q, workID, treeHash)
+	if err != nil || same == "" {
+		return ex, err
+	}
+	v, err := getVersion(ctx, q, same)
+	if err != nil {
+		return nil, err
+	}
+	ex.SameVersionID, ex.SameVersion = v.ID, v.Version
+	return ex, nil
+}
+
+// TODO(M6-1)：GitHub 导入（链接解析、ref 歧义处理、codeload 归档下载，技术方案 5.4）与 URL 导入（下载大小上限、超时，P1）：
+// 下载到导入暂存目录后与 zip 上传相同（FromZip → Importer.preview）。
 // TODO(M6-2)：开发目录（WRK-10）：每部作品至多一个开发版本（is_dev = 1），重载时原地替换 work_files 并更新
 // tree_hash（D-37）；fsnotify 去抖 400ms，推送 work.reloaded；已有存档始终使用最新内容。
 // TODO(M6-5)：Export（确定性 zip）、Delete（有存档引用时提示）。

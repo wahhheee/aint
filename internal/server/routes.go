@@ -19,8 +19,9 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/v1/works", s.h(s.listWorks))
 	m.HandleFunc("GET /api/v1/works/{id}", s.h(s.getWork))
 	m.HandleFunc("GET /api/v1/works/{id}/saves", s.h(s.listWorkSaves))
-	m.HandleFunc("POST /api/v1/works/import", todo("导入作品（M1-4 / M6-1）"))
-	m.HandleFunc("POST /api/v1/works/import/{task}/confirm", todo("确认导入（M1-4）"))
+	m.HandleFunc("POST /api/v1/works/import", s.h(s.importWork)) // zip / 文件夹；GitHub、链接见 M6-1
+	m.HandleFunc("POST /api/v1/works/import/{task}/confirm", s.h(s.confirmImport))
+	m.HandleFunc("DELETE /api/v1/works/import/{task}", s.h(s.cancelImport)) // 放弃导入（技术方案未单列，补充）
 	m.HandleFunc("GET /api/v1/works/{id}/versions", todo("版本列表（M6-5）"))
 	m.HandleFunc("POST /api/v1/works/{id}/check-update", todo("检查更新（M6-1）"))
 	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/export", todo("导出 zip（M6-5）"))

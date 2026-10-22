@@ -45,6 +45,7 @@ type Deps struct {
 	Bus       *event.Bus
 	Settings  *settings.Service
 	Works     *work.Service
+	Imports   *work.Importer
 	Saves     *save.Service
 	Runtime   *runtime.Manager
 	Providers *provider.Service

@@ -1,6 +1,7 @@
 package work
 
 import (
+	"bytes"
 	"path"
 	"regexp"
 	"slices"
@@ -38,6 +39,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	}
 	c.m.TreeHash = fs.TreeHash()
 
+	c.lfsPointers() // 放在清单之前：work.yaml 本身是指针文件时，"指针文件"比"YAML 解析失败"更能说明问题
 	if !c.manifest() {
 		return c.m, c.r // 清单都读不出来，后续检查没有意义
 	}
@@ -51,7 +53,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.assets()
 	c.crossRefs()
 	// TODO(M2-9)：ui/theme.yaml 与 custom.css 校验。
-	// TODO(M2-10)：素材解码校验（E-ASSET）、Git LFS 指针检测（E-LFS）、常驻图片 token 估算（W-PIN-IMAGE）。
+	// TODO(M2-10)：素材解码校验（E-ASSET）、常驻图片 token 估算（W-PIN-IMAGE）。
 	// TODO(M2-8)：面板与命令中的 Liquid 模板解析（E-TEMPLATE）。
 	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
 	return c.m, c.r
@@ -88,6 +90,30 @@ func (c *compiler) decode(file string, lineOffset int, data []byte, v any, fresh
 	return true
 }
 
+// lfsPointer 是 Git LFS 指针文件的特征（https://github.com/git-lfs/git-lfs/blob/main/docs/spec.md）：
+// 小于 1024 字节，以 version 行开头，含 sha256 oid。
+var (
+	lfsVersion = []byte("version https://git-lfs.github.com/spec/")
+	lfsOID     = []byte("\noid sha256:")
+)
+
+func isLFSPointer(b []byte) bool {
+	return len(b) < 1024 && bytes.HasPrefix(b, lfsVersion) && bytes.Contains(b, lfsOID)
+}
+
+// lfsPointers 报告 Git LFS 指针文件（E-LFS）。GitHub 的源码归档等只含指针、不含实际内容，作品无法使用。
+// 检查全部文件而不只是素材：LFS 可以管理任何文件。
+func (c *compiler) lfsPointers() {
+	for _, p := range c.fs.Paths() {
+		if data, _ := c.fs.Get(p); isLFSPointer(data) {
+			c.r.Errorf(CodeLFS, p, 0, "作者需要先 git lfs pull 取回实际文件再打包；玩家可以改用作者发布的 zip 包",
+				"这是 Git LFS 指针文件，不是文件的实际内容")
+		}
+	}
+}
+
+// manifest 解析 work.yaml。返回 false 表示清单本身有错误（只看本步骤产生的问题：
+// 其他文件的 E-LFS 等错误不妨碍继续检查，好让作者一次看到全部问题）。
 func (c *compiler) manifest() bool {
 	const file = "work.yaml"
 	data, ok := c.fs.Get(file)
@@ -95,6 +121,10 @@ func (c *compiler) manifest() bool {
 		c.r.Errorf(CodeManifest, file, 0, "作品根目录需要一个 work.yaml", "缺少 work.yaml")
 		return false
 	}
+	if isLFSPointer(data) {
+		return false // 已报告 E-LFS；再报 YAML 解析失败只会让人困惑
+	}
+	before := len(c.r.Issues)
 	c.m.Manifest = defaultManifest()
 	if !c.decode(file, 0, data, &c.m.Manifest, func() any { m := defaultManifest(); return &m }) {
 		return false
@@ -123,7 +153,7 @@ func (c *compiler) manifest() bool {
 				"作品需要的能力版本为 %s，当前程序为 %s", mf.Engine, EngineVersion)
 		}
 	}
-	return !c.r.HasErrors()
+	return !(&Report{Issues: c.r.Issues[before:]}).HasErrors()
 }
 
 func (c *compiler) prompts() {
