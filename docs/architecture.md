@@ -86,7 +86,7 @@ user   : [L3 常驻设定] [L4 阶段块（contextx/epoch.go）]  …历史回�
 app/        入口、Provider、路由表（router.tsx 一处看全）、外壳布局、全局事件流
 api/        与后端契约一一对应：types.ts、events.ts、errors.ts；client.ts（错误归一）、sse.ts（续传与重连）、queries.ts（查询键工厂）
 stores/     Zustand：reader.ts（草稿回合，事件处理为纯函数 reduceEvent）、ui.ts
-markup/     叙事标记解析（parse.ts）与渲染（render.tsx）、作品样式标签 CSS（workStyles.ts）
+markup/     叙事标记增量解析（parse.ts）与渲染（render.tsx）、作品样式标签 CSS（workStyles.ts）
 features/   library（书架、线装书封面）、work（作品详情）、save（开局）、reader（阅读页）、settings
 components/ ui/（shadcn 生成，已按设计语言定制尺寸与配色）、common/（PageHeader 页面骨架、ThemeSwitch 外观切换等）、brand/
 styles/     globals.css（设计令牌）、reading.css（正文排版）、markup.css（标签样式）
@@ -108,7 +108,7 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | SSE 事件 | `internal/event/types.go` | `web/src/api/events.ts`（含 `EVENT_TYPES` 列表） |
 | 错误码 | `internal/pkg/errs/errs.go` | `web/src/api/errors.ts` |
 | 路由 | `internal/server/routes.go` | `web/src/api/endpoints.ts` |
-| 叙事标记语法 | `internal/markup` | `web/src/markup/parse.ts`（TODO(M0-5)：共用 `testdata/markup` 测试向量） |
+| 叙事标记语法 | `internal/markup` | `web/src/markup/parse.ts`（两端运行同一份测试向量 `testdata/markup/*.json`） |
 
 字段名保持 snake_case 不转换：排查问题时浏览器网络面板、日志、Go 代码看到的是同一个名字。
 
