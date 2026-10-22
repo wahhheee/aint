@@ -21,6 +21,24 @@
       "port": 7860
     },
     {
+      "name": "后端（真实模型）",
+      "runtimeExecutable": "go",
+      "runtimeArgs": [
+        "run",
+        "./cmd/yanyi",
+        "serve",
+        "--data",
+        "./.devdata",
+        "--no-browser",
+        "--port",
+        "7860",
+        "--trace-llm",
+        "--log-level",
+        "debug"
+      ],
+      "port": 7860
+    },
+    {
       "name": "前端（Vite）",
       "runtimeExecutable": "node",
       "runtimeArgs": [

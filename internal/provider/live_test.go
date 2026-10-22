@@ -15,13 +15,10 @@ package provider
 // 每个子测试都只发最少的请求，并在日志中输出用量，结论汇总在 docs/notes/api-verification.md。
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"image"
 	"image/color"
-	"image/png"
 	"io"
 	"os"
 	"strings"
@@ -40,28 +37,7 @@ type liveProvider struct {
 	Model    string       `json:"model"`
 }
 
-type memBlobs map[string][]byte
-
-func (m memBlobs) ReadBlob(_ context.Context, hash string) ([]byte, error) {
-	if b, ok := m[hash]; ok {
-		return b, nil
-	}
-	return nil, fmt.Errorf("blob %s 不存在", hash)
-}
-
-func solidPNG(c color.RGBA) []byte {
-	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
-	for y := range 64 {
-		for x := range 64 {
-			img.Set(x, y, c)
-		}
-	}
-	var buf bytes.Buffer
-	_ = png.Encode(&buf, img)
-	return buf.Bytes()
-}
-
-var liveBlobs = memBlobs{
+var liveBlobs = memBlobReader{
 	"sha256:red":  solidPNG(color.RGBA{220, 20, 20, 255}),
 	"sha256:blue": solidPNG(color.RGBA{20, 40, 220, 255}),
 }
@@ -155,13 +131,6 @@ func (lt *liveT) call(t *testing.T, req *llm.Request) llm.Done {
 	t.Logf("%s stop=%s(%s) usage=%+v 耗时=%s 正文=%q", req.Reasoning, done.Stop, done.Raw, done.Usage,
 		time.Since(start).Round(time.Millisecond), clip(text.String(), 120))
 	return *done
-}
-
-func clip(s string, n int) string {
-	if r := []rune(s); len(r) > n {
-		return string(r[:n]) + "…"
-	}
-	return s
 }
 
 func user(parts ...llm.Part) llm.Message { return llm.Message{Role: llm.RoleUser, Parts: parts} }

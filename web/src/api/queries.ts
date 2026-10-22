@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, type CreateSaveParams } from './endpoints'
-import type { DeepPartial, Settings } from './types'
+import type { DeepPartial, ModelInput, ProviderInput, Settings } from './types'
 
 /** 查询键工厂。 */
 export const qk = {
@@ -82,4 +82,32 @@ export const useTimeline = (id: string) =>
 export const usePanels = (id: string) => useQuery({ queryKey: qk.panels(id), queryFn: () => api.saves.panels(id), staleTime: Infinity })
 
 export const useProviders = () => useQuery({ queryKey: qk.providers, queryFn: api.providers.list })
-export const useModels = () => useQuery({ queryKey: qk.models, queryFn: api.providers.models })
+export const useModels = () => useQuery({ queryKey: qk.models, queryFn: api.models.list })
+
+/** 供应商与模型的增删改：成功后刷新两个列表（删除供应商会级联删除模型）。 */
+export function useProviderMutations() {
+  const qc = useQueryClient()
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: qk.providers })
+    void qc.invalidateQueries({ queryKey: qk.models })
+  }
+  return {
+    createProvider: useMutation({ mutationFn: api.providers.create, onSuccess: refresh }),
+    updateProvider: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: ProviderInput }) => api.providers.update(id, input),
+      onSuccess: refresh,
+    }),
+    removeProvider: useMutation({ mutationFn: api.providers.remove, onSuccess: refresh }),
+    testProvider: useMutation({
+      mutationFn: ({ id, model_id, model }: { id: string; model_id?: string; model?: string }) =>
+        api.providers.test(id, { model_id, model }),
+      onSettled: refresh,
+    }),
+    createModel: useMutation({ mutationFn: api.models.create, onSuccess: refresh }),
+    updateModel: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: ModelInput }) => api.models.update(id, input),
+      onSuccess: refresh,
+    }),
+    removeModel: useMutation({ mutationFn: api.models.remove, onSuccess: refresh }),
+  }
+}

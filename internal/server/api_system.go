@@ -47,21 +47,3 @@ func (s *Server) patchSettings(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, http.StatusOK, st)
 	return nil
 }
-
-func (s *Server) listProviders(w http.ResponseWriter, r *http.Request) error {
-	list, err := s.d.Providers.List(r.Context())
-	if err != nil {
-		return err
-	}
-	writeJSON(w, http.StatusOK, list)
-	return nil
-}
-
-func (s *Server) listModels(w http.ResponseWriter, r *http.Request) error {
-	list, err := s.d.Providers.Models(r.Context())
-	if err != nil {
-		return err
-	}
-	writeJSON(w, http.StatusOK, list)
-	return nil
-}

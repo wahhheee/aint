@@ -97,6 +97,9 @@ CREATE TABLE providers (
   headers    TEXT,                       -- JSON：额外请求头（不含密钥）
   options    TEXT,                       -- JSON：协议级选项
   secret_ref TEXT NOT NULL,              -- secrets.json 的键，或 env:NAME
+  price_multiplier REAL NOT NULL DEFAULT 1, -- 价格倍率（中转站分组倍率，D-48）：实际费用 = 模型单价 × 倍率
+  test_ok    INTEGER,                    -- 最近一次连接测试是否通过（NULL = 未测试）
+  tested_at  INTEGER,
   created_at INTEGER NOT NULL
 );
 

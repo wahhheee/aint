@@ -1,16 +1,21 @@
 // Package provider 管理模型供应商与模型配置（providers / models 表、secrets.json），
 // 并负责把配置组装成可调用的 llm.Provider：适配器 + 重试 + 调试追踪。
 //
+// 文件组织：
+//
+//	service.go    服务、组装与解析（runtime.ModelResolver）
+//	providers.go  供应商的增删改查（密钥写 secrets.json，永不返回前端）
+//	models.go     模型的增删改查（按内置预设预填，presets.go）
+//	probe.go      连接测试（模型列表 → 文本 → 工具往返 → 看图）
+//
 // 组装顺序（外层先执行）：WithTrace(WithRetry(adapter))
-//   - trace 在最外层：记录的是运行器真正看到的事件序列（含重试后的结果）；
+//   - trace 在最外层：记录的是运行器真正看到的事件序列（含重试后的结果）；适配器另把协议原始报文写到 <追踪目录>/raw/；
 //   - --fake-llm 模式下所有模型都解析为假模型，便于不配置任何 Key 就能跑通全流程。
 package provider
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/wahhheee/yanyi/internal/llm"
@@ -19,8 +24,6 @@ import (
 	"github.com/wahhheee/yanyi/internal/llm/gemini"
 	"github.com/wahhheee/yanyi/internal/llm/openai"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/pkg/logx"
 	"github.com/wahhheee/yanyi/internal/store"
 )
 
@@ -33,6 +36,7 @@ type Options struct {
 // Service 是供应商服务。并发安全。
 type Service struct {
 	db      *store.DB
+	blobs   llm.BlobReader
 	secrets *Secrets
 	opts    Options
 	fake    llm.Provider
@@ -41,19 +45,33 @@ type Service struct {
 	built map[string]llm.Provider // provider ID → 组装好的 Provider
 }
 
-// NewService 创建供应商服务。
-func NewService(db *store.DB, secrets *Secrets, opts Options) *Service {
-	s := &Service{db: db, secrets: secrets, opts: opts, built: map[string]llm.Provider{}}
+// NewService 创建供应商服务。blobs 用于读取请求中的图片。
+func NewService(db *store.DB, blobs *store.Blobs, secrets *Secrets, opts Options) *Service {
+	s := &Service{db: db, blobs: blobReader{db: db, blobs: blobs}, secrets: secrets, opts: opts, built: map[string]llm.Provider{}}
 	if opts.Fake != nil {
 		s.fake = s.decorate(fake.New(opts.Fake))
 	}
 	return s
 }
 
+// blobReader 让适配器按哈希读取图片。
+type blobReader struct {
+	db    *store.DB
+	blobs *store.Blobs
+}
+
+func (b blobReader) ReadBlob(ctx context.Context, hash string) ([]byte, error) {
+	if b.blobs == nil {
+		return nil, errs.NotFound("没有图片存储")
+	}
+	return b.blobs.Get(ctx, b.db.Read(), hash)
+}
+
 // FakeMode 表示是否处于 --fake-llm 模式。
 func (s *Service) FakeMode() bool { return s.fake != nil }
 
 // Resolve 根据模型配置 ID 返回可调用的 Provider 与模型（runtime.ModelResolver）。
+// 返回的模型价格已乘以供应商的价格倍率（D-48），运行时直接用于计费。
 func (s *Service) Resolve(ctx context.Context, modelID string) (llm.Provider, *llm.Model, error) {
 	if s.fake != nil {
 		return s.fake, fake.Model(), nil
@@ -61,33 +79,34 @@ func (s *Service) Resolve(ctx context.Context, modelID string) (llm.Provider, *l
 	if modelID == "" {
 		return nil, nil, errs.New(errs.CodeModelMissing, "开始之前，需要连接一个模型")
 	}
-	m, providerID, err := s.loadModel(ctx, modelID)
+	m, err := s.loadModel(ctx, s.db.Read(), modelID)
 	if err != nil {
 		return nil, nil, err
 	}
-	p, err := s.providerFor(ctx, providerID)
+	cfg, multiplier, err := s.loadProvider(ctx, m.ProviderID)
 	if err != nil {
 		return nil, nil, err
 	}
+	p, err := s.providerFor(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	m.Price = m.Price.Scaled(multiplier)
 	return p, m, nil
 }
 
-func (s *Service) providerFor(ctx context.Context, id string) (llm.Provider, error) {
+func (s *Service) providerFor(cfg llm.ProviderConfig) (llm.Provider, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if p, ok := s.built[id]; ok {
+	if p, ok := s.built[cfg.ID]; ok {
 		return p, nil
-	}
-	cfg, err := s.loadProvider(ctx, id)
-	if err != nil {
-		return nil, err
 	}
 	adapter, err := NewAdapter(cfg)
 	if err != nil {
 		return nil, err
 	}
 	p := s.decorate(adapter)
-	s.built[id] = p
+	s.built[cfg.ID] = p
 	return p, nil
 }
 
@@ -97,6 +116,15 @@ func (s *Service) decorate(p llm.Provider) llm.Provider {
 		p = llm.WithTrace(p, s.opts.TraceDir)
 	}
 	return p
+}
+
+// adapterConfig 补齐适配器需要的运行环境（图片读取、原始报文追踪）。
+func (s *Service) adapterConfig(cfg llm.ProviderConfig) llm.ProviderConfig {
+	cfg.Blobs = s.blobs
+	if s.opts.TraceDir != "" {
+		cfg.TraceDir = filepath.Join(s.opts.TraceDir, "raw")
+	}
+	return cfg
 }
 
 // NewAdapter 按协议创建适配器（不含重试与追踪装饰）。
@@ -112,137 +140,22 @@ func NewAdapter(cfg llm.ProviderConfig) (llm.Provider, error) {
 	return nil, errs.Invalid("不支持的协议：%s", cfg.Protocol)
 }
 
-// Invalidate 在供应商配置变更后丢弃缓存的 Provider。
-func (s *Service) Invalidate(providerID string) {
+// DefaultBaseURL 返回协议的官方地址（添加供应商时预填）。
+func DefaultBaseURL(p llm.Protocol) string {
+	switch p {
+	case llm.ProtocolOpenAIResponses:
+		return openai.DefaultBaseURL
+	case llm.ProtocolAnthropic:
+		return anthropic.DefaultBaseURL
+	case llm.ProtocolGemini:
+		return gemini.DefaultBaseURL
+	}
+	return ""
+}
+
+// invalidate 在供应商配置变更后丢弃缓存的 Provider。
+func (s *Service) invalidate(providerID string) {
 	s.mu.Lock()
 	delete(s.built, providerID)
 	s.mu.Unlock()
-}
-
-// ---------------------------------------------------------------------------
-// 查询（API 输出）
-
-// ProviderView 是前端看到的供应商（密钥只给掩码）。
-type ProviderView struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name"`
-	Protocol  llm.Protocol      `json:"protocol"`
-	BaseURL   string            `json:"base_url"`
-	Headers   map[string]string `json:"headers,omitzero"`
-	KeyMasked string            `json:"key_masked"`
-	CreatedAt int64             `json:"created_at"`
-}
-
-// List 返回全部供应商。
-func (s *Service) List(ctx context.Context) ([]ProviderView, error) {
-	rows, err := s.db.Read().QueryContext(ctx,
-		`SELECT id, name, protocol, base_url, COALESCE(headers, '{}'), secret_ref, created_at FROM providers ORDER BY created_at`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := []ProviderView{}
-	for rows.Next() {
-		var v ProviderView
-		var headers, ref string
-		if err := rows.Scan(&v.ID, &v.Name, &v.Protocol, &v.BaseURL, &headers, &ref, &v.CreatedAt); err != nil {
-			return nil, err
-		}
-		_ = jsonx.Unmarshal([]byte(headers), &v.Headers)
-		if key, err := s.secrets.Resolve(ref); err == nil {
-			v.KeyMasked = logx.Mask(key)
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
-}
-
-// Models 返回全部已配置的模型；--fake-llm 模式下只返回假模型。
-func (s *Service) Models(ctx context.Context) ([]llm.Model, error) {
-	if s.fake != nil {
-		return []llm.Model{*fake.Model()}, nil
-	}
-	// 先取完 ID 并关闭 rows，再逐个 loadModel：rows 占着读连接，嵌套查询可能等不到空闲连接。
-	idList, err := s.modelIDs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := []llm.Model{}
-	for _, id := range idList {
-		m, _, err := s.loadModel(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *m)
-	}
-	return out, nil
-}
-
-func (s *Service) modelIDs(ctx context.Context) ([]string, error) {
-	rows, err := s.db.Read().QueryContext(ctx, `SELECT id FROM models ORDER BY display_name, model`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
-}
-
-// TODO(M1-11/M4-7)：供应商与模型的增删改（Create/Update/Delete，密钥写入 secrets.json 后 Invalidate）、
-// 连接测试（模型列表 → 文本 → 强制工具调用往返 → 可选看图，逐项结果）、拉取远端模型列表、内置模型预设。
-
-func (s *Service) loadProvider(ctx context.Context, id string) (llm.ProviderConfig, error) {
-	var cfg llm.ProviderConfig
-	var headers, options sql.NullString
-	var ref string
-	err := s.db.Read().QueryRowContext(ctx,
-		`SELECT id, name, protocol, base_url, headers, options, secret_ref FROM providers WHERE id = ?`, id).
-		Scan(&cfg.ID, &cfg.Name, &cfg.Protocol, &cfg.BaseURL, &headers, &options, &ref)
-	if errors.Is(err, sql.ErrNoRows) {
-		return cfg, errs.NotFound("供应商不存在：%s", id)
-	}
-	if err != nil {
-		return cfg, err
-	}
-	if headers.Valid {
-		_ = jsonx.Unmarshal([]byte(headers.String), &cfg.Headers)
-	}
-	if options.Valid {
-		cfg.Options = jsonx.Value(options.String)
-	}
-	if cfg.APIKey, err = s.secrets.Resolve(ref); err != nil {
-		return cfg, errs.Wrap(err, errs.CodeModelMissing, "供应商「%s」的 API Key 不可用", cfg.Name)
-	}
-	return cfg, nil
-}
-
-func (s *Service) loadModel(ctx context.Context, id string) (*llm.Model, string, error) {
-	m := &llm.Model{}
-	var caps string
-	var price, display sql.NullString
-	err := s.db.Read().QueryRowContext(ctx,
-		`SELECT id, provider_id, model, display_name, context_window, max_output, caps, price FROM models WHERE id = ?`, id).
-		Scan(&m.ID, &m.ProviderID, &m.Name, &display, &m.ContextWindow, &m.MaxOutput, &caps, &price)
-	if err == sql.ErrNoRows {
-		return nil, "", errs.New(errs.CodeModelMissing, "存档使用的模型已不存在，请在设置中重新选择")
-	}
-	if err != nil {
-		return nil, "", err
-	}
-	m.DisplayName = display.String
-	if err := jsonx.Unmarshal([]byte(caps), &m.Caps); err != nil {
-		return nil, "", fmt.Errorf("模型 %s 的能力配置损坏: %w", id, err)
-	}
-	if price.Valid {
-		m.Price = &llm.Price{}
-		_ = jsonx.Unmarshal([]byte(price.String), m.Price)
-	}
-	return m, m.ProviderID, nil
 }

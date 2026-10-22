@@ -5,13 +5,17 @@ import { http } from './client'
 import type {
   DeepPartial,
   Model,
+  ModelInput,
   PanelRender,
   Presentation,
+  ProviderInput,
   ProviderView,
+  RemoteModel,
   Save,
   SaveSettings,
   Settings,
   SystemInfo,
+  TestReport,
   Timeline,
   TurnInput,
   WorkDetail,
@@ -55,6 +59,17 @@ export const api = {
   },
   providers: {
     list: () => http.get<ProviderView[]>('/providers'),
-    models: () => http.get<Model[]>('/models'),
+    create: (input: ProviderInput) => http.post<ProviderView>('/providers', input),
+    update: (id: string, input: ProviderInput) => http.patch<ProviderView>(`/providers/${id}`, input),
+    remove: (id: string) => http.del(`/providers/${id}`),
+    /** 连接测试：model_id 为已添加的模型，model 为尚未添加的模型名；都省略时用第一个模型 */
+    test: (id: string, body: { model_id?: string; model?: string } = {}) => http.post<TestReport>(`/providers/${id}/test`, body),
+    remoteModels: (id: string) => http.get<RemoteModel[]>(`/providers/${id}/remote-models`),
+  },
+  models: {
+    list: () => http.get<Model[]>('/models'),
+    create: (input: ModelInput) => http.post<Model>('/models', input),
+    update: (id: string, input: ModelInput) => http.patch<Model>(`/models/${id}`, input),
+    remove: (id: string) => http.del(`/models/${id}`),
   },
 }

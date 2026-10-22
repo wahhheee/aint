@@ -180,7 +180,7 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 		popts.TraceDir = dirs.Trace
 		slog.Info("已开启模型调用追踪", "dir", dirs.Trace)
 	}
-	providers := provider.NewService(db, secrets, popts)
+	providers := provider.NewService(db, blobs, secrets, popts)
 
 	settingsSvc := settings.NewService(db)
 	works := work.NewService(db, blobs)

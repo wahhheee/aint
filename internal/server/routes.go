@@ -62,15 +62,15 @@ func (s *Server) routes() {
 
 	// 供应商与模型
 	m.HandleFunc("GET /api/v1/providers", s.h(s.listProviders))
-	m.HandleFunc("POST /api/v1/providers", todo("添加供应商（M1-11）"))
-	m.HandleFunc("PATCH /api/v1/providers/{id}", todo("修改供应商（M4-7）"))
-	m.HandleFunc("DELETE /api/v1/providers/{id}", todo("删除供应商（M4-7）"))
-	m.HandleFunc("POST /api/v1/providers/{id}/test", todo("连接测试（M1-11）"))
-	m.HandleFunc("GET /api/v1/providers/{id}/remote-models", todo("拉取模型列表（M4-7）"))
+	m.HandleFunc("POST /api/v1/providers", s.h(s.createProvider))
+	m.HandleFunc("PATCH /api/v1/providers/{id}", s.h(s.updateProvider))
+	m.HandleFunc("DELETE /api/v1/providers/{id}", s.h(s.deleteProvider))
+	m.HandleFunc("POST /api/v1/providers/{id}/test", s.h(s.testProvider))
+	m.HandleFunc("GET /api/v1/providers/{id}/remote-models", s.h(s.remoteModels))
 	m.HandleFunc("GET /api/v1/models", s.h(s.listModels))
-	m.HandleFunc("POST /api/v1/models", todo("添加模型（M4-7）"))
-	m.HandleFunc("PATCH /api/v1/models/{id}", todo("修改模型（M4-7）"))
-	m.HandleFunc("DELETE /api/v1/models/{id}", todo("删除模型（M4-7）"))
+	m.HandleFunc("POST /api/v1/models", s.h(s.createModel))
+	m.HandleFunc("PATCH /api/v1/models/{id}", s.h(s.updateModel))
+	m.HandleFunc("DELETE /api/v1/models/{id}", s.h(s.deleteModel))
 
 	// 用量与访问控制
 	m.HandleFunc("GET /api/v1/usage", todo("用量统计（M4-4）"))

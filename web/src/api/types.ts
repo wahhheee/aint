@@ -318,18 +318,57 @@ export interface PanelRender {
 
 // ---------------------------------------------------------------- 模型
 
-/** provider.ProviderView */
+export type Protocol = 'openai-responses' | 'anthropic' | 'gemini' | 'fake'
+
+/** provider.ProviderView（密钥只给掩码） */
 export interface ProviderView {
   id: string
   name: string
-  protocol: 'openai-responses' | 'anthropic' | 'gemini' | 'fake'
+  protocol: Protocol
   base_url: string
   headers?: Record<string, string>
   key_masked: string
+  /** 价格倍率（中转站分组倍率，D-48）：实际费用 = 模型单价 × 倍率 */
+  price_multiplier: number
+  /** 最近一次连接测试的结果；为空表示没测试过 */
+  test_ok?: boolean
+  tested_at?: number
   created_at: number
 }
 
-/** llm.Model */
+/** provider.ProviderInput：修改时省略的字段保持不变（api_key 为空表示不改密钥） */
+export interface ProviderInput {
+  name?: string
+  protocol?: Protocol
+  base_url?: string
+  api_key?: string
+  headers?: Record<string, string>
+  price_multiplier?: number
+}
+
+/** llm.Price：每百万 token 的价格；缺项表示未知（费用无法估算） */
+export interface Price {
+  input?: number
+  cache_read?: number
+  cache_write?: number
+  cache_write_long?: number
+  output?: number
+  currency?: string
+}
+
+/** llm.Caps */
+export interface Caps {
+  vision: boolean
+  tools: boolean
+  parallel_tools: boolean
+  image_in_tool_result: boolean
+  reasoning: 'effort' | 'budget' | 'level' | 'none'
+  reasoning_map?: Partial<Record<Reasoning, string>>
+  cache: 'breakpoints' | 'implicit' | 'none'
+  image_max_edge: number
+}
+
+/** llm.Model（价格为模型单价，不含供应商倍率） */
 export interface Model {
   id: string
   provider_id: string
@@ -337,7 +376,43 @@ export interface Model {
   display_name?: string
   context_window: number
   max_output: number
-  caps: { vision: boolean; tools: boolean; reasoning: string; cache: string; image_max_edge: number }
+  caps: Caps
+  price?: Price
+}
+
+/** provider.ModelInput：添加时缺省字段按内置预设填充 */
+export interface ModelInput {
+  provider_id?: string
+  name?: string
+  display_name?: string
+  context_window?: number
+  max_output?: number
+  caps?: Caps
+  price?: Price
+  clear_price?: boolean
+}
+
+/** llm.RemoteModel */
+export interface RemoteModel {
+  id: string
+  display_name?: string
+}
+
+/** provider.TestStep */
+export interface TestStep {
+  name: 'list_models' | 'text' | 'tool' | 'image'
+  ok: boolean
+  skipped?: boolean
+  message: string
+  detail?: string
+  latency_ms?: number
+}
+
+/** provider.TestReport */
+export interface TestReport {
+  ok: boolean
+  model: string
+  steps: TestStep[]
 }
 
 /** llm.Usage */
