@@ -116,7 +116,7 @@ func (b *Builder) prefix(in BuildInput) (*prefix, error) {
 	if err != nil {
 		return nil, err
 	}
-	narrator, err := b.tmpl.Render("prompts/narrator.md", in.Work.Narrator, map[string]any{"state": in.InitialState})
+	narrator, err := b.tmpl.RenderWith("prompts/narrator.md", in.Work.Narrator, map[string]any{"state": in.InitialState}, in.Work.Partials)
 	if err != nil {
 		return nil, fmt.Errorf("执笔指令模板渲染失败: %w", err)
 	}

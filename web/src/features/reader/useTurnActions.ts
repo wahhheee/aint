@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/endpoints'
 import { errorMessage, isApiError } from '@/api/errors'
 import type { ChoiceItem, Command, TurnInput } from '@/api/types'
+import { confirmAction } from '@/components/common/confirm'
 import { useReader } from '@/stores/reader'
 
 import { parseInput } from './commands'
@@ -35,9 +36,12 @@ export function useTurnActions(saveId: string, commands: Command[]) {
     [saveId],
   )
 
-  /** 提交输入栏文字（含斜杠命令）；返回 true 表示已提交，可以清空输入框。 */
+  /**
+   * 提交输入栏文字（含斜杠命令）；返回 true 表示已提交，可以清空输入框。
+   * 作品命令带 confirm 时先确认（输入模式除外：玩家已主动选择了这个模式）；confirmed 表示调用方已经确认过。
+   */
   const submitText = useCallback(
-    async (text: string, mode?: string, pace?: string) => {
+    async (text: string, mode?: string, pace?: string, confirmed = false) => {
       const r = parseInput(text, commands, mode)
       if (!r.ok) {
         toast.error(
@@ -52,16 +56,20 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         toast(t('common.notImplemented')) // TODO(M3-6)：/compact → POST /saves/{id}/compact
         return true
       }
+      if (!confirmed && !(await confirmCommand(r.input, commands))) return false
       return submit(pace ? { ...r.input, pace } : r.input)
     },
     [commands, submit, t],
   )
 
   const choose = useCallback(
-    (item: ChoiceItem) => {
+    async (item: ChoiceItem) => {
       if (item.command) {
         const r = parseInput(item.command, commands)
-        if (r.ok && 'input' in r) return submit(r.input)
+        if (r.ok && 'input' in r) {
+          if (!(await confirmCommand(r.input, commands))) return false
+          return submit(r.input)
+        }
       }
       return submit({ kind: 'choice', choice_id: item.id })
     },
@@ -82,4 +90,11 @@ export function useTurnActions(saveId: string, commands: Command[]) {
 
   // 返回稳定的对象：阅读页的副作用（快捷键、自动开场）依赖它，不应每次渲染都重新订阅
   return useMemo(() => ({ submit, submitText, choose, stop, retry }), [submit, submitText, choose, stop, retry])
+}
+
+/** 作品命令带 confirm 时请玩家确认；其他输入直接放行。 */
+function confirmCommand(input: TurnInput, commands: Command[]): Promise<boolean> {
+  if (input.kind !== 'command' || !input.command) return Promise.resolve(true)
+  const message = commands.find((c) => c.name === input.command?.name)?.confirm
+  return message ? confirmAction(message) : Promise.resolve(true)
 }

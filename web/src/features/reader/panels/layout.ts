@@ -9,6 +9,6 @@ export function byPlace(meta: PanelMeta[], rendered: PanelRender[] | undefined, 
     .map((m) => ({ meta: m, render: html.get(m.id)! }))
 }
 
-export function hasSidebarPanels(meta: PanelMeta[], rendered?: PanelRender[]) {
-  return byPlace(meta, rendered, 'sidebar').length > 0
+export function hasPanels(meta: PanelMeta[], rendered: PanelRender[] | undefined, place: PanelMeta['place']) {
+  return byPlace(meta, rendered, place).length > 0
 }

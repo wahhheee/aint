@@ -335,9 +335,10 @@ export interface Presentation {
   }
 }
 
-/** runtime.AssetRef：作品素材 */
+/** runtime.AssetRef：作品素材（作品中的引用写 ID 或路径） */
 export interface AssetRef {
   id: string
+  path: string
   kind: 'image' | 'audio' | 'font'
   role: 'background' | 'cg' | 'avatar' | 'bgm' | 'sfx' | 'font' | 'reference'
   url: string

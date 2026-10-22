@@ -9,8 +9,8 @@ export interface ReaderContextValue {
   reading?: ReadingSettings
   choose: (item: ChoiceItem) => void
   focusInput: () => void
-  /** 执行命令（面板按钮、命令栏）：传入 "/follow 林舟" 这样的文字 */
-  runCommand: (text: string) => void
+  /** 执行命令（面板按钮、命令栏）：传入 "/follow 林舟" 这样的文字；confirmed 表示调用方已请玩家确认过 */
+  runCommand: (text: string, confirmed?: boolean) => void
 }
 
 export const ReaderContext = createContext<ReaderContextValue | null>(null)

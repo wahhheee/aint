@@ -33,7 +33,7 @@ func Render(eng *tmpl.Engine, m *work.Model, v Vars) []event.PanelRender {
 	}
 	out := []event.PanelRender{}
 	for _, p := range m.Layout.Panels {
-		html, err := eng.Render(p.Template, p.Source, vars)
+		html, err := eng.RenderWith(p.Template, p.Source, vars, m.Partials)
 		if err != nil {
 			slog.Warn("面板渲染失败", "panel", p.ID, "err", err)
 			html = `<p class="panel-error">面板渲染失败：` + escape(err.Error()) + `</p>`

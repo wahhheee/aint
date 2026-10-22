@@ -16,7 +16,7 @@ import (
 
 // 隔离工作进程（D-46）。
 //
-// 协议：标准输入 / 输出上逐行传 JSON。父进程每行一个请求 {"id", "name", "src", "vars"}，
+// 协议：标准输入 / 输出上逐行传 JSON。父进程每行一个请求 {"id", "name", "src", "vars", "partials"}，
 // 工作进程每行一个结果 {"id", "out"} 或 {"id", "err": {...}}。一个工作进程同一时刻只处理一个请求；
 // 父进程维护一个小进程池（PoolSize），进程按需启动。
 //
@@ -28,14 +28,15 @@ import (
 // PoolSize 是工作进程数：回合提交后的面板渲染与命令展开偶尔并发，两个足够。
 const PoolSize = 2
 
-// maxLine 是协议中单行的上限（源码 + 变量 + JSON 开销）。
-const maxLine = MaxSource*2 + MaxVars*2 + 4<<10
+// maxLine 是协议中单行的上限（源码 + 变量 + 模板集 + JSON 开销；JSON 转义最多让长度翻倍）。
+const maxLine = MaxSource*2 + MaxVars*2 + MaxPartials*2 + 4<<10
 
 type workerRequest struct {
-	ID   uint64      `json:"id"`
-	Name string      `json:"name"`
-	Src  string      `json:"src"`
-	Vars jsonx.Value `json:"vars"`
+	ID       uint64            `json:"id"`
+	Name     string            `json:"name"`
+	Src      string            `json:"src"`
+	Vars     jsonx.Value       `json:"vars"`
+	Partials map[string]string `json:"partials,omitzero"`
 }
 
 type workerResponse struct {
@@ -63,7 +64,7 @@ func ServeWorker(r io.Reader, w io.Writer) error {
 			return fmt.Errorf("无法解析渲染请求: %w", err)
 		}
 		resp := workerResponse{ID: req.ID}
-		text, rerr := rd.render(req.Name, req.Src, req.Vars)
+		text, rerr := rd.render(req.Name, req.Src, req.Vars, req.Partials)
 		if rerr != nil {
 			resp.Err = asError(req.Name, rerr)
 		} else {
@@ -142,7 +143,7 @@ type worker struct {
 	errs  *tailBuffer   // 标准错误的最后一段（排查启动失败）
 }
 
-func (p *pool) render(name, src string, vars []byte) (string, error) {
+func (p *pool) render(name, src string, vars []byte, partials map[string]string) (string, error) {
 	w := <-p.idle
 	ok := false
 	defer func() {
@@ -164,7 +165,7 @@ func (p *pool) render(name, src string, vars []byte) (string, error) {
 	p.seq++
 	id := p.seq
 	p.mu.Unlock()
-	line, err := jsonx.Marshal(workerRequest{ID: id, Name: name, Src: src, Vars: vars})
+	line, err := jsonx.Marshal(workerRequest{ID: id, Name: name, Src: src, Vars: vars, Partials: partials})
 	if err != nil {
 		ok = true // 进程没有收到请求，仍然可用
 		return "", &Error{Name: name, Msg: "渲染请求无法序列化：" + err.Error(), Kind: ErrTemplate}

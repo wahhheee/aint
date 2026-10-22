@@ -25,7 +25,6 @@ import { useParams } from 'react-router'
 
 import { usePanels, usePresentation, useSettings, useTimeline } from '@/api/queries'
 import { LoadError } from '@/components/common/LoadError'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { MarkupProvider, useMarkupContext } from '@/markup/context'
 import { workTagCSS } from '@/markup/workStyles'
 import { selectBusy, useReader } from '@/stores/reader'
@@ -34,8 +33,9 @@ import { useUI } from '@/stores/ui'
 import { HelpDialog } from './chrome/HelpDialog'
 import { ReaderTopBar } from './chrome/ReaderTopBar'
 import { InputDock, type InputDockHandle } from './input/InputDock'
-import { hasSidebarPanels } from './panels/layout'
+import { hasPanels } from './panels/layout'
 import { FloatPanels, SidebarPanels, TopbarPanels } from './panels/Panels'
+import { PanelSheet } from './panels/PanelSheet'
 import { ReaderContext, type ReaderContextValue } from './ReaderContext'
 import { lastSceneBackground } from './stage/scene'
 import { StageBackground } from './stage/StageBackground'
@@ -121,7 +121,10 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
     return () => window.removeEventListener('keydown', onKey)
   }, [busy, actions])
 
-  const runCommand = useCallback((text: string) => void actions.submitText(text), [actions])
+  const runCommand = useCallback(
+    (text: string, confirmed?: boolean) => void actions.submitText(text, undefined, undefined, confirmed),
+    [actions],
+  )
   const ctx = useMemo<ReaderContextValue>(
     () => ({
       saveId,
@@ -142,10 +145,21 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
   )
   const stageAsset = ui.builtin_tags.includes('scene') ? ui.assets.find((a) => a.id === sceneBg && a.kind === 'image') : undefined
 
-  const hasSidebar = hasSidebarPanels(ui.panels, panels)
-  const toggleSidebar = () => {
-    if (window.matchMedia('(min-width: 1200px)').matches) setSidebarOpen(!sidebarOpen)
-    else setSheetOpen(true)
+  // 宽屏：sidebar 面板在右侧栏，drawer 面板在抽屉；窄屏没有右侧栏，两者都在抽屉里
+  const hasSidebar = hasPanels(ui.panels, panels, 'sidebar')
+  const hasDrawer = hasPanels(ui.panels, panels, 'drawer')
+  const wide = () => window.matchMedia('(min-width: 1200px)').matches
+  const [sheetWithSidebar, setSheetWithSidebar] = useState(false)
+  const togglePanels = () => {
+    if (wide() && hasSidebar) setSidebarOpen(!sidebarOpen)
+    else {
+      setSheetWithSidebar(!wide())
+      setSheetOpen(true)
+    }
+  }
+  const openDrawer = () => {
+    setSheetWithSidebar(false)
+    setSheetOpen(true)
   }
 
   return (
@@ -165,7 +179,13 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
                 连接已断开，正在重连……
               </div>
             )}
-            <ReaderTopBar save={save} onToggleSidebar={toggleSidebar} sidebarAvailable={hasSidebar} devTools={devTools} />
+            <ReaderTopBar
+              save={save}
+              onTogglePanels={togglePanels}
+              panelsAvailable={hasSidebar || hasDrawer}
+              onOpenDrawer={hasSidebar && hasDrawer ? openDrawer : undefined}
+              devTools={devTools}
+            />
             <TopbarPanels meta={ui.panels} rendered={panels} />
             <Stream timeline={timeline} onRetry={() => void actions.retry()} onContinue={() => void actions.submit({ kind: 'continue' })} />
             <FloatPanels meta={ui.panels} rendered={panels} />
@@ -189,14 +209,14 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, devTools 
           )}
         </div>
 
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetContent side="right" className="w-[320px] overflow-y-auto bg-paper px-6">
-            <SheetHeader className="px-0 pt-5">
-              <SheetTitle className="title-book text-base">{save.work_title}</SheetTitle>
-            </SheetHeader>
-            <SidebarPanels meta={ui.panels} rendered={panels} />
-          </SheetContent>
-        </Sheet>
+        <PanelSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          meta={ui.panels}
+          rendered={panels}
+          includeSidebar={sheetWithSidebar}
+          title={save.work_title}
+        />
 
         <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
       </MarkupProvider>

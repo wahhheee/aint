@@ -9,7 +9,7 @@ export interface MarkupContextValue {
   workTags: ReadonlyMap<string, TagDef>
   /** who 属性 → 人物（按 ID、名字、别名都能找到） */
   characters: ReadonlyMap<string, Character>
-  /** 素材 ID → 素材（<cg src>、<scene bg>） */
+  /** 素材引用（ID 或路径）→ 素材（<cg src>、<scene bg>、面板图片） */
   assets: ReadonlyMap<string, AssetRef>
 }
 
@@ -37,7 +37,14 @@ export function useMarkupContext(
       tags: new Set([...builtinTags, ...workTags.map((t) => t.name)]),
       workTags: new Map(workTags.map((t) => [t.name, t])),
       characters: chars,
-      assets: new Map(assets.map((a) => [a.id, a])),
+      assets: new Map(assets.flatMap((a) => [[a.path, a] as const, [a.id, a] as const])),
     }
   }, [builtinTags, workTags, characters, assets])
+}
+
+/** 图片素材引用（ID、路径或 asset:ID）→ 素材地址；不是作品中的图片时返回 undefined。 */
+export function imageURL(ref: string | undefined, ctx: MarkupContextValue): string | undefined {
+  if (!ref) return undefined
+  const a = ctx.assets.get(ref.startsWith('asset:') ? ref.slice('asset:'.length) : ref)
+  return a?.kind === 'image' ? a.url : undefined
 }

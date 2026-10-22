@@ -4,8 +4,9 @@ import { Outlet } from 'react-router'
 
 import { qk } from '@/api/queries'
 import { openEventStream } from '@/api/sse'
+import { ConfirmHost } from '@/components/common/ConfirmDialog'
 
-/** 根布局：订阅全局事件流（作品重载、存档标题生成），据此刷新相关数据。 */
+/** 根布局：订阅全局事件流（作品重载、存档标题生成），据此刷新相关数据；挂载全局的确认框。 */
 export function RootLayout() {
   const qc = useQueryClient()
   useEffect(
@@ -26,5 +27,10 @@ export function RootLayout() {
       }),
     [qc],
   )
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <ConfirmHost />
+    </>
+  )
 }

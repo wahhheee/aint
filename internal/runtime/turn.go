@@ -105,7 +105,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 		}
 		env.Text = "请按开场指引开始故事。"
 		if w.Opening != nil && w.Opening.Mode == "generate" {
-			body, err := m.d.Tmpl.Render("prompts/opening.md", w.Opening.Body, map[string]any{"state": initState})
+			body, err := m.d.Tmpl.RenderWith("prompts/opening.md", w.Opening.Body, map[string]any{"state": initState}, w.Partials)
 			if err != nil {
 				return nil, errs.Wrap(err, errs.CodeWorkInvalid, "开场模板渲染失败")
 			}
@@ -459,8 +459,8 @@ func (m *Manager) expandCommand(w *work.Model, name string, args map[string]stri
 	for k, v := range args {
 		argVars[k] = v
 	}
-	text, err = m.d.Tmpl.Render("commands/"+name+".md", cmd.Template,
-		map[string]any{"args": argVars, "input": input, "state": st, "turn": panel.TurnVar(turn)})
+	text, err = m.d.Tmpl.RenderWith("commands/"+name+".md", cmd.Template,
+		map[string]any{"args": argVars, "input": input, "state": st, "turn": panel.TurnVar(turn)}, w.Partials)
 	if err != nil {
 		return "", "", errs.Wrap(err, errs.CodeWorkInvalid, "命令 /%s 的模板渲染失败", name)
 	}

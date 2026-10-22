@@ -1,4 +1,4 @@
-import { ArrowLeft, BookMarked, Ellipsis, GitBranch, PanelRight, ScanSearch } from 'lucide-react'
+import { ArrowLeft, BookMarked, Ellipsis, GitBranch, PanelBottom, PanelRight, ScanSearch } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -17,13 +17,17 @@ import { ReadingSettingsPopover } from './ReadingSettingsPopover'
 /** 阅读页顶栏：返回、作品与存档名、上下文用量、工具按钮。安静、细，不抢正文。 */
 export function ReaderTopBar({
   save,
-  onToggleSidebar,
-  sidebarAvailable,
+  onTogglePanels,
+  panelsAvailable,
+  onOpenDrawer,
   devTools,
 }: {
   save?: Save
-  onToggleSidebar: () => void
-  sidebarAvailable: boolean
+  /** 面板开关：宽屏收起 / 展开右侧栏，窄屏（或只有抽屉面板时）打开面板抽屉 */
+  onTogglePanels: () => void
+  panelsAvailable: boolean
+  /** 宽屏同时有侧栏与抽屉面板时，抽屉单独一个入口 */
+  onOpenDrawer?: () => void
   /** 开发者工具（D-31）：普通玩家看不到调试入口 */
   devTools: boolean
 }) {
@@ -64,8 +68,15 @@ export function ReaderTopBar({
             </IconButton>
           </span>
         )}
-        {sidebarAvailable && (
-          <IconButton label={t('reader.panels')} onClick={onToggleSidebar}>
+        {onOpenDrawer && (
+          <span className="hidden min-[1200px]:contents">
+            <IconButton label={t('reader.drawer')} onClick={onOpenDrawer}>
+              <PanelBottom />
+            </IconButton>
+          </span>
+        )}
+        {panelsAvailable && (
+          <IconButton label={t('reader.panels')} onClick={onTogglePanels}>
             <PanelRight />
           </IconButton>
         )}

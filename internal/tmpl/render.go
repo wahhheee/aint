@@ -32,9 +32,16 @@ const maxCachedTemplates = 256
 const maxErrorMsg = 2 << 10
 
 func newRenderer() *renderer {
+	return &renderer{lq: newLiquid(partialStore(nil)), cache: map[[sha256.Size]byte]*liquid.Template{}}
+}
+
+// newLiquid 创建 Liquid 引擎并注册附加过滤器。store 决定 {% render %} 能读到什么：
+// 默认的 FileTemplateStore 会读取当前目录下的任意文件（实测可读到源码文件），所以总是换成 partialStore。
+//
+// 循环次数不单独计数：失控的循环由渲染时限（MaxRenderTime）与输出上限（MaxOutput）终止。
+func newLiquid(store partialStore) *liquid.Engine {
 	e := liquid.NewEngine()
-	// 默认的 FileTemplateStore 会让 {% include %} / {% render %} 读取当前目录下的任意文件（实测可读到源码文件）。
-	e.RegisterTemplateStore(noTemplateFiles{})
+	e.RegisterTemplateStore(store)
 	e.RegisterFilter("markdown", Markdown)
 	e.RegisterFilter("percent", func(v, total float64) string {
 		if total == 0 {
@@ -42,32 +49,62 @@ func newRenderer() *renderer {
 		}
 		return fmt.Sprintf("%.0f%%", v/total*100)
 	})
-	// TODO(M2-10)：asset 过滤器：素材引用 → /api/v1/assets/{hash}（需要作品素材索引）。
+	// asset：素材引用写成 asset: 方案，由前端映射为素材地址（面板 HTML 中的 <img src>、ui-image）。
 	e.RegisterFilter("asset", func(ref string) string { return "asset:" + ref })
-	// TODO(M2-8)：for 循环 ≤ 1000 次（《03-作品格式规范》14）。
-	return &renderer{lq: e, cache: map[[sha256.Size]byte]*liquid.Template{}}
+	return e
 }
 
-// errNoTemplateFiles 是 include / render 的统一回应。
-var errNoTemplateFiles = errors.New("暂不支持用 include / render 引用其他模板")
+// partialStore 是 {% render %} 可读的模板：作品 ui/ 下的 .liquid 文件（路径 → 源码），由调用方随渲染请求提供。
+// 不碰宿主文件系统；{% include %} 同样只能读到这些模板。
+type partialStore map[string]string
 
-// noTemplateFiles 拒绝一切模板文件读取。
-// TODO(M2-8)：{% render %} 只允许引用作品 ui/ 下的模板——实现为从作品文件索引读取的限定加载器，不碰宿主文件系统。
-type noTemplateFiles struct{}
+// ReadTemplate 按名称找模板：'panels/_row'、'ui/panels/_row.liquid' 都指向 ui/panels/_row.liquid。
+// 名称由渲染库相对于当前模板所在目录拼接（Windows 上是反斜杠），这里统一为 /。
+func (s partialStore) ReadTemplate(name string) ([]byte, error) {
+	if p, ok := ResolvePartial(name, func(p string) bool { _, ok := s[p]; return ok }); ok {
+		return []byte(s[p]), nil
+	}
+	if len(s) == 0 {
+		return nil, fmt.Errorf("这里不能用 render 引用其他模板（%s）", name)
+	}
+	return nil, fmt.Errorf("找不到模板 %s：render 只能引用作品 ui/ 下的 .liquid 文件", name)
+}
 
-func (noTemplateFiles) ReadTemplate(string) ([]byte, error) { return nil, errNoTemplateFiles }
+// ResolvePartial 把 {% render %} 的名称解析为作品中的路径（ui/ 下的 .liquid 文件）；exists 判断路径是否存在。
+// 校验器与渲染共用这一规则。
+func ResolvePartial(name string, exists func(string) bool) (string, bool) {
+	n := strings.TrimPrefix(strings.ReplaceAll(name, `\`, "/"), "./")
+	if n == "" || strings.Contains(n, "..") || strings.HasPrefix(n, "/") {
+		return "", false
+	}
+	for _, c := range []string{n, n + ".liquid", "ui/" + n, "ui/" + n + ".liquid"} {
+		if strings.HasPrefix(c, "ui/") && strings.HasSuffix(c, ".liquid") && exists(c) {
+			return c, true
+		}
+	}
+	return "", false
+}
 
-// render 渲染一次。vars 是序列化后的变量（JSON 对象，由 encodeVars 产生）。
+// render 渲染一次。vars 是序列化后的变量（JSON 对象，由 encodeVars 产生）；partials 是 {% render %} 可读的模板。
 // 返回的错误一律是 *Error。
-func (r *renderer) render(name, src string, vars []byte) (out string, err error) {
+func (r *renderer) render(name, src string, vars []byte, partials map[string]string) (out string, err error) {
 	if err := checkInput(name, src, vars); err != nil {
+		return "", err
+	}
+	if err := checkPartials(name, partials); err != nil {
 		return "", err
 	}
 	data, err := decodeVars(name, vars)
 	if err != nil {
 		return "", err
 	}
-	tpl, err := r.parse(name, src)
+	var tpl *liquid.Template
+	if len(partials) == 0 {
+		tpl, err = r.parse(name, src)
+	} else {
+		// 模板存储属于引擎：带模板集的渲染用一个临时引擎（创建只需几微秒），不进解析缓存
+		tpl, err = parseWith(newLiquid(partials), name, src)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -102,10 +139,9 @@ func (r *renderer) parse(name, src string) (*liquid.Template, error) {
 	if ok {
 		return tpl, nil
 	}
-	// 路径留空：错误信息带出错处的源码而不是路径；行号从 1 起。
-	tpl, perr := r.lq.ParseTemplateLocation([]byte(src), "", 1)
-	if perr != nil {
-		return nil, &Error{Name: name, Line: perr.LineNumber(), Msg: liquidMessage(perr), Kind: ErrTemplate}
+	tpl, err := parseWith(r.lq, name, src)
+	if err != nil {
+		return nil, err
 	}
 	r.mu.Lock()
 	if len(r.cache) >= maxCachedTemplates {
@@ -114,6 +150,30 @@ func (r *renderer) parse(name, src string) (*liquid.Template, error) {
 	r.cache[key] = tpl
 	r.mu.Unlock()
 	return tpl, nil
+}
+
+// parseWith 用指定引擎解析模板。路径留空：错误信息带出错处的源码而不是路径；行号从 1 起。
+func parseWith(lq *liquid.Engine, name, src string) (*liquid.Template, error) {
+	tpl, perr := lq.ParseTemplateLocation([]byte(src), "", 1)
+	if perr != nil {
+		return nil, &Error{Name: name, Line: perr.LineNumber(), Msg: liquidMessage(perr), Kind: ErrTemplate}
+	}
+	return tpl, nil
+}
+
+// checkPartials 检查随渲染提供的模板集的大小（单个模板与合计）。
+func checkPartials(name string, partials map[string]string) error {
+	total := 0
+	for p, src := range partials {
+		if len(src) > MaxSource {
+			return &Error{Name: name, Msg: fmt.Sprintf("被引用的模板 %s 超过 %d KiB", p, MaxSource>>10), Kind: ErrTooLarge}
+		}
+		total += len(src)
+	}
+	if total > MaxPartials {
+		return &Error{Name: name, Msg: fmt.Sprintf("ui/ 下的模板合计超过 %d KiB（%s），请精简", MaxPartials>>10, kib(total)), Kind: ErrTooLarge}
+	}
+	return nil
 }
 
 // checkInput 检查模板源码与变量的大小。父进程发送前、工作进程收到后各查一次。

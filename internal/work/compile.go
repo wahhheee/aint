@@ -51,10 +51,10 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.markup()
 	c.layout()
 	c.assets()
+	c.templates()
 	c.crossRefs()
 	// TODO(M2-9)：ui/theme.yaml 与 custom.css 校验。
 	// TODO(M2-10)：素材解码校验（E-ASSET）、常驻图片 token 估算（W-PIN-IMAGE）。
-	// TODO(M2-8)：面板与命令中的 Liquid 模板解析（E-TEMPLATE）。
 	// TODO(M2-12)：前缀 token 估算（I-TOKENS、W-PREFIX-LARGE、W-INDEX-LARGE）。
 	return c.m, c.r
 }

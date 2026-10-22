@@ -2,6 +2,7 @@ package work
 
 import (
 	"io/fs"
+	"strings"
 	"testing"
 
 	"github.com/wahhheee/yanyi/examples"
@@ -82,5 +83,37 @@ func TestDocLinks(t *testing.T) {
 	_, rep := Compile(set)
 	if len(rep.Issues) == 0 || rep.Issues[0].Code != CodeRef || rep.Issues[0].Line != 5 {
 		t.Fatalf("应报告不存在的文档链接并定位到第 5 行：%+v", rep.Issues)
+	}
+}
+
+func TestTemplateChecks(t *testing.T) {
+	set := NewFileSet()
+	_ = set.Add("work.yaml", []byte("format: 1\nid: test.tpl\nversion: 0.1.0\ntitle: 模板\n"))
+	_ = set.Add("prompts/narrator.md", []byte("你好 {{ state.name }}\n{% if x %}\n没有结束\n"))
+	_ = set.Add("commands/look.md", []byte("---\ndescription: 看\n---\n看看\n{% include 'x' %}\n"))
+	_ = set.Add("ui/layout.yaml", []byte("panels:\n  - {id: a, place: sidebar, template: ui/panels/a.liquid}\n"))
+	_ = set.Add("ui/panels/a.liquid", []byte("{% render 'panels/_row', v: 1 %}\n{% render 'panels/_nope' %}\n"))
+	_ = set.Add("ui/panels/_row.liquid", []byte("{{ v }}"))
+	m, rep := Compile(set)
+	var got []string
+	for _, i := range rep.Issues {
+		got = append(got, i.String())
+	}
+	want := []string{
+		"[E-TEMPLATE] prompts/narrator.md:2",
+		"[E-TEMPLATE] commands/look.md:5 不支持 include",
+		"[E-REF] ui/panels/a.liquid:2 render 引用的模板不存在：panels/_nope",
+	}
+	for _, w := range want {
+		found := false
+		for _, g := range got {
+			found = found || strings.HasPrefix(g, w)
+		}
+		if !found {
+			t.Errorf("缺少问题 %q，得到：\n%s", w, strings.Join(got, "\n"))
+		}
+	}
+	if len(m.Partials) != 2 {
+		t.Fatalf("ui/ 下的模板集：%v", m.Partials)
 	}
 }

@@ -90,7 +90,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 	var opening *DisplayItem
 	var openingChoices *DisplayItem
 	if m.Opening != nil && m.Opening.Mode == "static" {
-		body, err := s.tmpl.Render("prompts/opening.md", m.Opening.Body, map[string]any{"state": st})
+		body, err := s.tmpl.RenderWith("prompts/opening.md", m.Opening.Body, map[string]any{"state": st}, m.Partials)
 		if err != nil {
 			return nil, errs.Wrap(err, errs.CodeWorkInvalid, "开场模板渲染失败")
 		}

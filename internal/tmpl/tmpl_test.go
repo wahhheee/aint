@@ -197,3 +197,45 @@ func TestIsolatedLatency(t *testing.T) {
 	out := measure(iso)
 	t.Logf("单次渲染：进程内 %s，工作进程 %s；工作进程启动 %s", in, out, startup)
 }
+
+// {% render %} 只能引用随渲染提供的 ui/ 模板；名称可省略 ui/ 与 .liquid。
+func TestRenderPartials(t *testing.T) {
+	partials := map[string]string{
+		"ui/panels/_row.liquid": `<ui-stat label="{{ label }}" value="{{ value }}"></ui-stat>`,
+	}
+	src := `{% render 'panels/_row', label: "第几天", value: state.day %}|{% render 'ui/panels/_row.liquid', label: "x", value: 1 %}`
+	for name, e := range engines(t) {
+		out, err := e.RenderWith("ui/panels/a.liquid", src, map[string]any{"state": map[string]any{"day": 3}}, partials)
+		if err != nil {
+			t.Fatalf("%s：%v", name, err)
+		}
+		if out != `<ui-stat label="第几天" value="3"></ui-stat>|<ui-stat label="x" value="1"></ui-stat>` {
+			t.Fatalf("%s：%q", name, out)
+		}
+		for _, bad := range []string{`{% render 'panels/nope' %}`, `{% render '../work.yaml' %}`, `{% include 'C:/Windows/win.ini' %}`} {
+			if _, err := e.RenderWith("x", bad, nil, partials); err == nil {
+				t.Errorf("%s：%s 应失败", name, bad)
+			}
+		}
+		if _, err := e.Render("x", `{% render 'panels/_row' %}`, nil); err == nil || !strings.Contains(err.Error(), "不能用 render") {
+			t.Errorf("%s：没有提供模板集时 render 应说明原因，得到 %v", name, err)
+		}
+	}
+}
+
+func TestParse(t *testing.T) {
+	if err := Parse("ok", `{% for c in state.clues %}{{ c }}{% endfor %}`); err != nil {
+		t.Fatal(err)
+	}
+	err := Parse("ui/panels/bad.liquid", "第一行\n{% if state.day %}\n没有结束")
+	var e *Error
+	if !errors.As(err, &e) || e.Kind != ErrTemplate || e.Line == 0 {
+		t.Fatalf("语法错误应带行号：%#v", err)
+	}
+	if _, ok := ResolvePartial("panels/_row", func(p string) bool { return p == "ui/panels/_row.liquid" }); !ok {
+		t.Fatal("ResolvePartial 应补全 ui/ 与 .liquid")
+	}
+	if _, ok := ResolvePartial("prompts/narrator.md", func(p string) bool { return p == "prompts/narrator.md" }); ok {
+		t.Fatal("ResolvePartial 只解析 ui/ 下的 .liquid")
+	}
+}

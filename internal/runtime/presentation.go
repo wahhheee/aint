@@ -65,9 +65,10 @@ type PanelMeta struct {
 	Collapsed bool   `json:"collapsed,omitzero"`
 }
 
-// AssetRef 是前端可直接使用的素材引用。
+// AssetRef 是前端可直接使用的素材引用。作品中的素材引用写 ID 或路径（含 / 的视为路径），两者都能找到它。
 type AssetRef struct {
 	ID          string `json:"id"`
+	Path        string `json:"path"`
 	Kind        string `json:"kind"`
 	Role        string `json:"role"`
 	URL         string `json:"url"`
@@ -126,7 +127,7 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 		}
 	}
 	for _, a := range w.Assets {
-		ui.Assets = append(ui.Assets, AssetRef{ID: a.ID, Kind: a.Kind, Role: a.Role, URL: work.AssetURL(a), Description: a.Description})
+		ui.Assets = append(ui.Assets, AssetRef{ID: a.ID, Path: a.Path, Kind: a.Kind, Role: a.Role, URL: work.AssetURL(a), Description: a.Description})
 	}
 	p.UI = ui
 	return p, nil

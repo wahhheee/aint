@@ -25,6 +25,8 @@ type Model struct {
 
 	// Files 是作品文件索引：路径 → blob 引用（VFS /work 读取、素材服务、记忆模板复制时按需取内容）。
 	Files map[string]FileRef
+	// Partials 是 ui/ 下的全部 .liquid 模板（路径 → 源码）：渲染作品模板时提供给 {% render %}（tmpl.RenderWith）。
+	Partials map[string]string
 
 	// TODO(M2-9)：Theme（ui/theme.yaml）与 custom.css。
 }

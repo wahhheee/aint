@@ -3,12 +3,14 @@
  * 属性都来自作品模板（不可信），只当作文本或数字使用。
  */
 import { ChevronRight } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 
+import { confirmAction } from '@/components/common/confirm'
 import { WorkIcon } from '@/components/common/WorkIcon'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { imageURL, MarkupContext } from '@/markup/context'
 
 import { useReaderContext } from '../ReaderContext'
 
@@ -62,9 +64,9 @@ const UiButton: UIComponent = ({ attrs, children }) => {
       size="xs"
       className="my-1"
       disabled={!command}
-      onClick={() => {
-        if (attrs.confirm && !window.confirm(attrs.confirm)) return // TODO(M2-8)：应用内确认框
-        runCommand([command, attrs.args].filter(Boolean).join(' '))
+      onClick={async () => {
+        if (attrs.confirm && !(await confirmAction(attrs.confirm))) return
+        runCommand([command, attrs.args].filter(Boolean).join(' '), !!attrs.confirm)
       }}
     >
       {children}
@@ -94,8 +96,21 @@ const UiTooltip: UIComponent = ({ attrs, children }) => (
   </Tooltip>
 )
 
-// TODO(M2-10)：ui-image（src 为素材引用 → /api/v1/assets/{hash}）
-const UiImage: UIComponent = ({ attrs }) => <span className="text-xs text-ink-faint">［图片：{attrs.alt ?? attrs.src}］</span>
+const IMAGE_SIZES: Record<string, string> = { sm: 'max-w-16', md: 'max-w-40', lg: 'max-w-full' }
+
+/** 图片：src 为素材引用（ID、路径或 asset:ID）；size 为 sm / md / lg（默认 lg，宽度不超过面板）。找不到素材时显示说明文字。 */
+const UiImage: UIComponent = ({ attrs }) => {
+  const url = imageURL(attrs.src, useContext(MarkupContext))
+  if (!url) return <span className="text-xs text-ink-faint">［{attrs.alt || attrs.src}］</span>
+  return (
+    <img
+      src={url}
+      alt={attrs.alt ?? ''}
+      loading="lazy"
+      className={cn('my-1.5 block h-auto w-full rounded-md border border-rule', IMAGE_SIZES[attrs.size ?? 'lg'] ?? IMAGE_SIZES.lg)}
+    />
+  )
+}
 
 export const UI_COMPONENTS: Record<string, UIComponent> = {
   'ui-stat': UiStat,

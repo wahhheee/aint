@@ -1,5 +1,5 @@
 /**
- * 面板布局（《03-作品格式规范》11.1）：sidebar 右侧栏、topbar 正文上方细条、float 角落小卡、drawer 抽屉（TODO(M2-8)）。
+ * 面板布局（《03-作品格式规范》11.1）：sidebar 右侧栏、topbar 正文上方细条、float 角落小卡、drawer 抽屉（PanelSheet.tsx）。
  * 面板的静态布局来自 GET /saves/{id}（ui.panels），内容来自 /panels 与 SSE panels 事件，按 id 对应。
  */
 import type { PanelMeta, PanelRender } from '@/api/types'
@@ -11,7 +11,6 @@ import { PanelHTML } from './PanelHTML'
 /** 右侧栏：面板之间用标题与留白分隔，而不是一张张卡片。 */
 export function SidebarPanels({ meta, rendered, className }: { meta: PanelMeta[]; rendered?: PanelRender[]; className?: string }) {
   const panels = byPlace(meta, rendered, 'sidebar')
-  // TODO(M2-8)：drawer 面板（抽屉中的标签页）；手机上 sidebar 与 drawer 面板合并进底部抽屉
   return (
     <div className={cn('space-y-8', className)}>
       {panels.map(({ meta: m, render }) => (
