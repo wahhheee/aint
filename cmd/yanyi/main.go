@@ -12,7 +12,13 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/wahhheee/yanyi/internal/app"
+	"github.com/wahhheee/yanyi/internal/tmpl"
 )
+
+// tmplWorkerCommand 是模板渲染工作进程的隐藏子命令（不出现在帮助中）。
+const tmplWorkerCommand = app.TemplateWorkerCommand
 
 func main() {
 	args := os.Args[1:]
@@ -31,6 +37,8 @@ func main() {
 		err = fmt.Errorf("yanyi password 尚未实现（TODO(M6-9)）")
 	case "version":
 		err = runVersion(args)
+	case tmplWorkerCommand: // 隐藏子命令：模板渲染工作进程（D-46），由服务自己启动
+		err = tmpl.ServeWorker(os.Stdin, os.Stdout)
 	case "help", "-h", "--help":
 		usage()
 	default:

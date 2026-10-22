@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -150,6 +151,7 @@ func Run(ctx context.Context, opts Options) error {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Warn("HTTP 服务关闭超时", "err", err)
 	}
+	svc.tmpl.Close()
 	slog.Info("已退出")
 	return nil
 }
@@ -158,13 +160,17 @@ func Run(ctx context.Context, opts Options) error {
 type services struct {
 	server  *server.Server
 	runtime *runtime.Manager
+	tmpl    *tmpl.Engine
 }
 
 // wire 组装全部服务（依赖关系一目了然）。
 func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info server.SystemInfo) (*services, error) {
 	blobs := store.NewBlobs(dirs.Blobs)
 	bus := event.NewBus(event.DefaultBufferSize)
-	tm := tmpl.New()
+	tm, err := isolatedTemplates()
+	if err != nil {
+		return nil, err
+	}
 
 	secrets, err := provider.OpenSecrets(dirs.Secrets)
 	if err != nil {
@@ -196,7 +202,21 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 		Info: info, Bus: bus, Settings: settingsSvc, Works: works, Saves: saves,
 		Runtime: rt, Providers: providers, Web: web.Dist(),
 	})
-	return &services{server: srv, runtime: rt}, nil
+	return &services{server: srv, runtime: rt, tmpl: tm}, nil
+}
+
+// TemplateWorkerCommand 是模板渲染工作进程的隐藏子命令（cmd/yanyi 中登记）。
+const TemplateWorkerCommand = "__tmpl-worker"
+
+// isolatedTemplates 创建在隔离工作进程中渲染作者模板的渲染器（D-46）：工作进程是本程序自身。
+func isolatedTemplates() (*tmpl.Engine, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("找不到程序自身的路径（模板渲染进程需要）: %w", err)
+	}
+	return tmpl.NewIsolated(func() *exec.Cmd {
+		return exec.Command(exe, TemplateWorkerCommand) //nolint:noctx // 工作进程的生命周期由渲染器管理（超时即杀），不随单个请求的 ctx 结束
+	}), nil
 }
 
 // listen 选择监听地址：指定端口时只用该端口；否则从 DefaultPort 起找空闲端口。
