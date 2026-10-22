@@ -3,10 +3,10 @@ package contextx
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/yanyi/internal/pkg/lru"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/store"
@@ -18,9 +18,12 @@ import (
 type Builder struct {
 	tmpl *tmpl.Engine
 
-	mu    sync.Mutex
-	cache map[string]*prefix // TODO(M1-7)：改为 LRU
+	cache *lru.Cache[string, *prefix]
 }
+
+// prefixCacheSize 是前缀组装结果的缓存条数：每个（作品版本、能力画像、初始状态）一条，
+// 也就是大致每个最近游玩的存档一条；淘汰后下次请求重新组装（结果相同，不影响前缀缓存）。
+const prefixCacheSize = 64
 
 // prefix 是稳定前缀的组装结果。
 type prefix struct {
@@ -31,7 +34,7 @@ type prefix struct {
 
 // NewBuilder 创建构建器。
 func NewBuilder(tm *tmpl.Engine) *Builder {
-	return &Builder{tmpl: tm, cache: map[string]*prefix{}}
+	return &Builder{tmpl: tm, cache: lru.New[string, *prefix](prefixCacheSize)}
 }
 
 // BuildInput 是构建一次请求所需的全部输入。
@@ -105,10 +108,7 @@ func (b *Builder) Build(in BuildInput) (*Built, error) {
 
 func (b *Builder) prefix(in BuildInput) (*prefix, error) {
 	key := strings.Join([]string{prompts.Version, in.Work.VersionID, in.Features.Signature(), in.InitialStateHash}, "|")
-	b.mu.Lock()
-	p, ok := b.cache[key]
-	b.mu.Unlock()
-	if ok {
+	if p, ok := b.cache.Get(key); ok {
 		return p, nil
 	}
 
@@ -123,14 +123,12 @@ func (b *Builder) prefix(in BuildInput) (*prefix, error) {
 	l1, l1Reports := assembleL1(in.Work, in.Features, narrator)
 	reports = append(reports, l1Reports...)
 
-	p = &prefix{
+	p := &prefix{
 		system:    []llm.SystemBlock{{Text: l0}, {Text: l1, CacheMark: true}},
 		l3:        renderL3(in.Work),
 		fragments: reports,
 	}
-	b.mu.Lock()
-	b.cache[key] = p
-	b.mu.Unlock()
+	b.cache.Put(key, p)
 	return p, nil
 }
 

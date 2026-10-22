@@ -22,10 +22,12 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -387,8 +389,15 @@ func inspectStore(t *testing.T, e *env, saveID string) storeSnapshot {
 	ctx := context.Background()
 	q := e.db.Read()
 
+	// integrity_check 用新开的连接：复用的连接上 FTS5 的检查会用到连接缓存的索引结构，
+	// 其他连接写入后可能误报 "fts5: checksum mismatch"（数据与检索结果都正确，新连接检查为 ok）。
+	fresh, err := sql.Open("sqlite", "file:"+filepath.ToSlash(e.db.Path())+"?_pragma=query_only(1)&_pragma=busy_timeout(5000)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = fresh.Close() }()
 	var integrity string
-	if err := q.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrity); err != nil || integrity != "ok" {
+	if err := fresh.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrity); err != nil || integrity != "ok" {
 		t.Fatalf("integrity_check：%q %v", integrity, err)
 	}
 	if bad := queryStrings(t, e, `SELECT "table" FROM pragma_foreign_key_check`); len(bad) > 0 {

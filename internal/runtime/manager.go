@@ -59,8 +59,10 @@ type Manager struct {
 	cancelAll context.CancelFunc
 	wg        sync.WaitGroup
 
-	mu       sync.Mutex
-	sessions map[string]*session // TODO(M1-8)：LRU 淘汰空闲会话（目前会话很轻，只有锁与运行状态）
+	mu sync.Mutex
+	// sessions 只保存有回合在运行的存档：回合结束（让出写者槽位）时删除，空闲存档不占内存。
+	// 加锁顺序固定为 m.mu → session.mu。
+	sessions map[string]*session
 }
 
 // session 是一个存档的运行状态。
@@ -84,7 +86,8 @@ func NewManager(d Deps) *Manager {
 	return &Manager{d: d, base: base, cancelAll: cancel, sessions: map[string]*session{}}
 }
 
-func (m *Manager) session(saveID string) *session {
+// lockSession 返回存档的会话（没有则创建）并锁住它；调用方负责 s.mu.Unlock()。
+func (m *Manager) lockSession(saveID string) *session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.sessions[saveID]
@@ -92,6 +95,19 @@ func (m *Manager) session(saveID string) *session {
 		s = &session{}
 		m.sessions[saveID] = s
 	}
+	s.mu.Lock()
+	return s
+}
+
+// runningSession 返回有回合在运行的会话并锁住它；没有时返回 nil。
+func (m *Manager) runningSession(saveID string) *session {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[saveID]
+	if !ok {
+		return nil
+	}
+	s.mu.Lock()
 	return s
 }
 
@@ -104,8 +120,7 @@ func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) 
 	if _, err := m.d.Saves.Get(ctx, saveID); err != nil {
 		return "", err
 	}
-	s := m.session(saveID)
-	s.mu.Lock()
+	s := m.lockSession(saveID)
 	defer s.mu.Unlock()
 	if s.running != nil {
 		return "", errs.Conflict("上一回合还在进行中").WithDetails(map[string]string{"turn_id": s.running.id})
@@ -122,9 +137,14 @@ func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) 
 	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
 	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
 	release := sync.OnceFunc(func() {
+		m.mu.Lock()
 		s.mu.Lock()
 		s.running = nil
+		if m.sessions[saveID] == s {
+			delete(m.sessions, saveID)
+		}
 		s.mu.Unlock()
+		m.mu.Unlock()
 	})
 	m.wg.Go(func() {
 		defer func() {
@@ -148,8 +168,10 @@ func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) 
 
 // Cancel 停止正在运行的回合。turnID 不匹配（已结束或是别的回合）时返回 NotFound。
 func (m *Manager) Cancel(saveID, turnID string) error {
-	s := m.session(saveID)
-	s.mu.Lock()
+	s := m.runningSession(saveID)
+	if s == nil {
+		return errs.NotFound("没有正在进行的该回合")
+	}
 	defer s.mu.Unlock()
 	if s.running == nil || s.running.id != turnID {
 		return errs.NotFound("没有正在进行的该回合")
@@ -160,8 +182,10 @@ func (m *Manager) Cancel(saveID, turnID string) error {
 
 // Running 返回存档正在运行的回合 ID（没有则返回空）。
 func (m *Manager) Running(saveID string) string {
-	s := m.session(saveID)
-	s.mu.Lock()
+	s := m.runningSession(saveID)
+	if s == nil {
+		return ""
+	}
 	defer s.mu.Unlock()
 	if s.running == nil {
 		return ""
