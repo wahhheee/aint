@@ -3,6 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { UploadOptions } from './client'
 import { api, type CreateSaveParams } from './endpoints'
 import type { DeepPartial, Settings } from './types'
 
@@ -37,6 +38,25 @@ export const useWorks = () => useQuery({ queryKey: qk.works, queryFn: api.works.
 export const useWork = (id: string) => useQuery({ queryKey: qk.work(id), queryFn: () => api.works.get(id) })
 export const useWorkSaves = (id: string) => useQuery({ queryKey: qk.workSaves(id), queryFn: () => api.works.saves(id) })
 export const useRecentSaves = () => useQuery({ queryKey: qk.recentSaves, queryFn: () => api.saves.recent(6) })
+
+/**
+ * 导入作品（两段式）：预览（上传、解析与校验，不写入）→ 确认（写入，刷新书架）；放弃时删除暂存。
+ * 状态流转见 features/library/useWorkImport.ts。
+ */
+export function useImportWork() {
+  const qc = useQueryClient()
+  return {
+    preview: useMutation({
+      mutationFn: ({ form, ...opts }: { form: FormData } & UploadOptions) => api.works.importPreview(form, opts),
+    }),
+    confirm: useMutation({
+      mutationFn: (task: string) => api.works.importConfirm(task),
+      // 作品列表、详情与存档都以 ['works'] 开头，一并刷新
+      onSuccess: () => void qc.invalidateQueries({ queryKey: qk.works }),
+    }),
+    cancel: useMutation({ mutationFn: (task: string) => api.works.importCancel(task) }),
+  }
+}
 
 export function useCreateSave() {
   const qc = useQueryClient()

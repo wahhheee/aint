@@ -1,7 +1,8 @@
-import { Plus } from 'lucide-react'
+import { PackageOpen, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { toast } from 'sonner'
 
 import { useRecentSaves, useWorks } from '@/api/queries'
 import type { Save, WorkSummary } from '@/api/types'
@@ -11,7 +12,10 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatRelative, saveTitle } from '@/lib/format'
 
+import { pickedFromDrop } from './dropImport'
 import { ImportDialog } from './ImportDialog'
+import { useFileDrop } from './useFileDrop'
+import { useWorkImport } from './useWorkImport'
 import { WorkCover } from './WorkCover'
 
 /** 作品网格：列宽固定（auto-fill），作品多少都不改变封面大小。 */
@@ -28,12 +32,21 @@ function slipVisibility(i: number) {
   return 'hidden'
 }
 
-/** 书架（首页）：继续阅读 + 全部作品。 */
+/** 书架（首页）：继续阅读 + 全部作品。把 zip 包或作品文件夹拖到页面任意位置即可导入。 */
 export function LibraryPage() {
   const { t } = useTranslation()
   const works = useWorks()
   const recent = useRecentSaves()
   const [importing, setImporting] = useState(false)
+  const imp = useWorkImport()
+  const dragging = useFileDrop((dt) => {
+    if (imp.busy) {
+      toast(t('import.busy'))
+      return
+    }
+    imp.startFrom(pickedFromDrop(dt)) // 必须在 drop 事件中同步取出条目
+    setImporting(true)
+  })
 
   return (
     <>
@@ -79,8 +92,23 @@ export function LibraryPage() {
         )}
       </section>
 
-      <ImportDialog open={importing} onOpenChange={setImporting} />
+      <ImportDialog open={importing} onOpenChange={setImporting} imp={imp} />
+      {dragging && <DropOverlay />}
     </>
+  )
+}
+
+/** 拖着文件经过窗口时的遮罩：整页都是放置区。 */
+function DropOverlay() {
+  const { t } = useTranslation()
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[60] bg-paper/80 p-4 backdrop-blur-[2px] sm:p-6">
+      <div className="flex size-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gold/70 text-center">
+        <PackageOpen className="size-8 text-gold" strokeWidth={1.5} />
+        <p className="mt-4 title-book text-lg">{t('import.dropTitle')}</p>
+        <p className="mt-1 text-[13px] text-ink-muted">{t('import.dropHint')}</p>
+      </div>
+    </div>
   )
 }
 

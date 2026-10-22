@@ -131,6 +131,11 @@ export interface Issue {
   hint?: string
 }
 
+/** work.Report：校验报告 */
+export interface Report {
+  issues: Issue[]
+}
+
 /** work.Detail（GET /works/{id}） */
 export interface WorkDetail extends WorkSummary {
   license?: string
@@ -140,7 +145,55 @@ export interface WorkDetail extends WorkSummary {
   changelog?: string
   readme_html?: string
   versions: VersionInfo[]
-  report: { issues: Issue[] }
+  report: Report
+}
+
+/** work.ImportPreview（POST /works/import）：导入第一步的结果，解析与校验，尚未写入 */
+export interface ImportPreview {
+  /** 确认导入时使用；报告有 error 时没有（不能导入） */
+  task?: string
+  /** 毫秒时间戳：过期后需要重新选择作品 */
+  expires_at?: number
+  source: WorkSource
+  work: ImportWork
+  tree_hash: string
+  /** 文件数与总字节数（不含被忽略的文件） */
+  files: number
+  size: number
+  /** 书架上已有同 ID 作品时 */
+  existing?: ImportExisting
+  report: Report
+}
+
+/** work.ImportWork：待导入作品的摘要（来自 work.yaml；清单有错误时可能不完整） */
+export interface ImportWork {
+  id: string
+  title: string
+  subtitle?: string
+  version: string
+  description?: string
+  tags: string[]
+  content_rating?: 'general' | 'teen' | 'mature'
+  authors: Author[]
+  requires: { vision: 'none' | 'preferred' | 'required' }
+}
+
+/** work.ImportExisting：书架上已有的同 ID 作品 */
+export interface ImportExisting {
+  title: string
+  latest_version: string
+  /** 内容完全相同（文件树哈希一致）的已有版本：确认后直接复用 */
+  same_version_id?: string
+  same_version?: string
+}
+
+/** work.ImportResult（POST /works/import/{task}/confirm） */
+export interface ImportResult {
+  work_id: string
+  version_id: string
+  /** false 表示同内容版本已存在，直接复用 */
+  created: boolean
+  report: Report
 }
 
 /** work.TagDef（作品样式标签） */

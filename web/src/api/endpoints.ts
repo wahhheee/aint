@@ -1,9 +1,11 @@
 /**
  * 后端接口（《02-技术方案》18.2）。组件不直接调用这里，而是通过 queries.ts 的 hooks。
  */
-import { http } from './client'
+import { http, type UploadOptions } from './client'
 import type {
   DeepPartial,
+  ImportPreview,
+  ImportResult,
   Model,
   PanelRender,
   Presentation,
@@ -38,8 +40,12 @@ export const api = {
     list: () => http.get<WorkSummary[]>('/works'),
     get: (id: string) => http.get<WorkDetail>(`/works/${encodeURIComponent(id)}`),
     saves: (id: string) => http.get<Save[]>(`/works/${encodeURIComponent(id)}/saves`),
-    // TODO(M1-4)：两段式导入（解析校验 → 确认）
-    importPreview: (body: unknown) => http.post<unknown>('/works/import', body),
+    /** 导入第一步：上传 zip 包或文件夹（表单见 features/library/importSource.ts），解析与校验，不写入 */
+    importPreview: (form: FormData, opts?: UploadOptions) => http.upload<ImportPreview>('/works/import', form, opts),
+    /** 导入第二步：写入作品库（同作品同内容时复用已有版本） */
+    importConfirm: (task: string) => http.post<ImportResult>(`/works/import/${encodeURIComponent(task)}/confirm`),
+    /** 放弃导入，删除暂存文件 */
+    importCancel: (task: string) => http.del(`/works/import/${encodeURIComponent(task)}`),
   },
   saves: {
     recent: (limit = 6) => http.get<Save[]>(`/saves?limit=${limit}`),
