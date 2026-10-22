@@ -1,14 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/llm/fake"
+	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/tmpl"
@@ -40,17 +43,12 @@ func loadWorkDir(dir string) (*work.Model, *work.Report, error) {
 	return m, rep, err
 }
 
+// loadWorkFiles 读取作品目录或 zip 包（与导入相同：根目录就是作品根，或只含一个作品文件夹），并编译。
 func loadWorkFiles(dir string) (*work.Model, *work.Report, *work.FileSet, error) {
-	fsys := os.DirFS(dir)
-	root, err := work.LocateRoot(fsys)
-	if err != nil {
-		return nil, nil, nil, err
+	set, err := readWorkFiles(dir)
+	if e, ok := errs.As(err); ok {
+		return nil, nil, nil, errors.New(e.Message) // 终端里只需要说明，不需要错误码
 	}
-	if root != "." {
-		dir = dir + "/" + root
-		fsys = os.DirFS(dir)
-	}
-	set, err := work.FromFS(fsys, work.DefaultLimits)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -58,13 +56,29 @@ func loadWorkFiles(dir string) (*work.Model, *work.Report, *work.FileSet, error)
 	return m, rep, set, nil
 }
 
-// workValidate：yanyi work validate <目录> [--json]
+func readWorkFiles(p string) (*work.FileSet, error) {
+	if !strings.EqualFold(filepath.Ext(p), ".zip") {
+		return work.FromFS(os.DirFS(p), work.DefaultLimits)
+	}
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }() // 只读
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return work.FromZip(f, info.Size(), work.DefaultLimits)
+}
+
+// workValidate：yanyi work validate <目录或 zip 包> [--json]
 func workValidate(args []string) error {
 	fs := flag.NewFlagSet("work validate", flag.ExitOnError)
 	asJSON := fs.Bool("json", false, "以 JSON 输出校验报告")
 	_ = fs.Parse(reorderFlags(args))
 	if fs.NArg() != 1 {
-		return fmt.Errorf("用法：yanyi work validate <目录> [--json]")
+		return fmt.Errorf("用法：yanyi work validate <目录或 zip 包> [--json]")
 	}
 	m, rep, err := loadWorkDir(fs.Arg(0))
 	if err != nil {

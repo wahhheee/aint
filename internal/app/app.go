@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -191,6 +192,10 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 	settingsSvc := settings.NewService(db)
 	works := work.NewService(db, blobs)
 	works.EnsureBuiltins(ctx, examples.Works())
+	imports, err := work.NewImporter(works, filepath.Join(dirs.Tmp, "imports"), work.DefaultLimits)
+	if err != nil {
+		return nil, err
+	}
 	saves := save.NewService(db, blobs, works, tm)
 
 	rt := runtime.NewManager(runtime.Deps{
@@ -199,7 +204,7 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 	})
 
 	srv := server.New(server.Deps{
-		Info: info, Bus: bus, Settings: settingsSvc, Works: works, Saves: saves,
+		Info: info, Bus: bus, Settings: settingsSvc, Works: works, Imports: imports, Saves: saves,
 		Runtime: rt, Providers: providers, Web: web.Dist(),
 	})
 	return &services{server: srv, runtime: rt, tmpl: tm}, nil

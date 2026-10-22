@@ -17,6 +17,7 @@ import (
 //	├── secrets.json      API Key 与访问密码哈希（永不导出）
 //	├── backup/           结构迁移前的自动备份（最近 3 份）
 //	├── cache/derived/    图片派生缓存（可随时删除）
+//	├── tmp/              临时文件：imports/ 是导入暂存（启动时清空）
 //	├── logs/             滚动日志；logs/llm-trace/ 为 --trace-llm 的调用记录
 //	└── instance.json     运行中实例的信息（单实例检测）
 type Dirs struct {
@@ -26,6 +27,7 @@ type Dirs struct {
 	Secrets  string `json:"secrets"`
 	Backup   string `json:"backup"`
 	Cache    string `json:"cache"`
+	Tmp      string `json:"tmp"`
 	Logs     string `json:"logs"`
 	Trace    string `json:"trace"`
 	Instance string `json:"instance"`
@@ -63,6 +65,7 @@ func ResolveDirs(flagDir string) (Dirs, error) {
 		Secrets:  filepath.Join(root, "secrets.json"),
 		Backup:   filepath.Join(root, "backup"),
 		Cache:    filepath.Join(root, "cache"),
+		Tmp:      filepath.Join(root, "tmp"),
 		Logs:     filepath.Join(root, "logs"),
 		Trace:    filepath.Join(root, "logs", "llm-trace"),
 		Instance: filepath.Join(root, "instance.json"),

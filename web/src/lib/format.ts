@@ -44,6 +44,19 @@ export function formatTokens(n: number): string {
   return `${k >= 100 ? Math.round(k) : k.toFixed(1)}k`
 }
 
+/** 文件大小："812 B""12.3 KB""1.2 MB"（按 1024 进位，与系统文件管理器一致）。 */
+export function formatBytes(n: number): string {
+  const units = ['B', 'KB', 'MB', 'GB']
+  let v = n
+  let u = 0
+  while (v >= 1024 && u < units.length - 1) {
+    v /= 1024
+    u++
+  }
+  if (u === 0) return `${v} B`
+  return `${v >= 100 || Number.isInteger(v) ? Math.round(v) : v.toFixed(1)} ${units[u]}`
+}
+
 /** 从字符串得到稳定的非负整数（用于按作品 ID 选择封面颜色等）。 */
 export function hashString(s: string): number {
   let h = 2166136261
