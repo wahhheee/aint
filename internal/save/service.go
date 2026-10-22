@@ -334,6 +334,26 @@ func (s *Service) LoadState(ctx context.Context, hash string) (map[string]any, e
 	return out, s.blobs.GetJSON(ctx, s.db.Read(), hash, &out)
 }
 
+// LoadMemory 读取记忆清单（VFS /memory 的底层）。
+func (s *Service) LoadMemory(ctx context.Context, hash string) (MemoryManifest, error) {
+	mf := MemoryManifest{Files: map[string]MemoryFile{}}
+	if hash == "" {
+		return mf, nil
+	}
+	if err := s.blobs.GetJSON(ctx, s.db.Read(), hash, &mf); err != nil {
+		return mf, err
+	}
+	if mf.Files == nil {
+		mf.Files = map[string]MemoryFile{}
+	}
+	return mf, nil
+}
+
+// Blob 按哈希读取内容（记忆文件等）。
+func (s *Service) Blob(ctx context.Context, hash string) ([]byte, error) {
+	return s.blobs.Get(ctx, s.db.Read(), hash)
+}
+
 // TODO(M3-5)：分支操作——Regenerate（兄弟回合）、SetHead(here | latest-leaf)、Rewrite（修改 AI 正文）、
 //   Discard（丢弃中断回合）、DeleteBranch（P1）、CopyAsNew（P1，技术方案 6.2–6.4）。
 // TODO(M3-2/M3-9)：记忆与状态的玩家编辑（edit 节点 + 注记）。

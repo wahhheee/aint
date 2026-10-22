@@ -21,7 +21,7 @@ func (m *Model) Doc(id string) (Doc, bool) {
 // LinkDocs 把正文中的 [[id]] 补全为 [[id]](/work/lore/…)，让 AI 能顺着链接直接再读（D-35）。
 // 只影响读取结果，作品文件本身不变；找不到的 ID 原样保留（导入时已由校验器报告）。
 //
-// 调用方：VFS 读取 /work/lore 下的文件时（TODO(M3-1)）。
+// 调用方：VFS 读取 /work/lore 下的文件时（runtime/vfs.go 的 workSource）。
 func (m *Model) LinkDocs(text string) string {
 	return reDocLink.ReplaceAllStringFunc(text, func(s string) string {
 		sub := reDocLink.FindStringSubmatch(s)

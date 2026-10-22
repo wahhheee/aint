@@ -20,6 +20,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/vfs"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -52,7 +53,9 @@ type Env interface {
 	Work() *work.Model
 	// OfferChoices 记录本回合给出的选项（offer_choices）。
 	OfferChoices(item save.DisplayItem)
-	// TODO(M3-1)：VFS() —— /work /memory /transcript /uploads 的读写（写入进回合覆盖层）。
+	// VFS 是本回合的虚拟文件系统（/work /memory /transcript /uploads）。
+	// TODO(M3-2)：写入（write / edit / remove 进回合覆盖层）。
+	VFS() vfs.FS
 	// TODO(M2-1)：State() —— 当前状态的读取与原子修改。
 }
 

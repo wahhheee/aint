@@ -239,3 +239,64 @@ func TestContinuationDedup(t *testing.T) {
 		t.Fatalf("LLM 消息应保留续写的原始输出：%+v", last)
 	}
 }
+
+// recordingProvider 记录每次请求（只读，不修改）。
+type recordingProvider struct {
+	llm.Provider
+	reqs *[]*llm.Request
+}
+
+func (r recordingProvider) Stream(ctx context.Context, m *llm.Model, req *llm.Request) (llm.Stream, error) {
+	cp := *req
+	cp.Messages = append([]llm.Message(nil), req.Messages...)
+	*r.reqs = append(*r.reqs, &cp)
+	return r.Provider.Stream(ctx, m, req)
+}
+
+// read 与 list：读取设定文档（补全 [[id]] 链接，D-35）、列出记忆目录，结果回填后继续写正文。
+func TestReadAndListTools(t *testing.T) {
+	script := &fake.Script{Responses: []fake.Response{
+		{DelayMS: 1, ToolCalls: []fake.ToolCall{
+			{Name: "read", Args: map[string]any{"path": "/work/lore/characters/lin.md"}},
+			{Name: "list", Args: map[string]any{"path": "/memory"}},
+			{Name: "read", Args: map[string]any{"path": "/work/lore/characters/lin"}},
+		}},
+		{Text: "林舟想起老陈。", ChunkRunes: 50, DelayMS: 1},
+	}}
+	var reqs []*llm.Request
+	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
+	ctx := context.Background()
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _, _ := e.bus.Subscribe(event.SaveTopic(sv.ID), 0)
+	defer sub.Close()
+	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputFree, Text: "回忆林舟"}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, sub, event.TurnCommitted)
+
+	if len(reqs) != 2 {
+		t.Fatalf("应调用两次模型，实际 %d 次", len(reqs))
+	}
+	last := reqs[1].Messages[len(reqs[1].Messages)-1]
+	var results []string
+	for _, p := range last.Parts {
+		if p.Kind == llm.PartToolResult {
+			results = append(results, p.ToolResult.Parts[0].Text)
+		}
+	}
+	if len(results) != 3 {
+		t.Fatalf("工具结果 = %v", results)
+	}
+	if !strings.HasPrefix(results[0], "# read /work/lore/characters/lin.md（第 1–") || !strings.Contains(results[0], "[[old-chen]](/work/lore/characters/old-chen.md)") {
+		t.Fatalf("read 结果应带行范围并补全链接：\n%s", results[0])
+	}
+	if !strings.HasPrefix(results[1], "# list /memory（共 1 项）\n/memory/index.md") {
+		t.Fatalf("list 结果：\n%s", results[1])
+	}
+	if !strings.HasPrefix(results[2], "未执行：/work/lore/characters/lin 不存在。相近的路径有 /work/lore/characters/lin.md") {
+		t.Fatalf("漏写扩展名应给出相近路径：\n%s", results[2])
+	}
+}

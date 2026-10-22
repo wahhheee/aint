@@ -11,6 +11,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/tools"
 	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/yanyi/internal/vfs"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -31,6 +32,8 @@ type draft struct {
 	provider llm.Provider
 	model    *llm.Model
 	built    *contextx.Built
+	vfs      *vfs.Table   // 本回合的挂载表（buildVFS）
+	memory   *vfs.Overlay // 记忆覆盖层（写入随 M3-2；提交时 Dirty 才生成新清单）
 
 	// 本回合产生的内容
 	req      *llm.Request  // 随调用追加消息
@@ -57,6 +60,7 @@ var _ tools.Env = (*draft)(nil)
 
 func (d *draft) Features() prompts.FeatureSet { return d.features }
 func (d *draft) Work() *work.Model            { return d.work }
+func (d *draft) VFS() vfs.FS                  { return d.vfs }
 func (d *draft) OfferChoices(item save.DisplayItem) {
 	d.choices = &item
 }

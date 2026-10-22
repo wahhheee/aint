@@ -13,8 +13,8 @@ import (
 // builtins 返回内置工具（《02-技术方案》10.2），顺序固定。
 func builtins() []*Def {
 	return []*Def{
-		{Name: "read", Kind: KindRead, Display: DisplaySubtle, Spec: specRead, Handle: notYet("read", "M3-1")},
-		{Name: "list", Kind: KindRead, Display: DisplaySubtle, Spec: specList, Handle: notYet("list", "M3-1")},
+		{Name: "read", Kind: KindRead, Display: DisplaySubtle, Spec: specRead, Handle: handleRead},
+		{Name: "list", Kind: KindRead, Display: DisplaySubtle, Spec: specList, Handle: handleList},
 		{Name: "search", Kind: KindRead, Display: DisplaySubtle, Spec: specSearch, Handle: notYet("search", "M3-4")},
 		{Name: "write", Kind: KindWrite, Display: DisplayHidden, Spec: specWrite, Handle: notYet("write", "M3-2")},
 		{Name: "edit", Kind: KindWrite, Display: DisplayHidden, Spec: specEdit, Handle: notYet("edit", "M3-2")},

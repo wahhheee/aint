@@ -140,9 +140,14 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 		return nil, err
 	}
 
+	fsys, memory, err := m.buildVFS(ctx, w, features, head)
+	if err != nil {
+		return nil, err
+	}
+
 	d := &draft{
 		id: turnID, started: time.Now(), save: sv, parent: head, turnNo: turnNo + 1, input: env.Input,
-		work: w, features: features, provider: provider, model: model, built: built,
+		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
 		req: built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
 	}
 	if item, ok := inputDisplay(env); ok {
