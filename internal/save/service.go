@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/yanyi/internal/markup"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/prompts"
@@ -157,7 +158,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 		node, err := s.commitTx(ctx, tx, TurnCommit{
 			SaveID: sv.ID, Parent: root, TurnNo: 1, Input: TurnInput{Kind: InputOpening},
 			Messages: messages, Display: display, StateHash: stateHash, MemoryHash: memHash,
-			WorkVersionID: versionID, Status: StatusCommitted, PlainText: opening.Markup,
+			WorkVersionID: versionID, Status: StatusCommitted, PlainText: markup.PlainText(opening.Markup),
 			Meta: NodeMeta{Stop: "static_opening"},
 		})
 		if err != nil {
