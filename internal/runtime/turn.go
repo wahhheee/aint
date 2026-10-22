@@ -173,7 +173,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 				d.stop = "canceled"
 				d.addNotice("info", "已停止")
 			} else {
-				d.stop, d.errMsg = "error", err.Error()
+				d.stop, d.err, d.errMsg = "error", err, err.Error()
 				_, msg, _ := describeError(err)
 				d.addNotice("error", msg)
 			}
@@ -372,7 +372,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		// 什么也没生成：不产生节点，head 不变。
 		code, msg, recoverable := "canceled", "已停止", true
 		if d.stop == "error" {
-			code, msg, recoverable = describeError(errors.New(d.errMsg))
+			code, msg, recoverable = describeError(d.err)
 		}
 		slog.InfoContext(ctx, "回合未产生内容，不提交", "stop", d.stop, "err", d.errMsg)
 		d.release()
@@ -402,7 +402,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	}
 	m.publish(d.save.ID, event.TurnCommitted, event.TurnCommittedData{TurnID: d.id, NodeID: node.ID, Status: string(node.Status)})
 	if d.stop == "error" {
-		code, msg, recoverable := describeError(errors.New(d.errMsg))
+		code, msg, recoverable := describeError(d.err)
 		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: code, Message: msg, Recoverable: recoverable})
 	}
 	m.publishPanels(ctx, d.save.ID)

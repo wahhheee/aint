@@ -46,6 +46,7 @@ type draft struct {
 	continuing                      bool // 下一次调用是截断后的续写（只对紧接着的那一次调用有效）
 	usage                           llm.Usage
 	stop, stopRaw, errMsg           string
+	err                             error // 原始错误（保留类型，用于给玩家的错误分类）；errMsg 是它的文字
 	status                          save.NodeStatus
 }
 
