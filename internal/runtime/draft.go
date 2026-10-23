@@ -63,6 +63,7 @@ type draft struct {
 	threshold, hardLimit  int
 	lastInput, lastOutput int
 	compacted             bool // 本回合已经在回合内整理过一次（每回合至多一次）
+	sinceCompaction       int  // 上次整理之后的回合数（含本回合）；还没有整理过时为全部回合数
 
 	// 计数与结果
 	calls, toolCalls, continuations int

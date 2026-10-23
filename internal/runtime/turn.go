@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -163,12 +164,22 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	}
 
 	params := m.compactParams(ctx, sv.Settings)
+	since := len(ec.turns) + 1 // 第 0 阶段：全部回合
+	if ec.compaction != nil {
+		since = 1
+		for _, n := range line[slices.Index(line, ec.compaction)+1:] {
+			if n.Kind == save.KindTurn {
+				since++
+			}
+		}
+	}
 	d := &draft{
 		id: turnID, started: time.Now(), save: sv, parent: head, root: root, initState: initState, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
 		state: headState, images: m.d.Images,
 		threshold: params.Threshold(model.ContextWindow, maxOutput(model)), hardLimit: params.HardLimit(model.ContextWindow, maxOutput(model)),
-		req: built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
+		sinceCompaction: since,
+		req:             built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
 	}
 	if item, ok := inputDisplay(env); ok {
 		d.display = append(d.display, item)
@@ -463,8 +474,10 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 			PrefixHash: d.built.PrefixHash, PromptVersion: prompts.Version, ContextTokens: contextTokens,
 		},
 	})
-	// 上下文达到整理阈值：写者槽位直接交给整理任务（玩家阅读期间整理，期间的输入排队）
-	compacting := err == nil && contextTokens >= d.threshold
+	// 上下文达到整理阈值：写者槽位直接交给整理任务（玩家阅读期间整理，期间的输入排队）。
+	// 上次整理之后至少要有 3 个回合（整理至少保留 2 个回合，才有可以摘要掉的内容）：预算小于常驻部分加保留原文时，
+	// 不会每个回合都整理一次；出错结束的回合不触发（模型服务多半同样不可用）。
+	compacting := err == nil && d.stop != "error" && contextTokens >= d.threshold && d.sinceCompaction >= 3
 	if compacting {
 		slog.InfoContext(ctx, "上下文达到整理阈值", "context_tokens", contextTokens, "threshold", d.threshold)
 		m.handoffCompaction(d.save.ID, d.slot)

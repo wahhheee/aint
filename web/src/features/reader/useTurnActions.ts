@@ -116,13 +116,14 @@ export function useTurnActions(saveId: string, commands: Command[]) {
   const retry = useCallback(() => (lastInput.current ? submit(lastInput.current) : Promise.resolve(false)), [submit])
 
   /**
-   * 重新生成回合 nodeId（input 非空时为修改玩家输入）。parentId 是它的父节点：等待期间正文流只显示到父节点为止。
+   * 重新生成回合 nodeId（input 非空时为修改玩家输入）。parentId 是它的父节点：等待期间正文流只显示到父节点为止；
+   * shown 是等待期间显示的输入行（重新生成时沿用原回合的输入，见 displayedInput）。
    */
   const regenerate = useCallback(
-    async (nodeId: string, parentId: string, input?: TurnInput) => {
+    async (nodeId: string, parentId: string, input?: TurnInput, shown?: TurnInput) => {
       const { setPending } = useReader.getState()
       if (busy()) return false
-      setPending(input ?? { kind: 'continue' }, parentId)
+      setPending(input ?? shown ?? { kind: 'continue' }, parentId)
       try {
         await api.saves.regenerate(saveId, nodeId, input)
         return true

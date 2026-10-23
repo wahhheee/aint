@@ -290,3 +290,39 @@ func TestOverflowCompaction(t *testing.T) {
 		t.Fatalf("超限后的回合应在整理节点之下提交：%+v / %+v", n, parent.Meta)
 	}
 }
+
+// 预算小于常驻部分加保留原文时，每个回合都超过阈值：上次整理之后至少 3 个回合才再整理，不会每个回合都整理。
+func TestCompactionNotEveryTurn(t *testing.T) {
+	e := setup(t, compactScript())
+	ctx := context.Background()
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story",
+		Settings: save.Settings{Pace: "short", ContextBudget: 1000, KeepRecent: 100}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _, _ := e.bus.Subscribe(event.SaveTopic(sv.ID), 0)
+	defer sub.Close()
+	for i := range 12 {
+		in := save.TurnInput{Kind: save.InputChoice, ChoiceID: "a"}
+		if i == 0 {
+			in = save.TurnInput{Kind: save.InputOpening}
+		}
+		if _, err := e.mgr.Submit(ctx, sv.ID, in); err != nil {
+			t.Fatal(err)
+		}
+		waitAny(t, sub, event.TurnCommitted)
+		if e.mgr.Compacting(sv.ID) {
+			waitAny(t, sub, event.CompactionDone, event.CompactionFailed)
+		}
+	}
+	_, line, _ := e.saves.ProgressLine(ctx, sv.ID)
+	n := 0
+	for _, x := range line {
+		if x.Kind == save.KindCompaction {
+			n++
+		}
+	}
+	if n < 2 || n > 4 {
+		t.Fatalf("12 个回合整理了 %d 次（应为每 3 个回合至多一次）", n)
+	}
+}

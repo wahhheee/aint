@@ -190,6 +190,9 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 		return nil, nil, fmt.Errorf("提交整理节点失败: %w", err)
 	}
 	stats.DurationMS = time.Since(start).Milliseconds()
+	if stats.After >= threshold {
+		slog.WarnContext(ctx, "整理后的上下文仍不低于整理阈值：预算可能小于常驻部分加保留原文", "after", stats.After, "threshold", threshold)
+	}
 	slog.InfoContext(ctx, "上下文整理完成", "reason", reason, "mode", mode, "summary_turns", fmt.Sprintf("%d-%d", stats.SummaryFrom, stats.SummaryTo),
 		"keep_from", stats.KeepFromTurn, "summary_chars", stats.SummaryChars, "memory_writes", stats.MemoryWrites,
 		"before", stats.Before, "after", stats.After, "calls", stats.Calls, "duration", time.Since(start).Round(time.Millisecond))

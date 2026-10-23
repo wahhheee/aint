@@ -20,6 +20,7 @@ import { useReader, type DraftTurn } from '@/stores/reader'
 
 import { useReaderContext } from '../ReaderContext'
 import { useTypewriter } from '../useTypewriter'
+import { displayedInput } from './displayedInput'
 import { Notice, QuietLine, Waiting } from './Notice'
 import { TurnToolbar } from './TurnToolbar'
 import { TurnView } from './TurnView'
@@ -109,7 +110,9 @@ export function Stream({ timeline, onRetry, onContinue }: Props) {
                     n === latestTurn && !busy && n.status === 'interrupted' ? (
                       <>
                         <Continue onClick={onContinue} />
-                        <SmallButton onClick={() => void actions.regenerate(n.id, n.parent_id)}>{t('reader.regenerate')}</SmallButton>
+                        <SmallButton onClick={() => void actions.regenerate(n.id, n.parent_id, undefined, displayedInput(n.display))}>
+                          {t('reader.regenerate')}
+                        </SmallButton>
                         <SmallButton onClick={() => void actions.discard(n.id)}>{t('reader.discard')}</SmallButton>
                       </>
                     ) : undefined

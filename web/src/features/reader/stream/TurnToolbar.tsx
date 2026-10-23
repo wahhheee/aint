@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { parseMarkup, plainText } from '@/markup/parse'
 
 import { useReaderContext } from '../ReaderContext'
+import { displayedInput } from './displayedInput'
 
 type Editing = { kind: 'text' | 'input'; value: string } | null
 
@@ -108,7 +109,10 @@ export function TurnToolbar({ node, latest, disabled }: { node: TimelineNode; la
           </Tooltip>
           <DropdownMenuContent align="end">
             {latest && !staticOpening && (
-              <DropdownMenuItem disabled={disabled} onSelect={() => void actions.regenerate(node.id, node.parent_id)}>
+              <DropdownMenuItem
+                disabled={disabled}
+                onSelect={() => void actions.regenerate(node.id, node.parent_id, undefined, displayedInput(node.display))}
+              >
                 <RotateCcw />
                 {t('reader.regenerate')}
               </DropdownMenuItem>
