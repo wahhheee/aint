@@ -1,7 +1,7 @@
 /**
  * SSE 事件契约（与 internal/event/types.go 同步）。
  */
-import type { ChoiceItem, DisplayItem, PanelRender, StateChange, TurnInput, Usage } from './types'
+import type { ChoiceItem, CompactStats, DisplayItem, PanelRender, StateChange, TurnInput, Usage } from './types'
 
 export interface EventMap {
   'turn.started': { turn_id: string; parent_id: string; input: TurnInput }
@@ -14,8 +14,10 @@ export interface EventMap {
   'turn.committed': { turn_id: string; node_id: string; status: 'committed' | 'interrupted' }
   'turn.failed': { turn_id: string; code: string; message: string; recoverable: boolean }
   panels: { panels: PanelRender[] }
+  /** 回合以外的操作改了存档（移动 head、修改正文、丢弃、删除分支、编辑记忆或状态、整理）：重新拉取时间线 */
+  'timeline.changed': { head_id: string; reason: string }
   'compaction.started': { reason: string }
-  'compaction.done': { node_id: string; stats: unknown }
+  'compaction.done': { node_id: string; stats: CompactStats }
   'compaction.failed': { message: string }
   'helper.progress': { turn_id: string; kind: 'research' | 'curate'; phase: string }
   'work.reloaded': { work_id: string; report: unknown }
@@ -36,6 +38,7 @@ export const EVENT_TYPES: EventType[] = [
   'turn.committed',
   'turn.failed',
   'panels',
+  'timeline.changed',
   'compaction.started',
   'compaction.done',
   'compaction.failed',

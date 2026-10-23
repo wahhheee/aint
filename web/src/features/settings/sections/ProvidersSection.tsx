@@ -53,6 +53,7 @@ export function ProvidersSection() {
   const [removing, setRemoving] = useState<Removing | null>(null)
   const fake = info.data?.fake_llm
   const narrator = settings.data?.models.narrator
+  const light = settings.data?.models.light
   const providerOf = (m: Model) => providers.data?.find((p) => p.id === m.provider_id)
 
   const confirmRemove = () => {
@@ -159,6 +160,14 @@ export function ProvidersSection() {
                   </span>
                 }
               >
+                {light === m.id && !fake && (
+                  <span
+                    className="rounded-md bg-selected px-1.5 py-0.5 text-xs leading-4 text-ink-muted"
+                    title={t('settings.providers.lightHint')}
+                  >
+                    {t('settings.providers.light')}
+                  </span>
+                )}
                 {isNarrator ? (
                   <span className="rounded-md bg-gold-soft px-1.5 py-0.5 text-xs leading-4 text-gold-text">
                     {t('settings.providers.narrator')}
@@ -180,6 +189,9 @@ export function ProvidersSection() {
                         {t('settings.providers.test')}
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setEditing(m)}>{t('settings.providers.edit')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => updateSettings.mutate({ models: { light: light === m.id ? '' : m.id } })}>
+                        {light === m.id ? t('settings.providers.unsetLight') : t('settings.providers.setLight')}
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem variant="destructive" onSelect={() => setRemoving({ kind: 'model', item: m })}>
                         {t('settings.providers.remove')}

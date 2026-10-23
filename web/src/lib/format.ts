@@ -41,7 +41,7 @@ export function saveTitle(s: Pick<Save, 'title' | 'last_played_at' | 'created_at
 export function formatTokens(n: number): string {
   if (n < 1000) return String(n)
   const k = n / 1000
-  return `${k >= 100 ? Math.round(k) : k.toFixed(1)}k`
+  return `${k >= 100 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`
 }
 
 /** 文件大小："812 B""12.3 KB""1.2 MB"（按 1024 进位，与系统文件管理器一致）。 */

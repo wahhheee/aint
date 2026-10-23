@@ -3,9 +3,12 @@
  */
 import { http, type UploadOptions } from './client'
 import type {
+  BranchTree,
   DeepPartial,
   ImportPreview,
   ImportResult,
+  MemoryFile,
+  MemoryView,
   Model,
   ModelInput,
   PanelRender,
@@ -17,6 +20,8 @@ import type {
   Save,
   SaveSettings,
   Settings,
+  StateChange,
+  StateOp,
   StateView,
   SystemInfo,
   TestReport,
@@ -67,6 +72,27 @@ export const api = {
     state: (id: string) => http.get<StateView>(`/saves/${id}/state`),
     submit: (id: string, input: TurnInput) => http.post<{ turn_id: string }>(`/saves/${id}/turns`, input),
     cancel: (id: string, turnId: string) => http.post<void>(`/saves/${id}/turns/${turnId}/cancel`),
+    // 分支操作（技术方案 6.2）
+    tree: (id: string) => http.get<BranchTree>(`/saves/${id}/tree`),
+    /** 回到此处（here）/ 切换到该节点所在分支的最新进度（latest-leaf） */
+    setHead: (id: string, nodeId: string, mode: 'here' | 'latest-leaf') =>
+      http.post<{ head_id: string }>(`/saves/${id}/head`, { node_id: nodeId, mode }),
+    /** 重新生成；带 input 时为修改玩家输入 */
+    regenerate: (id: string, nodeId: string, input?: TurnInput) =>
+      http.post<{ turn_id: string }>(`/saves/${id}/nodes/${nodeId}/regenerate`, input ? { input } : {}),
+    rewrite: (id: string, nodeId: string, text: string) =>
+      http.post<{ node_id: string; head_id: string }>(`/saves/${id}/nodes/${nodeId}/rewrite`, { text }),
+    discard: (id: string, nodeId: string) => http.post<{ head_id: string }>(`/saves/${id}/nodes/${nodeId}/discard`),
+    deleteBranch: (id: string, nodeId: string) => http.del(`/saves/${id}/branches/${nodeId}`),
+    copy: (id: string, nodeId: string) => http.post<Save>(`/saves/${id}/nodes/${nodeId}/copy`),
+    compact: (id: string) => http.post<void>(`/saves/${id}/compact`),
+    // 记忆与状态（修改产生编辑节点，下一回合告知执笔者）
+    memory: (id: string) => http.get<MemoryView>(`/saves/${id}/memory`),
+    memoryFile: (id: string, path: string) => http.get<MemoryFile>(`/saves/${id}/memory/${memoryPath(path)}`),
+    putMemory: (id: string, path: string, content: string) =>
+      http.put<{ node_id?: string }>(`/saves/${id}/memory/${memoryPath(path)}`, { content }),
+    deleteMemory: (id: string, path: string) => http.del(`/saves/${id}/memory/${memoryPath(path)}`),
+    patchState: (id: string, ops: StateOp[]) => http.patch<{ changes: StateChange[] }>(`/saves/${id}/state`, { ops }),
   },
   uploads: {
     /** 上传图片（表单字段 file），返回引用；提交回合时放进 attachments */
@@ -87,6 +113,15 @@ export const api = {
     update: (id: string, input: ModelInput) => http.patch<Model>(`/models/${id}`, input),
     remove: (id: string) => http.del(`/models/${id}`),
   },
+}
+
+/** 记忆文件在接口路径中的写法：去掉开头的 /memory/，各段分别编码。 */
+function memoryPath(path: string): string {
+  return path
+    .replace(/^\/?memory\//, '')
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')
 }
 
 /** 上传图片的显示地址（w：缩略图的长边，像素）。 */

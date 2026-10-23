@@ -4,7 +4,7 @@
  * 版式固定：导航与内容的顶部对齐，每个分区的标题都在同一位置；内容列宽度固定，
  * 不随分区内容的多少伸缩。窄屏时导航变为横向一排。
  */
-import { BookOpen, Cpu, HardDrive, Info, Wrench, type LucideIcon } from 'lucide-react'
+import { BookOpen, Cpu, HardDrive, Info, Layers, Wrench, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, useParams } from 'react-router'
 
@@ -12,15 +12,23 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { cn } from '@/lib/utils'
 
 import { AboutSection } from './sections/AboutSection'
+import { ContextSection } from './sections/ContextSection'
 import { DeveloperSection } from './sections/DeveloperSection'
 import { ProvidersSection } from './sections/ProvidersSection'
 import { ReadingSection } from './sections/ReadingSection'
 import { StorageSection } from './sections/StorageSection'
 
-const SECTIONS = ['providers', 'reading', 'storage', 'developer', 'about'] as const
+const SECTIONS = ['providers', 'context', 'reading', 'storage', 'developer', 'about'] as const
 type Section = (typeof SECTIONS)[number]
 
-const ICONS: Record<Section, LucideIcon> = { providers: Cpu, reading: BookOpen, storage: HardDrive, developer: Wrench, about: Info }
+const ICONS: Record<Section, LucideIcon> = {
+  providers: Cpu,
+  context: Layers,
+  reading: BookOpen,
+  storage: HardDrive,
+  developer: Wrench,
+  about: Info,
+}
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -59,6 +67,7 @@ export function SettingsPage() {
         </nav>
         <div className="min-w-0">
           {current === 'providers' && <ProvidersSection />}
+          {current === 'context' && <ContextSection />}
           {current === 'reading' && <ReadingSection />}
           {current === 'storage' && <StorageSection />}
           {current === 'developer' && <DeveloperSection />}

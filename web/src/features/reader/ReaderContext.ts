@@ -2,6 +2,8 @@ import { createContext, useContext } from 'react'
 
 import type { ChoiceItem, Presentation, ReadingSettings } from '@/api/types'
 
+import type { TurnActions } from './useTurnActions'
+
 /** 阅读页内共享的作品界面配置与操作，避免层层传参。 */
 export interface ReaderContextValue {
   saveId: string
@@ -13,6 +15,8 @@ export interface ReaderContextValue {
   focusInput: () => void
   /** 执行命令（面板按钮、命令栏）：传入 "/follow 林舟" 这样的文字；confirmed 表示调用方已请玩家确认过 */
   runCommand: (text: string, confirmed?: boolean) => void
+  /** 回合与分支操作（重新生成、修改、回到此处、切换版本……） */
+  actions: TurnActions
 }
 
 export const ReaderContext = createContext<ReaderContextValue | null>(null)

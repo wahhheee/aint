@@ -1,4 +1,4 @@
-import { ArrowLeft, BookMarked, Ellipsis, GitBranch, PanelBottom, PanelRight, ScanSearch } from 'lucide-react'
+import { ArrowLeft, BookMarked, Braces, Ellipsis, GitBranch, PanelBottom, PanelRight, ScanSearch } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { saveTitle } from '@/lib/format'
-import { useReader } from '@/stores/reader'
+import { selectBusy, useReader } from '@/stores/reader'
 
 import { ContextRing } from './ContextRing'
 import { ReadingSettingsPopover } from './ReadingSettingsPopover'
@@ -21,8 +21,19 @@ export function ReaderTopBar({
   panelsAvailable,
   onOpenDrawer,
   devTools,
+  onOpenMemory,
+  onOpenBranches,
+  onOpenState,
+  compactions,
+  onCompact,
 }: {
   save?: Save
+  onOpenMemory: () => void
+  onOpenBranches: () => void
+  /** 状态抽屉（开发者工具） */
+  onOpenState: () => void
+  compactions: number
+  onCompact: () => void
   /** 面板开关：宽屏收起 / 展开右侧栏，窄屏（或只有抽屉面板时）打开面板抽屉 */
   onTogglePanels: () => void
   panelsAvailable: boolean
@@ -33,6 +44,8 @@ export function ReaderTopBar({
 }) {
   const { t } = useTranslation()
   const context = useReader((s) => s.context)
+  const compacting = useReader((s) => s.compacting)
+  const busy = useReader(selectBusy)
   const todo = () => toast(t('common.notImplemented'))
 
   return (
@@ -46,18 +59,28 @@ export function ReaderTopBar({
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <ContextRing used={context?.used} threshold={context?.threshold} />
+        <ContextRing
+          used={context?.used}
+          threshold={context?.threshold}
+          compacting={compacting}
+          compactions={compactions}
+          onCompact={onCompact}
+          busy={busy}
+        />
         <span aria-hidden className="mx-1 h-4 w-px bg-rule-strong sm:mx-1.5" />
         {/* 窄屏时记忆、分支、检查器收进"更多"菜单，给标题留出位置 */}
         <div className="hidden items-center gap-1 sm:flex">
-          {/* TODO(M3-9)：记忆抽屉（浏览 / 编辑本存档记忆文件） */}
-          <IconButton label={t('reader.memory')} onClick={todo}>
+          <IconButton label={t('reader.memory')} onClick={onOpenMemory}>
             <BookMarked />
           </IconButton>
-          {/* TODO(M3-9)：时间线与分支抽屉 */}
-          <IconButton label={t('reader.branches')} onClick={todo}>
+          <IconButton label={t('reader.branches')} onClick={onOpenBranches}>
             <GitBranch />
           </IconButton>
+          {devTools && (
+            <IconButton label={t('reader.stateDrawer.title')} onClick={onOpenState}>
+              <Braces />
+            </IconButton>
+          )}
         </div>
         <ReadingSettingsPopover />
         {/* TODO(M5-9)：检查器（概览 / 上下文 / 工具 / 状态 / 记忆 / 原始） */}
@@ -87,14 +110,20 @@ export function ReaderTopBar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={todo}>
+            <DropdownMenuItem onSelect={onOpenMemory}>
               <BookMarked />
               {t('reader.memory')}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={todo}>
+            <DropdownMenuItem onSelect={onOpenBranches}>
               <GitBranch />
               {t('reader.branches')}
             </DropdownMenuItem>
+            {devTools && (
+              <DropdownMenuItem onSelect={onOpenState}>
+                <Braces />
+                {t('reader.stateDrawer.title')}
+              </DropdownMenuItem>
+            )}
             {devTools && (
               <DropdownMenuItem onSelect={todo}>
                 <ScanSearch />

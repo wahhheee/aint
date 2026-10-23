@@ -124,7 +124,7 @@ type CompactionDoneData struct {
 }
 
 type CompactionFailedData struct {
-	Message string `json:"message"`
+	Message string `json:"message"` // 给玩家的说明；为空表示不需要提示（自动触发但没有可以整理的内容）
 }
 
 type HelperProgressData struct {

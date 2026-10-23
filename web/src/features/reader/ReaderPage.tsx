@@ -17,6 +17,7 @@
  *   input/             输入栏与命令面板
  *   panels/            面板（净化后的 HTML + ui-* 组件）
  *   chrome/            顶栏、用量环、阅读设置、帮助
+ *   drawers/           记忆、时间线与分支、状态（开发者工具）抽屉
  *
  * TODO(M5-2)：舞台层（背景、转场、BGM）。TODO(M5-13)：退出时 POST /saves/{id}/exit 与 pagehide 信标。
  */
@@ -32,6 +33,9 @@ import { useUI } from '@/stores/ui'
 
 import { HelpDialog } from './chrome/HelpDialog'
 import { ReaderTopBar } from './chrome/ReaderTopBar'
+import { BranchDrawer } from './drawers/BranchDrawer'
+import { MemoryDrawer } from './drawers/MemoryDrawer'
+import { StateDrawer } from './drawers/StateDrawer'
 import { InputDock, type InputDockHandle } from './input/InputDock'
 import { hasPanels } from './panels/layout'
 import { FloatPanels, SidebarPanels, TopbarPanels } from './panels/Panels'
@@ -96,6 +100,13 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
   const sidebarOpen = useUI((s) => s.sidebarOpen)
   const setSidebarOpen = useUI((s) => s.setSidebarOpen)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [drawer, setDrawer] = useState<'memory' | 'branches' | 'state' | null>(null)
+
+  // 打开存档（或存档信息刷新）时，用呈现信息初始化上下文用量与整理状态；回合中的用量由 turn.usage 更新
+  const initReader = useReader((s) => s.init)
+  useEffect(() => {
+    initReader(presentation.context, presentation.compacting)
+  }, [initReader, presentation.context, presentation.compacting])
 
   const markupCtx = useMarkupContext(ui.builtin_tags, ui.tags, ui.characters, ui.assets)
   const theme = workTheme ? ui.theme : undefined
@@ -135,6 +146,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
       choose: (item) => void actions.choose(item),
       focusInput: () => dockRef.current?.focus(),
       runCommand,
+      actions,
     }),
     [saveId, ui, presentation.model.vision, reading, actions, runCommand],
   )
@@ -189,6 +201,11 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
               panelsAvailable={hasSidebar || hasDrawer}
               onOpenDrawer={hasSidebar && hasDrawer ? openDrawer : undefined}
               devTools={devTools}
+              onOpenMemory={() => setDrawer('memory')}
+              onOpenBranches={() => setDrawer('branches')}
+              onOpenState={() => setDrawer('state')}
+              compactions={presentation.compactions}
+              onCompact={() => void actions.compact()}
             />
             <TopbarPanels meta={ui.panels} rendered={panels} />
             <Stream timeline={timeline} onRetry={() => void actions.retry()} onContinue={() => void actions.submit({ kind: 'continue' })} />
@@ -223,6 +240,9 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
         />
 
         <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+        <MemoryDrawer saveId={saveId} open={drawer === 'memory'} onOpenChange={(o) => setDrawer(o ? 'memory' : null)} />
+        <BranchDrawer saveId={saveId} open={drawer === 'branches'} onOpenChange={(o) => setDrawer(o ? 'branches' : null)} />
+        {devTools && <StateDrawer saveId={saveId} open={drawer === 'state'} onOpenChange={(o) => setDrawer(o ? 'state' : null)} />}
       </MarkupProvider>
     </ReaderContext.Provider>
   )

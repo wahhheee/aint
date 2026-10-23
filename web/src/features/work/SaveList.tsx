@@ -52,6 +52,12 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
               <p className="truncate font-serif text-[15px] leading-6 font-semibold text-ink">{saveTitle(s)}</p>
               <p className="flex gap-4 text-xs leading-5 text-ink-faint">
                 <span className="tabular">{t('work.turns', { n: s.turn_count })}</span>
+                {s.branch_count > 1 && <span className="tabular">{t('work.branches', { count: s.branch_count })}</span>}
+                {s.forked_from && (
+                  <span className="truncate">
+                    {t('work.forkedFrom', { title: s.forked_from.title || t('work.untitled'), turn: s.forked_from.turn_no })}
+                  </span>
+                )}
                 <span>{formatRelative(s.last_played_at)}</span>
               </p>
             </Link>

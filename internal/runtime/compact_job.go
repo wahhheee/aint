@@ -79,7 +79,9 @@ func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason co
 	if err != nil {
 		msg := compactionError(err)
 		if errors.Is(err, errNothingToCompact) && reason == compact.ReasonThreshold {
+			// 自动触发、只是没有可以摘要掉的回合：不打扰玩家（消息为空，界面只收起"正在整理"）
 			slog.InfoContext(ctx, "上下文达到阈值，但没有可以摘要掉的回合", "reason", reason)
+			msg = ""
 		} else {
 			slog.WarnContext(ctx, "上下文整理失败", "reason", reason, "err", err)
 		}

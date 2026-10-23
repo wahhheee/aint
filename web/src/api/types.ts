@@ -38,6 +38,8 @@ export interface Settings {
   audio: { master: number; bgm: number; sfx: number; muted: boolean }
   models: { narrator: string; light: string }
   play: { pace: Pace; reasoning: Reasoning; cache_ttl: 'short' | 'long'; title_on_exit: 'auto' | 'ask' | 'off'; helpers: boolean }
+  /** 上下文整理的默认参数（存档设置可覆盖） */
+  context: ContextSettings
   onboarded: boolean
   /** 开发者选项（SET-07，D-31）：显示检查器、回合检查、完整状态与状态编辑 */
   developer: boolean
@@ -59,6 +61,18 @@ export interface ReadingSettings {
   stage_intensity: number
   tool_hints: boolean
 }
+
+/** settings.Context：上下文整理 */
+export interface ContextSettings {
+  /** 工作上下文预算（token）：上下文达到它（且不超过模型窗口 − 预留）时整理 */
+  budget: number
+  /** 整理后原样保留的最近回合（token） */
+  keep_recent: number
+  /** inline：主笔在原上下文中整理（复用缓存）；separate：轻量模型单独整理 */
+  mode: CompactMode
+}
+
+export type CompactMode = 'inline' | 'separate'
 
 /** 递归的部分更新类型（PATCH /settings 只需提交变化的字段） */
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
@@ -256,6 +270,10 @@ export interface SaveSettings {
   reasoning: Reasoning
   helpers: boolean
   cache_ttl?: 'short' | 'long'
+  /** 上下文整理的存档级覆盖；省略表示沿用全局设置 */
+  context_budget?: number
+  keep_recent?: number
+  compact_mode?: CompactMode
 }
 
 /** save.Save */
@@ -268,6 +286,10 @@ export interface Save {
   title_source: '' | 'generated' | 'manual'
   head_node_id: string
   turn_count: number
+  /** 分支数（叶子数） */
+  branch_count: number
+  /** 复制为新存档时记录的来源 */
+  forked_from?: { save_id: string; node_id: string; turn_no: number; title?: string }
   settings: SaveSettings
   created_at: number
   updated_at: number
@@ -307,7 +329,10 @@ export type DisplayItem =
   | { t: 'choices'; prompt?: string; items: ChoiceItem[]; free?: boolean; selected?: string }
   | { t: 'notice'; level: 'info' | 'warn' | 'error'; text: string }
 
-/** save.TimelineNode */
+/**
+ * save.TimelineNode：回合带显示项与版本信息；编辑节点（玩家修改了状态或记忆）带注记；整理节点只标出位置。
+ * 编辑、整理节点的 turn_no 是它们所跟随的回合。
+ */
 export interface TimelineNode {
   id: string
   parent_id: string
@@ -316,9 +341,17 @@ export interface TimelineNode {
   turn_no: number
   created_at: number
   display: DisplayItem[]
+  notes?: string[]
   stop?: string
   error?: string
-  versions: { index: number; count: number }
+  /** 修改正文得到的版本：原回合的节点 ID */
+  edited_from?: string
+  /** 同一父节点下的各版本（重新生成、修改得到）；ids 只在有多个版本时给出 */
+  versions: { index: number; count: number; ids?: string[] }
+  /** 整理节点：写成交接摘要的回合区间与保留原文的起点 */
+  summary_from?: number
+  summary_to?: number
+  keep_from_turn?: number
 }
 
 /** save.Timeline（GET /saves/{id}/timeline） */
@@ -327,6 +360,69 @@ export interface Timeline {
   head_id: string
   nodes: TimelineNode[]
   has_more: boolean
+  /** head 之后还有内容（回到了更早的回合）：继续游玩会开启新分支 */
+  has_later: boolean
+}
+
+/** save.Segment：分支视图中的一段（一串没有分叉的节点） */
+export interface BranchSegment {
+  start_id: string
+  end_id: string
+  /** 这一段及其后续中最近创建的叶子：切换到这条分支时 head 去的地方 */
+  leaf_id: string
+  from_turn: number
+  to_turn: number
+  turns: number
+  summary: string
+  compactions?: number
+  edits?: number
+  /** 当前进度（head）在这一段或其后续中 */
+  current: boolean
+  head_turn?: number
+  head_inside?: boolean
+  latest_at: number
+  children?: BranchSegment[]
+}
+
+/** save.Tree（GET /saves/{id}/tree） */
+export interface BranchTree {
+  save_id: string
+  head_id: string
+  root?: BranchSegment
+}
+
+/** save.MemoryFileView */
+export interface MemoryFile {
+  path: string
+  size: number
+  /** 最后修改它的回合（0 表示来自作品的初始模板） */
+  turn: number
+  summary?: string
+  content?: string
+}
+
+/** save.MemoryView（GET /saves/{id}/memory） */
+export interface MemoryView {
+  node_id: string
+  turn_no: number
+  files: MemoryFile[]
+  total: number
+  limit: number
+}
+
+/** runtime.CompactStats：一次整理的结果 */
+export interface CompactStats {
+  reason: 'threshold' | 'limit' | 'overflow' | 'manual' | 'upgrade'
+  mode: CompactMode
+  summary_from: number
+  summary_to: number
+  keep_from_turn: number
+  summary_chars: number
+  memory_writes: number
+  before: number
+  after: number
+  calls: number
+  duration_ms: number
 }
 
 /** runtime.Presentation（GET /saves/{id}）：阅读页所需的全部呈现信息 */
@@ -336,6 +432,12 @@ export interface Presentation {
   needs_opening: boolean
   /** 作品来自开发目录：不论开发者选项如何都显示开发者工具（D-31） */
   dev_work: boolean
+  /** 正在整理上下文 */
+  compacting: boolean
+  /** 当前上下文规模与整理阈值（顶栏用量环） */
+  context: { used: number; threshold: number }
+  /** 当前进度线上的整理次数 */
+  compactions: number
   model: { id: string; name: string; display_name: string; vision: boolean; context_window: number }
   ui: {
     features: { free_input: boolean; ooc: boolean; dice: boolean; timed_choices: boolean }
@@ -406,6 +508,13 @@ export interface Character {
   aliases?: string[]
   color?: string
   avatar?: string
+}
+
+/** state.Op：一个状态操作（PATCH /saves/{id}/state） */
+export interface StateOp {
+  op: 'set' | 'inc' | 'append' | 'remove' | 'delete'
+  path: string
+  value?: unknown
 }
 
 /** state.Change：update_state 的一个操作实际产生的变化 */

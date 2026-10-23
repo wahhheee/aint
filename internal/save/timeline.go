@@ -7,8 +7,9 @@ import (
 
 // Versions 是某回合在兄弟节点（同一父节点的多个版本）中的位置，用于"‹ 2/3 ›"切换。
 type Versions struct {
-	Index int `json:"index"` // 1 起
-	Count int `json:"count"`
+	Index int      `json:"index"` // 1 起
+	Count int      `json:"count"`
+	IDs   []string `json:"ids,omitzero"` // 各版本的节点 ID（按创建先后）；只有一个版本时省略
 }
 
 // TimelineNode 是时间线中的一个节点（只含展示所需字段）。
@@ -26,6 +27,10 @@ type TimelineNode struct {
 	Error      string        `json:"error,omitzero"`
 	EditedFrom string        `json:"edited_from,omitzero"` // 修改正文得到的版本：原回合的节点 ID
 	Versions   Versions      `json:"versions"`
+	// 整理节点：写成交接摘要的回合区间与保留原文的起点
+	SummaryFrom  int `json:"summary_from,omitzero"`
+	SummaryTo    int `json:"summary_to,omitzero"`
+	KeepFromTurn int `json:"keep_from_turn,omitzero"`
 }
 
 // Timeline 是当前分支的时间线（分页，向前加载）。
@@ -63,6 +68,7 @@ func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int
 		tn := TimelineNode{
 			ID: n.ID, ParentID: n.ParentID, Kind: n.Kind, Status: n.Status, TurnNo: n.TurnNo, CreatedAt: n.CreatedAt,
 			Display: []DisplayItem{}, Notes: n.Notes, Stop: n.Meta.Stop, Error: n.Meta.Error, EditedFrom: n.Meta.EditedFrom,
+			SummaryFrom: n.Meta.SummaryFrom, SummaryTo: n.Meta.SummaryTo, KeepFromTurn: n.Meta.KeepFromTurn,
 		}
 		if n.Kind == KindTurn {
 			if tn.Display, err = s.LoadDisplay(ctx, n.DisplayHash); err != nil {
@@ -104,6 +110,9 @@ func (s *Service) versions(ctx context.Context, n *Node) (Versions, error) {
 	v := Versions{Index: 1, Count: len(sibs)}
 	if i := slices.Index(sibs, n.ID); i >= 0 {
 		v.Index = i + 1
+	}
+	if len(sibs) > 1 {
+		v.IDs = sibs
 	}
 	return v, nil
 }

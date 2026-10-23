@@ -4,7 +4,7 @@ import type { AnyEvent } from '@/api/events'
 
 import { reduceEvent } from './reader'
 
-const empty = { draft: null, pending: null, failure: null, context: null }
+const empty = { draft: null, pending: null, pendingParent: null, failure: null, context: null, compacting: false }
 const ev = (e: Omit<AnyEvent, 'id'>, id = 1) => ({ ...e, id }) as AnyEvent
 
 describe('reduceEvent', () => {
@@ -27,5 +27,37 @@ describe('reduceEvent', () => {
     s = reduceEvent(s, ev({ type: 'turn.committed', data: { turn_id: 't1', node_id: 't1', status: 'committed' } }))
     expect(s.draft?.status).toBe('committed')
     expect(s.draft?.nodeId).toBe('t1')
+  })
+
+  it('整理开始与结束切换整理状态，结束时用量换成整理后的估算', () => {
+    let s = reduceEvent(
+      { ...empty, context: { used: 9000, threshold: 8000 } },
+      ev({ type: 'compaction.started', data: { reason: 'threshold' } }),
+    )
+    expect(s.compacting).toBe(true)
+    s = reduceEvent(
+      s,
+      ev({
+        type: 'compaction.done',
+        data: {
+          node_id: 'c1',
+          stats: {
+            reason: 'threshold',
+            mode: 'inline',
+            summary_from: 1,
+            summary_to: 10,
+            keep_from_turn: 11,
+            summary_chars: 800,
+            memory_writes: 2,
+            before: 9000,
+            after: 3000,
+            calls: 3,
+            duration_ms: 1000,
+          },
+        },
+      }),
+    )
+    expect(s.compacting).toBe(false)
+    expect(s.context).toEqual({ used: 3000, threshold: 8000 })
   })
 })

@@ -5,10 +5,13 @@
  *   SSE ─┬─ turn.* ──────────► useReader.dispatch（草稿回合）
  *        ├─ turn.committed ──► 刷新时间线、存档信息、书架"继续阅读"
  *        ├─ panels ──────────► 直接写入面板缓存（不额外请求）
+ *        ├─ timeline.changed、compaction.done ─► 刷新时间线、存档信息、记忆、分支
+ *        ├─ compaction.failed ─► 有说明时提示
  *        └─ resync ──────────► 重新拉取时间线与面板（断线太久，补发不了）
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { toast } from 'sonner'
 
 import { qk } from '@/api/queries'
 import { openEventStream } from '@/api/sse'
@@ -34,12 +37,25 @@ export function useReaderSession(saveId: string) {
             void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
             void qc.invalidateQueries({ queryKey: qk.save(saveId) })
             void qc.invalidateQueries({ queryKey: qk.recentSaves })
+            void qc.invalidateQueries({ queryKey: qk.memory(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.tree(saveId) })
             break
           case 'turn.failed':
             void qc.invalidateQueries({ queryKey: qk.save(saveId) })
             break
           case 'panels':
             qc.setQueryData(qk.panels(saveId), { panels: ev.data.panels })
+            break
+          case 'timeline.changed':
+          case 'compaction.done':
+            void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.save(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.memory(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.tree(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.recentSaves })
+            break
+          case 'compaction.failed':
+            if (ev.data.message) toast(ev.data.message)
             break
         }
       },

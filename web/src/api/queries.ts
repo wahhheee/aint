@@ -18,6 +18,10 @@ export const qk = {
   save: (id: string) => ['saves', id] as const,
   timeline: (id: string) => ['saves', id, 'timeline'] as const,
   panels: (id: string) => ['saves', id, 'panels'] as const,
+  tree: (id: string) => ['saves', id, 'tree'] as const,
+  memory: (id: string) => ['saves', id, 'memory'] as const,
+  memoryFile: (id: string, path: string) => ['saves', id, 'memory', path] as const,
+  state: (id: string) => ['saves', id, 'state'] as const,
   providers: ['providers'] as const,
   models: ['models'] as const,
 }
@@ -100,6 +104,16 @@ export const useTimeline = (id: string) =>
   useQuery({ queryKey: qk.timeline(id), queryFn: () => api.saves.timeline(id), staleTime: Infinity })
 
 export const usePanels = (id: string) => useQuery({ queryKey: qk.panels(id), queryFn: () => api.saves.panels(id), staleTime: Infinity })
+
+export const useBranchTree = (id: string, enabled = true) => useQuery({ queryKey: qk.tree(id), queryFn: () => api.saves.tree(id), enabled })
+
+export const useMemory = (id: string, enabled = true) => useQuery({ queryKey: qk.memory(id), queryFn: () => api.saves.memory(id), enabled })
+
+export const useMemoryFile = (id: string, path: string | null) =>
+  useQuery({ queryKey: qk.memoryFile(id, path ?? ''), queryFn: () => api.saves.memoryFile(id, path!), enabled: !!path })
+
+export const useSaveState = (id: string, enabled = true) =>
+  useQuery({ queryKey: qk.state(id), queryFn: () => api.saves.state(id), enabled })
 
 export const useProviders = () => useQuery({ queryKey: qk.providers, queryFn: api.providers.list })
 export const useModels = () => useQuery({ queryKey: qk.models, queryFn: api.models.list })
