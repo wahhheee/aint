@@ -77,6 +77,8 @@ func TestLongPlayInvariants(t *testing.T) {
 	}
 	var history []turnReqs
 	for i := range 200 {
+		epoch := compactionsOnLine()
+		start := len(reqs)
 		plain := true
 		switch {
 		case i > 0 && i%23 == 0: // 重新生成最后一个回合
@@ -116,8 +118,6 @@ func TestLongPlayInvariants(t *testing.T) {
 				t.Fatalf("第 %d 步提交：%v", i, err)
 			}
 		}
-		epoch := compactionsOnLine()
-		start := len(reqs)
 		waitIdle()
 		history = append(history, turnReqs{start: start, end: len(reqs), epoch: epoch, plain: plain})
 	}
