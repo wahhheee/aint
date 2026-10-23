@@ -138,12 +138,28 @@ p.mk-aside-block {
   }
 }
 
-/* 作品标签可引用的内置特效（markup.yaml 的 style.effect） */
+/* 作品标签可引用的内置特效（markup.yaml 的 style.effect）：动效与 <fx> 共用关键帧，同样只播放有限次数 */
 .mk-effect-glow {
   text-shadow: 0 0 0.6em color-mix(in oklch, currentColor 45%, transparent);
 }
 .mk-effect-whisper {
   letter-spacing: 0.05em;
+}
+.mk-effect-shake {
+  display: inline-block;
+  animation: fx-shake 0.5s ease-in-out 2;
+}
+.mk-effect-flicker {
+  animation: fx-flicker 0.8s linear 3;
+}
+.mk-effect-fade-in {
+  animation: fx-fade 1.2s ease-out 1;
+}
+.mk-effect-blur-reveal {
+  animation: fx-blur 1.2s ease-out 1;
+}
+.mk-effect-glitch {
+  animation: fx-glitch 0.9s steps(2) 1;
 }
 .mk-icon {
   display: inline-block;

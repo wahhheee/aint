@@ -140,9 +140,9 @@ git grep -nE "M3-1([^0-9]|$)"
 
 | ID | 任务 | 状态 | 已有 | 缺口 |
 | --- | --- | --- | --- | --- |
-| M2-1 | 状态定义与类型校验；`get_state` / `update_state`；开局表单 | ✅ 完成 | `state.yaml` 解析、类型检查、默认值；开局表单写入初始状态；`state.Apply`（set / inc / append / remove / delete，原子执行，失败时说明哪个操作、可以怎么写）；`get_state` / `update_state`；回合内修改即时生效并推送 `turn.state`、面板去抖 100 ms 重渲染；提交时写入新快照；`GET /saves/{id}/state`；玩家修改状态 `PATCH /saves/{id}/state`（编辑节点 + 注记）与状态抽屉（开发者工具，M3-9） | 存档升级后的 `$orphan` 键（M6-6） |
+| M2-1 | 状态定义与类型校验；`get_state` / `update_state`；开局表单 | ✅ 完成 | `state.yaml` 解析、类型检查、默认值；状态说明列出 object 的子字段与 list / map 中 object 元素的字段；开局表单写入初始状态；`state.Apply`（set / inc / append / remove / delete，原子执行，失败时说明哪个操作、可以怎么写）；`get_state` / `update_state`；回合内修改即时生效并推送 `turn.state`、面板去抖 100 ms 重渲染；提交时写入新快照；`GET /saves/{id}/state`；玩家修改状态 `PATCH /saves/{id}/state`（编辑节点 + 注记）与状态抽屉（开发者工具，M3-9） | 存档升级后的 `$orphan` 键（M6-6） |
 | M2-5 | 命令：解析、参数与候选项、模板展开、呈现方式、内置命令 | ✅ 完成 | 解析、Liquid 模板展开、斜杠 / 模式 / 按钮、命令面板、`/ooc` `/continue` `/compact` `/help`；命令的 `confirm`（应用内确认框，斜杠、按钮、命令栏、选项附带的命令都会确认；输入模式不确认） | — |
-| M2-7 | 叙事标记：内置标签 + 作品样式标签；服务端纯文本化 | ✅ 完成 | 内置标签渲染、样式标签 CSS 生成、`<ooc>` 场外块、原文纯文本化；没写 `dark_color` 时编译作品按 OKLCH 提亮到与深色背景（主题或纯黑）对比度 ≥ 4.5（`work/color.go`）；悬停提示的 `{{ text }}` 换成标签内文字；未收录的 lucide 图标按需加载完整图标集（单独一个构建产物）；`<cg src>` 接受 ID 或路径 | `<pause>` 与音频（M5-1、M5-2）；`<act>`（P1）。不设 `inline: false` 警告（D-54） |
+| M2-7 | 叙事标记：内置标签 + 作品样式标签；服务端纯文本化 | ✅ 完成 | 内置标签渲染、样式标签 CSS 生成（`style.effect` 七种效果都有样式，动效与 `<fx>` 共用关键帧）、`<ooc>` 场外块、原文纯文本化；没写 `dark_color` 时编译作品按 OKLCH 提亮到与深色背景（主题或纯黑）对比度 ≥ 4.5（`work/color.go`）；悬停提示的 `{{ text }}` 换成标签内文字；未收录的 lucide 图标按需加载完整图标集（单独一个构建产物）；`<cg src>` 接受 ID 或路径 | `<pause>` 与音频（M5-1、M5-2）；`<act>`（P1）。不设 `inline: false` 警告（D-54） |
 | M2-8 | 面板：Liquid 服务端渲染、推送、前端净化、`ui-*` 组件、`ui-button` 触发命令 | ✅ 完成 | sidebar / topbar / float / drawer 面板（抽屉标签页；窄屏时侧栏面板也进抽屉，手机从底部拉出）、SSE 推送、回合内状态变化去抖重渲染；DOMPurify + style 白名单、`<img>` 只接受 `asset:`；ui-stat / bar / badge / button / collapse / tooltip / image；应用内确认框；`{% render %}` 只读作品 ui/ 模板；校验器解析全部模板（E-TEMPLATE）、拒绝 include、检查 render 引用 | 平板的右侧图标列（M5-11） |
 | M2-9 | 主题：`theme.yaml` → CSS 变量；`custom.css` 校验与作用域；字体 | ✅ 完成 | `work.Theme`：配色 → `.work-root` / `.dark .work-root` 上的设计令牌（派生色 color-mix）、字体素材 `@font-face`、背景图（`.work-backdrop`）；`work.ScopeCSS`：custom.css 校验（E-THEME）、`url(asset:)`、嵌套作用域、`@font-face` / `@keyframes` 提升与动画改名；排版数值与玩家阅读设置合并（`useReadingStyle`）；设置中可关闭作品主题；封面与主题背景不进 AI 素材索引；《雾港来信》主题 | — （排版数值与阅读设置的合并规则见 D-56） |
 | M2-10 | 素材与多模态：素材索引、常驻图片、`read` 图片、玩家上传、派生缩放、非视觉降级 | ✅ 完成 | `internal/media`：解码校验（E-ASSET）、按模型长边派生（结果确定，派生图存为 blob）、上传重新编码去元数据；素材索引（图片写 ID 与路径，封面不进索引）与服务（`?w=` 缩略图）；常驻图片进 L3（W-PIN-IMAGE）；`read` 看图用派生图，设定文档附关联图片路径；`POST /uploads`、`GET /uploads/{hash}`、`/uploads` 挂载点；附件随输入发送、非视觉模型写文字说明；书架封面图；开局时提示作品需要看图 | 插图大图查看与音频（M5-2）；派生图与上传的存储 GC（M6-5） |
@@ -257,6 +257,9 @@ git grep -nE "M3-1([^0-9]|$)"
 
 ### 2026-10-23
 
+- M2-1：状态说明列出 list 元素与 map 值中 object 的字段（写作"x 中每项的 y""x.<键>.y"），元素本身的 `desc` 单列一行；提示词版本 2026.10.23-3。
+  M2-7：样式标签的 `shake`、`flicker`、`fade-in`、`blur-reveal`、`glitch` 效果补上样式，与 `<fx>` 共用关键帧、播放有限次数、随"减少动画"收敛。
+  任务状态与总览计数不变（本提交：`fix(work): 状态说明展开对象元素的字段；样式标签补全内置效果`）。
 - **M4-4、M5-7 完成**：`usage.Summarize` 与 `GET /usage`（按存档、作品、节点或全局；合计与按用途、按模型的小计；按货币分别求和，不做汇率换算）；
   `turn.usage` 带本回合费用；用量环浮层显示本回合各类 token 与费用、本存档累计费用与其中整理的花费，价格未配置时显示"费用：未配置价格"
   （本提交：`feat(usage): 用量汇总接口与用量环中的费用`）。

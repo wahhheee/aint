@@ -195,19 +195,42 @@ func renderCommands(m *work.Model, fs prompts.FeatureSet) string {
 	return strings.Join(lines, "\n")
 }
 
+// renderStateDesc 列出状态字段的类型与说明。object 的子字段逐个列出；list 的元素、map 的值是 object 时，
+// 同样列出元素的字段（list 元素写作"x 中每项的 y"，map 的值写作 update_state 路径的形式"x.<键>.y"），
+// 元素本身写了 desc 时单列一行。
 func renderStateDesc(m *work.Model, _ prompts.FeatureSet) string {
 	var lines []string
-	var walk func(prefix, indent string, f *state.Field)
-	walk = func(prefix, indent string, f *state.Field) {
-		line := fmt.Sprintf("%s- %s（%s）", indent, prefix, typeDesc(f))
+	var walk func(label, indent string, f *state.Field)
+	add := func(label, indent string, f *state.Field) {
+		line := fmt.Sprintf("%s- %s（%s）", indent, label, typeDesc(f))
 		if f.Desc != "" {
 			line += "：" + f.Desc
 		}
 		lines = append(lines, line)
-		if f.Type == state.Object {
-			for _, n := range f.Order {
-				walk(prefix+"."+n, indent+"  ", f.Fields[n])
+	}
+	// element 展开容器的元素：elem 是元素定义，elemLabel 是元素的称呼，sep 接在它与子字段名之间。
+	element := func(elemLabel, sep, indent string, elem *state.Field) {
+		if elem.Desc != "" {
+			add(elemLabel, indent, elem)
+			indent += "  "
+		}
+		if elem.Type == state.Object {
+			for _, n := range elem.Order {
+				walk(elemLabel+sep+n, indent, elem.Fields[n])
 			}
+		}
+	}
+	walk = func(label, indent string, f *state.Field) {
+		add(label, indent, f)
+		switch f.Type {
+		case state.Object:
+			for _, n := range f.Order {
+				walk(label+"."+n, indent+"  ", f.Fields[n])
+			}
+		case state.List:
+			element(label+" 中每项", "的 ", indent+"  ", f.Items)
+		case state.Map:
+			element(label+".<键>", ".", indent+"  ", f.Values)
 		}
 	}
 	for _, name := range m.State.Order {
