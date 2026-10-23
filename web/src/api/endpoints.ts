@@ -28,9 +28,18 @@ import type {
   Timeline,
   TurnInput,
   Upload,
+  UsageSummary,
   WorkDetail,
   WorkSummary,
 } from './types'
+
+/** 用量统计的范围：各条件同时满足；都省略时为全局累计 */
+export interface UsageFilter {
+  save_id?: string
+  work_id?: string
+  /** 某个回合或整理节点 */
+  node_id?: string
+}
 
 export interface CreateSaveParams {
   work_id: string
@@ -106,6 +115,12 @@ export const api = {
     /** 连接测试：model_id 为已添加的模型，model 为尚未添加的模型名；都省略时用第一个模型 */
     test: (id: string, body: { model_id?: string; model?: string } = {}) => http.post<TestReport>(`/providers/${id}/test`, body),
     remoteModels: (id: string) => http.get<RemoteModel[]>(`/providers/${id}/remote-models`),
+  },
+  usage: {
+    summary: (f: UsageFilter = {}) => {
+      const q = new URLSearchParams(Object.entries(f).filter((kv): kv is [string, string] => !!kv[1])).toString()
+      return http.get<UsageSummary>(`/usage${q ? `?${q}` : ''}`)
+    },
   },
   models: {
     list: () => http.get<Model[]>('/models'),

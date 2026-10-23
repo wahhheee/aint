@@ -4,7 +4,7 @@ import type { AnyEvent } from '@/api/events'
 
 import { reduceEvent } from './reader'
 
-const empty = { draft: null, pending: null, pendingParent: null, failure: null, context: null, compacting: false }
+const empty = { draft: null, pending: null, pendingParent: null, failure: null, context: null, turnUsage: null, compacting: false }
 const ev = (e: Omit<AnyEvent, 'id'>, id = 1) => ({ ...e, id }) as AnyEvent
 
 describe('reduceEvent', () => {
@@ -59,5 +59,26 @@ describe('reduceEvent', () => {
     )
     expect(s.compacting).toBe(false)
     expect(s.context).toEqual({ used: 3000, threshold: 8000 })
+  })
+
+  it('turn.usage 更新上下文用量与本回合的用量和费用，新回合开始时清空本回合用量', () => {
+    const usage = { input_uncached: 120, cache_read: 7800, cache_write: 210, output: 260, reasoning: 40 }
+    let s = reduceEvent(empty, ev({ type: 'turn.started', data: { turn_id: 't1', parent_id: 'p', input: { kind: 'opening' } } }))
+    s = reduceEvent(
+      s,
+      ev({
+        type: 'turn.usage',
+        data: { turn_id: 't1', usage, costs: { CNY: 210000 }, unpriced: 0, context: { used: 8400, threshold: 12000 } },
+      }),
+    )
+    expect(s.context).toEqual({ used: 8400, threshold: 12000 })
+    expect(s.turnUsage).toEqual({ turnId: 't1', usage, costs: { CNY: 210000 }, unpriced: 0 })
+
+    s = reduceEvent(s, ev({ type: 'turn.committed', data: { turn_id: 't1', node_id: 't1', status: 'committed' } }))
+    expect(s.turnUsage?.turnId).toBe('t1')
+
+    s = reduceEvent(s, ev({ type: 'turn.started', data: { turn_id: 't2', parent_id: 't1', input: { kind: 'free', text: '继续' } } }))
+    expect(s.turnUsage).toBeNull()
+    expect(s.context).toEqual({ used: 8400, threshold: 12000 })
   })
 })

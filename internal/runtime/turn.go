@@ -422,8 +422,9 @@ func (m *Manager) recordUsage(d *draft, purpose string, u llm.Usage, start time.
 		d.lastInput, d.lastOutput = in, u.Output
 	}
 	// 上下文用量：这次调用的输入 + 输出就是下一次请求的基础（只差新追加的内容），分母是整理阈值
+	st := usage.Total(d.records)
 	m.publish(d.save.ID, event.TurnUsage, event.TurnUsageData{
-		TurnID: d.id, Usage: d.usage,
+		TurnID: d.id, Usage: d.usage, Costs: st.Costs, Unpriced: st.Unpriced,
 		Context: event.ContextUsage{Used: d.contextTokens(m), Threshold: d.threshold},
 	})
 }

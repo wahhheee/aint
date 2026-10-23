@@ -24,6 +24,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/runtime"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/settings"
+	"github.com/wahhheee/yanyi/internal/usage"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -50,6 +51,7 @@ type Deps struct {
 	Saves     *save.Service
 	Runtime   *runtime.Manager
 	Providers *provider.Service
+	Usage     *usage.Service
 	Images    *media.Store // 玩家上传、缩略图
 	Web       fs.FS        // 前端静态资源（web.Dist()）
 }

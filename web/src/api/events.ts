@@ -10,7 +10,15 @@ export interface EventMap {
   'turn.display': { turn_id: string; item: DisplayItem }
   'turn.choices': { turn_id: string; choices: { t: 'choices'; prompt?: string; items: ChoiceItem[]; free?: boolean } }
   'turn.state': { turn_id: string; changes: StateChange[] }
-  'turn.usage': { turn_id: string; usage: Usage; context: { used: number; threshold: number } }
+  'turn.usage': {
+    turn_id: string
+    /** 本回合到目前为止的累计用量 */
+    usage: Usage
+    /** 按货币分别累计的费用（百万分之一货币单位）；unpriced 是未配置价格的调用次数 */
+    costs: Record<string, number>
+    unpriced: number
+    context: { used: number; threshold: number }
+  }
   'turn.committed': { turn_id: string; node_id: string; status: 'committed' | 'interrupted' }
   'turn.failed': { turn_id: string; code: string; message: string; recoverable: boolean }
   panels: { panels: PanelRender[] }

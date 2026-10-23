@@ -1,5 +1,5 @@
 /**
- * 阅读页的实时状态：进行中的回合草稿、连接状态、上下文用量。
+ * 阅读页的实时状态：进行中的回合草稿、连接状态、上下文用量、本回合用量与费用。
  *
  * 数据分工：
  *   - 已提交的回合 → 时间线接口（TanStack Query），是权威版本；
@@ -11,7 +11,7 @@ import { create } from 'zustand'
 
 import type { AnyEvent } from '@/api/events'
 import type { StreamStatus } from '@/api/sse'
-import type { DisplayItem, TurnInput } from '@/api/types'
+import type { DisplayItem, TurnInput, Usage } from '@/api/types'
 
 export interface TurnFailure {
   turnId: string
@@ -36,6 +36,16 @@ export interface DraftTurn {
   nodeId?: string
 }
 
+/** 本回合到目前为止的用量与费用（turn.usage；每次模型调用结束时更新） */
+export interface TurnUsage {
+  turnId: string
+  usage: Usage
+  /** 按货币分别累计的费用（百万分之一货币单位） */
+  costs: Record<string, number>
+  /** 未配置价格的调用次数 */
+  unpriced: number
+}
+
 export interface ReaderState {
   saveId: string | null
   draft: DraftTurn | null
@@ -45,6 +55,8 @@ export interface ReaderState {
   pendingParent: string | null
   failure: TurnFailure | null
   context: { used: number; threshold: number } | null
+  /** 最近一个回合的用量：新回合开始时清空，本页面没有进行过回合时为 null */
+  turnUsage: TurnUsage | null
   /** 正在整理上下文（顶栏显示"正在整理记忆"，此时提交的输入排队） */
   compacting: boolean
   connection: StreamStatus
@@ -59,7 +71,7 @@ export interface ReaderState {
   clearFailure: () => void
 }
 
-type Snapshot = Pick<ReaderState, 'draft' | 'pending' | 'pendingParent' | 'failure' | 'context' | 'compacting'>
+type Snapshot = Pick<ReaderState, 'draft' | 'pending' | 'pendingParent' | 'failure' | 'context' | 'turnUsage' | 'compacting'>
 
 /** 处理一条 SSE 事件，返回新状态（纯函数）。 */
 export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
@@ -70,6 +82,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         pending: null,
         pendingParent: null,
         failure: null,
+        turnUsage: null,
         draft: {
           turnId: ev.data.turn_id,
           parentId: ev.data.parent_id,
@@ -106,8 +119,10 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
       if (!d || d.turnId !== ev.data.turn_id) return s
       return { ...s, draft: { ...d, items: [...d.items, ev.data.choices] } }
     }
-    case 'turn.usage':
-      return { ...s, context: ev.data.context }
+    case 'turn.usage': {
+      const { turn_id, usage, costs, unpriced, context } = ev.data
+      return { ...s, context, turnUsage: { turnId: turn_id, usage, costs, unpriced } }
+    }
     case 'turn.committed': {
       const d = s.draft
       if (!d || d.turnId !== ev.data.turn_id) return s
@@ -145,6 +160,7 @@ export const useReader = create<ReaderState>((set) => ({
   pendingParent: null,
   failure: null,
   context: null,
+  turnUsage: null,
   compacting: false,
   connection: 'connecting',
 
@@ -156,6 +172,7 @@ export const useReader = create<ReaderState>((set) => ({
       pendingParent: null,
       failure: null,
       context: null,
+      turnUsage: null,
       compacting: false,
       connection: 'connecting',
     }),

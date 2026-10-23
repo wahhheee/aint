@@ -2,6 +2,7 @@
  * 供应商设置的纯函数与常量（便于单测）。
  */
 import type { Price, Protocol } from '@/api/types'
+import { currencySymbol } from '@/lib/format'
 
 export type RealProtocol = Exclude<Protocol, 'fake'>
 
@@ -39,12 +40,10 @@ export function formatHeaders(h?: Record<string, string>): string {
     .join('\n')
 }
 
-const CURRENCY_SYMBOL: Record<string, string> = { CNY: '¥', USD: '$' }
-
 /** 价格摘要："¥5 / ¥25（输入 / 输出，每百万 token）"中的前半部分；未知返回 null。 */
 export function priceSummary(p?: Price, multiplier = 1): string | null {
   if (!p || (p.input === undefined && p.output === undefined)) return null
-  const sym = CURRENCY_SYMBOL[p.currency ?? 'USD'] ?? `${p.currency} `
+  const sym = currencySymbol(p.currency ?? 'USD')
   const fmt = (v?: number) => (v === undefined ? '?' : `${sym}${trim(v * multiplier)}`)
   return `${fmt(p.input)} / ${fmt(p.output)}`
 }

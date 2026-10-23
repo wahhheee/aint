@@ -16,7 +16,7 @@
 | D-31 | **开发目录**用于作品链接本地目录；**开发者选项**是设置开关，默认关，开启后显示检查器、回合检查、完整状态与状态编辑，开发目录作品默认显示。状态编辑属于开发者工具，只在显示开发者工具时可用 | `internal/settings`、阅读页 |
 | D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.0`），与程序发布版本解耦 | `internal/work/engine.go` |
 | D-33 | 静态开场节点存两条消息：合成的 user `<input kind="opening">（开场）</input>` + 助手开场正文，历史始终以 user 开头 | `internal/save/service.go` |
-| D-34 | 模型价格带货币；费用按货币分别汇总，不做汇率换算 | `internal/llm/usage.go`、`usage_log.currency` |
+| D-34 | 模型价格带货币；费用按货币分别汇总，不做汇率换算 | `internal/llm/usage.go`、`usage_log.currency`、`internal/usage`（汇总） |
 | D-35 | AI 读取设定文档时把 `[[id]]` 补全为路径（不改作品文件）；校验器检查链接目标 | `internal/work/links.go` |
 | D-36 | 作者模板中的 `turn` 是对象，`turn.no` 为回合序号 | `internal/panel`、`internal/runtime/turn.go` |
 | D-37 | 开发版本是"树哈希即版本身份"的例外：每部作品至多一个，原地更新，不参与去重 | `store/migrations/0001_init.sql`（部分唯一索引） |

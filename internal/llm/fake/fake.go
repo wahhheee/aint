@@ -26,7 +26,7 @@ import (
 // ModelName 是假模型在供应商侧的名字。
 const ModelName = "fake-demo"
 
-// Model 返回假模型的配置：能力全开，价格未知（界面显示"无法估算"）。
+// Model 返回假模型的配置：能力全开，价格未知（界面显示"未配置价格"）。
 func Model() *llm.Model {
 	return &llm.Model{
 		ID:            "fake",

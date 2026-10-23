@@ -26,7 +26,7 @@ func (u Usage) Add(o Usage) Usage {
 func (u Usage) InputTotal() int { return u.InputUncached + u.CacheRead + u.CacheWrite }
 
 // Price 是每百万 token 的价格，单位为 Currency（D-34：费用按货币分别汇总，不做汇率换算）。
-// 任一需要的单价为 nil 时，费用无法估算（界面显示"无法估算"，不显示 0）。
+// 任一需要的单价为 nil 时，费用无法估算（界面显示"未配置价格"，不显示 0）。
 //
 // 缓存写入分两档，对应存档设置的缓存保留时长（Request.CacheTTL）：
 // short = Anthropic 5 分钟 / OpenAI 30 分钟；long = Anthropic 1 小时 / OpenAI 12 小时。

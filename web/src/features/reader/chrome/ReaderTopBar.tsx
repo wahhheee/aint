@@ -16,7 +16,9 @@ import { ReadingSettingsPopover } from './ReadingSettingsPopover'
 
 /** 阅读页顶栏：返回、作品与存档名、上下文用量、工具按钮。安静、细，不抢正文。 */
 export function ReaderTopBar({
+  saveId,
   save,
+  lastTurnId,
   onTogglePanels,
   panelsAvailable,
   onOpenDrawer,
@@ -27,7 +29,10 @@ export function ReaderTopBar({
   compactions,
   onCompact,
 }: {
+  saveId: string
   save?: Save
+  /** 进度线上最近的回合（用量浮层的"本回合"） */
+  lastTurnId?: string
   onOpenMemory: () => void
   onOpenBranches: () => void
   /** 状态抽屉（开发者工具） */
@@ -60,6 +65,8 @@ export function ReaderTopBar({
 
       <div className="ml-auto flex items-center gap-1">
         <ContextRing
+          saveId={saveId}
+          lastTurnId={lastTurnId}
           used={context?.used}
           threshold={context?.threshold}
           compacting={compacting}

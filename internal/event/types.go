@@ -73,10 +73,14 @@ type TurnStateData struct {
 	Changes any    `json:"changes"` // []state.Change：每个操作的路径与前后值
 }
 
+// TurnUsageData 是本回合到目前为止的累计用量与费用（每次模型调用结束时推送）。
 type TurnUsageData struct {
-	TurnID  string       `json:"turn_id"`
-	Usage   any          `json:"usage"` // llm.Usage
-	Context ContextUsage `json:"context"`
+	TurnID string `json:"turn_id"`
+	Usage  any    `json:"usage"` // llm.Usage
+	// Costs 按货币分别累计（单位为该货币的百万分之一，D-34）；Unpriced 是未配置价格、无法估算费用的调用次数。
+	Costs    map[string]int64 `json:"costs"`
+	Unpriced int              `json:"unpriced"`
+	Context  ContextUsage     `json:"context"`
 }
 
 // ContextUsage 是上下文用量指示（顶栏用量环）。

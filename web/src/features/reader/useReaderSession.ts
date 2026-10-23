@@ -3,9 +3,9 @@
  *
  * 数据流：
  *   SSE ─┬─ turn.* ──────────► useReader.dispatch（草稿回合）
- *        ├─ turn.committed ──► 刷新时间线、存档信息、书架"继续阅读"
+ *        ├─ turn.committed ──► 刷新时间线、存档信息、累计用量、书架"继续阅读"
  *        ├─ panels ──────────► 直接写入面板缓存（不额外请求）
- *        ├─ timeline.changed、compaction.done ─► 刷新时间线、存档信息、记忆、分支
+ *        ├─ timeline.changed、compaction.done ─► 刷新时间线、累计用量、存档信息、记忆、分支
  *        ├─ compaction.failed ─► 有说明时提示
  *        └─ resync ──────────► 重新拉取时间线与面板（断线太久，补发不了）
  */
@@ -36,6 +36,7 @@ export function useReaderSession(saveId: string) {
           case 'turn.committed':
             void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
             void qc.invalidateQueries({ queryKey: qk.save(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.usage(saveId) })
             void qc.invalidateQueries({ queryKey: qk.recentSaves })
             void qc.invalidateQueries({ queryKey: qk.memory(saveId) })
             void qc.invalidateQueries({ queryKey: qk.tree(saveId) })
@@ -49,6 +50,7 @@ export function useReaderSession(saveId: string) {
           case 'timeline.changed':
           case 'compaction.done':
             void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.usage(saveId) })
             void qc.invalidateQueries({ queryKey: qk.save(saveId) })
             void qc.invalidateQueries({ queryKey: qk.memory(saveId) })
             void qc.invalidateQueries({ queryKey: qk.tree(saveId) })

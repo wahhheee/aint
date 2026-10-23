@@ -22,6 +22,8 @@ export const qk = {
   memory: (id: string) => ['saves', id, 'memory'] as const,
   memoryFile: (id: string, path: string) => ['saves', id, 'memory', path] as const,
   state: (id: string) => ['saves', id, 'state'] as const,
+  /** 存档累计用量；带 nodeId 时是该节点（回合）的用量 */
+  usage: (id: string, nodeId?: string) => (nodeId ? (['saves', id, 'usage', nodeId] as const) : (['saves', id, 'usage'] as const)),
   providers: ['providers'] as const,
   models: ['models'] as const,
 }
@@ -127,6 +129,19 @@ export const useMemoryFile = (id: string, path: string | null) =>
 
 export const useSaveState = (id: string, enabled = true) =>
   useQuery({ queryKey: qk.state(id), queryFn: () => api.saves.state(id), enabled })
+
+/** 存档累计用量（回合与整理提交后失效）。 */
+export const useSaveUsage = (id: string, enabled = true) =>
+  useQuery({ queryKey: qk.usage(id), queryFn: () => api.usage.summary({ save_id: id }), enabled })
+
+/** 某个已提交回合的用量（提交后不再变化）。 */
+export const useNodeUsage = (id: string, nodeId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: qk.usage(id, nodeId),
+    queryFn: () => api.usage.summary({ save_id: id, node_id: nodeId }),
+    enabled: enabled && !!nodeId,
+    staleTime: Infinity,
+  })
 
 export const useProviders = () => useQuery({ queryKey: qk.providers, queryFn: api.providers.list })
 export const useModels = () => useQuery({ queryKey: qk.models, queryFn: api.models.list })

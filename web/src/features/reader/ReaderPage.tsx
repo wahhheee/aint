@@ -157,6 +157,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
     () => lastSceneBackground([...(timeline?.nodes.map((n) => n.display) ?? []), draft?.items ?? []]),
     [timeline, draft?.items],
   )
+  const lastTurnId = useMemo(() => timeline?.nodes.findLast((n) => n.kind === 'turn')?.id, [timeline])
   const stageAsset = ui.builtin_tags.includes('scene') ? ui.assets.find((a) => a.id === sceneBg && a.kind === 'image') : undefined
 
   // 宽屏：sidebar 面板在右侧栏，drawer 面板在抽屉；窄屏没有右侧栏，两者都在抽屉里
@@ -196,7 +197,9 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
               </div>
             )}
             <ReaderTopBar
+              saveId={saveId}
               save={save}
+              lastTurnId={lastTurnId}
               onTogglePanels={togglePanels}
               panelsAvailable={hasSidebar || hasDrawer}
               onOpenDrawer={hasSidebar && hasDrawer ? openDrawer : undefined}

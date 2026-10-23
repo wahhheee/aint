@@ -661,3 +661,25 @@ export interface Usage {
   output: number
   reasoning: number
 }
+
+/** usage_log.call_kind：模型调用的用途 */
+export type CallKind = 'narrate' | 'continue' | 'compact' | 'helper' | 'title' | 'probe'
+
+/** usage.Stats：一组调用的累计用量 */
+export interface UsageStats {
+  usage: Usage
+  /** 按货币分别累计，单位为该货币的百万分之一（D-34：不做汇率换算） */
+  costs: Record<string, number>
+  /** 未配置价格、无法估算费用的调用次数 */
+  unpriced: number
+  calls: number
+}
+
+/** usage.Summary（GET /usage）：合计，以及按调用用途、按模型的小计 */
+export interface UsageSummary {
+  total: UsageStats
+  /** 只含出现过的用途 */
+  by_kind: Partial<Record<CallKind, UsageStats>>
+  /** 按调用次数从多到少；name 在模型已删除或不在模型表中时省略 */
+  by_model: { model_id: string; name?: string; stats: UsageStats }[]
+}

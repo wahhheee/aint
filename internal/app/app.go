@@ -35,6 +35,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/store"
 	"github.com/wahhheee/yanyi/internal/tmpl"
 	"github.com/wahhheee/yanyi/internal/tools"
+	"github.com/wahhheee/yanyi/internal/usage"
 	"github.com/wahhheee/yanyi/internal/work"
 	"github.com/wahhheee/yanyi/web"
 )
@@ -209,7 +210,7 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 
 	srv := server.New(server.Deps{
 		Info: info, Bus: bus, Settings: settingsSvc, Works: works, Imports: imports, Saves: saves,
-		Runtime: rt, Providers: providers, Images: images, Web: web.Dist(),
+		Runtime: rt, Providers: providers, Usage: usage.NewService(db), Images: images, Web: web.Dist(),
 	})
 	return &services{server: srv, runtime: rt, tmpl: tm}, nil
 }

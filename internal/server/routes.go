@@ -75,7 +75,7 @@ func (s *Server) routes() {
 	m.HandleFunc("DELETE /api/v1/models/{id}", s.h(s.deleteModel))
 
 	// 用量与访问控制
-	m.HandleFunc("GET /api/v1/usage", todo("用量统计（M4-4）"))
+	m.HandleFunc("GET /api/v1/usage", s.h(s.usageSummary))
 	m.HandleFunc("POST /api/v1/auth/login", todo("登录（M6-9）"))
 	m.HandleFunc("POST /api/v1/auth/logout", todo("退出登录（M6-9）"))
 	m.HandleFunc("PUT /api/v1/auth/password", todo("设置访问密码（M6-9）"))

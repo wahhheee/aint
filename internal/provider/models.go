@@ -25,7 +25,7 @@ type ModelInput struct {
 	MaxOutput     int        `json:"max_output,omitzero"`
 	Caps          *llm.Caps  `json:"caps,omitzero"`
 	Price         *llm.Price `json:"price,omitzero"`
-	// ClearPrice 为 true 时清除价格（费用显示"无法估算"）。
+	// ClearPrice 为 true 时清除价格（费用显示"未配置价格"）。
 	ClearPrice bool `json:"clear_price,omitzero"`
 }
 

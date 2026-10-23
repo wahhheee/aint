@@ -44,6 +44,28 @@ export function formatTokens(n: number): string {
   return `${k >= 100 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`
 }
 
+const CURRENCY_SYMBOL: Record<string, string> = { CNY: '¥', USD: '$' }
+
+/** 货币符号：常见货币用符号（¥、$），其余写货币代码加空格（"EUR "）。 */
+export function currencySymbol(currency: string): string {
+  return CURRENCY_SYMBOL[currency] ?? `${currency} `
+}
+
+/** 金额（百万分之一货币单位）："¥0.21""$14.80"；不足 0.1 时保留两位有效数字（"¥0.0034"），避免显示成 0.00。 */
+export function formatMoney(micros: number, currency: string): string {
+  const v = micros / 1e6
+  const s = v >= 0.1 || v === 0 ? v.toFixed(2) : String(Number(v.toPrecision(2)))
+  return currencySymbol(currency) + s
+}
+
+/** 按货币分别列出的金额："$1.20 + ¥3.50"（D-34：不做汇率换算，按货币代码排列）；没有金额时为空字符串。 */
+export function formatCosts(costs: Record<string, number>): string {
+  return Object.keys(costs)
+    .sort()
+    .map((c) => formatMoney(costs[c], c))
+    .join(' + ')
+}
+
 /** 文件大小："812 B""12.3 KB""1.2 MB"（按 1024 进位，与系统文件管理器一致）。 */
 export function formatBytes(n: number): string {
   const units = ['B', 'KB', 'MB', 'GB']
