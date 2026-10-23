@@ -2,6 +2,7 @@
  * TanStack Query 封装：查询键集中定义（失效与 SSE 推送更新时要用同一个键），组件只用这里的 hooks。
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 
 import type { UploadOptions } from './client'
 import { api, type CreateSaveParams } from './endpoints'
@@ -22,10 +23,63 @@ export const qk = {
   memory: (id: string) => ['saves', id, 'memory'] as const,
   memoryFile: (id: string, path: string) => ['saves', id, 'memory', path] as const,
   state: (id: string) => ['saves', id, 'state'] as const,
+  debug: (id: string) => ['debug', id] as const,
+  debugCall: (id: string, call: string) => ['debug', id, 'call', call] as const,
   /** 存档累计用量；带 nodeId 时是该节点（回合）的用量 */
   usage: (id: string, nodeId?: string) => (nodeId ? (['saves', id, 'usage', nodeId] as const) : (['saves', id, 'usage'] as const)),
   providers: ['providers'] as const,
   models: ['models'] as const,
+}
+
+export function useDebugStatus(id: string) {
+  return useQuery({
+    queryKey: qk.debug(id),
+    queryFn: () => api.debug.status(id),
+    refetchInterval: (q) => (q.state.data?.enabled ? 1000 : 5000),
+  })
+}
+
+export function useDebugActions(id: string) {
+  const qc = useQueryClient()
+  return {
+    toggle: useMutation({
+      mutationFn: (enabled: boolean) => api.debug.set(id, enabled),
+      onSuccess: (s) => qc.setQueryData(qk.debug(id), s),
+    }),
+    clear: useMutation({
+      mutationFn: () => api.debug.clear(id),
+      onSuccess: (s) => {
+        qc.removeQueries({ queryKey: [...qk.debug(id), 'call'] })
+        qc.setQueryData(qk.debug(id), s)
+      },
+    }),
+  }
+}
+
+export function useDebugCall(id: string, call: string, revision: number, enabled: boolean) {
+  const query = useQuery({
+    queryKey: qk.debugCall(id, call),
+    queryFn: () => api.debug.call(id, call),
+    enabled: enabled && !!call,
+    gcTime: 0,
+    retry: false,
+  })
+  const { refetch } = query
+  const currentRevision = query.data?.revision
+  useEffect(() => {
+    if (enabled && call && currentRevision !== undefined && currentRevision < revision) void refetch()
+  }, [call, enabled, revision, currentRevision, refetch])
+  return query
+}
+
+export function useDebugFile(id: string, call: string, phase: string, path: string, offset: number, blob: string) {
+  return useQuery({
+    queryKey: [...qk.debugCall(id, call), 'file', phase, path, offset, blob],
+    queryFn: () => api.debug.file(id, call, phase, path, offset),
+    enabled: !!path,
+    gcTime: 0,
+    retry: false,
+  })
 }
 
 export const useSystemInfo = () => useQuery({ queryKey: qk.system, queryFn: api.system.info, staleTime: Infinity })

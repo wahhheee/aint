@@ -111,6 +111,11 @@ runtime ──► llm.Provider（中立类型）
   `between_tools`）、`Cache`（breakpoints / implicit / none）、看图与工具结果含图。内置预设在 `provider/presets.go`，添加模型时按名字预填。
 - 请求体由 `jsonx` 确定性序列化，每个适配器导出 `Body()` 便于测试与前缀比对。
 - 调试：`--trace-llm` 写中立追踪（`logs/llm-trace/`）与协议原始报文（`logs/llm-trace/raw/`，鉴权头脱敏，可直接做回放夹具）。
+- 游玩检查器：`runtime/inspect.go` 按存档控制内存记录；`llm.ObserveStream` 包住供应商与重试层，`wire` 通过 context 中的观察器上报各次 HTTP 尝试。
+  记录结构化上下文、明文推理、输出、工具参数与结果、状态前后值；`vfs.Table.Snapshot` 固定文件清单并复制可写记忆，之后按需读取文件。
+  `GET/PATCH/DELETE /saves/{id}/debug` 管理开关与记录列表；`GET .../debug/calls/{cid}` 获取详情，`/file` 读取快照，`/images/{hash}` 只提供该调用实际引用的图片。
+  调试响应不缓存，记录最多 100 次 / 64 MiB，单次 8 MiB；HTTP 头与 URL 的鉴权字段进入观察器前脱敏，正文内容不改写。
+  前端只轮询轻量列表，打开面板后按修订号读取当前详情；调试内容不进入游玩 SSE 事件总线，也不写入存档。
 - 测试：真实录制的 SSE 夹具回放（`llm/*/testdata/`）；真实调用冒烟测试 `provider/live_test.go`（默认跳过，D-45）；实测结论见
   [api-verification.md](notes/api-verification.md)。
 - 供应商与模型：`provider` 管理增删改、密钥（`secrets.json`）、价格倍率（运行时解析模型时乘好，D-48）、连接测试（模型列表 → 文本 →

@@ -14,6 +14,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/state"
@@ -139,7 +140,7 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 	req.Purpose = "compact"
 
 	env := &compactEnv{features: toolFS, work: w, fs: fsys, state: headState, images: m.d.Images, model: model}
-	run := &compactCalls{m: m, provider: provider, model: model, save: sv, req: req, start: len(req.Messages) - 1}
+	run := &compactCalls{m: m, provider: provider, model: model, save: sv, req: req, start: len(req.Messages) - 1, debugID: ids.New(), turnNo: head.TurnNo, env: env}
 	summary, err := run.loop(ctx, env, params)
 	if err != nil {
 		return nil, nil, err
@@ -301,12 +302,16 @@ func between(s, open, closing string) string {
 
 // compactCalls 是整理过程中的模型调用：落盘循环、交接摘要、必要时的追问。
 type compactCalls struct {
-	m        *Manager
-	provider llm.Provider
-	model    *llm.Model
-	save     *save.Save
-	req      *llm.Request
-	start    int // req.Messages 中整理指令消息的下标：此后的消息是整理过程（存在节点上供排查）
+	debugID    string
+	turnNo     int
+	env        *compactEnv
+	inspection *debugRecorder
+	m          *Manager
+	provider   llm.Provider
+	model      *llm.Model
+	save       *save.Save
+	req        *llm.Request
+	start      int // req.Messages 中整理指令消息的下标：此后的消息是整理过程（存在节点上供排查）
 
 	msgs                   []llm.Message
 	usage                  llm.Usage
@@ -378,7 +383,8 @@ func (c *compactCalls) call(ctx context.Context) (llm.Message, llm.StopReason, e
 	c.calls++
 	start := time.Now()
 	raw := contextx.EstimateRequest(c.req)
-	stream, err := c.provider.Stream(ctx, c.model, c.req)
+	c.inspection = c.m.debugStart(ctx, c.save.ID, c.debugID, c.turnNo, c.provider, c.model, c.req, c.env.fs, c.env.state)
+	stream, err := debugStream(ctx, c.provider, c.model, c.req, c.inspection)
 	if err != nil {
 		return llm.Message{}, "", err
 	}
@@ -433,7 +439,8 @@ func (c *compactCalls) runTools(ctx context.Context, env *compactEnv, calls []ll
 		}
 	}
 	results := map[string]llm.ToolResult{}
-	for _, r := range c.m.d.Tools.Execute(ctx, env, allowed).Results {
+	out := c.m.d.Tools.Execute(ctx, env, allowed)
+	for _, r := range out.Results {
 		results[r.CallID] = r
 	}
 	msg := llm.Message{Role: llm.RoleUser}
@@ -441,9 +448,12 @@ func (c *compactCalls) runTools(ctx context.Context, env *compactEnv, calls []ll
 		r, ok := results[tc.ID]
 		if !ok {
 			r = llm.ToolResult{CallID: tc.ID, Parts: []llm.Part{llm.Text(prompts.CompactionToolUnavailable)}, IsError: true}
+			out.Records = append(out.Records, tools.CallRecord{ID: tc.ID, Name: tc.Name, Args: tc.Args, Result: prompts.CompactionToolUnavailable, IsError: true})
+			out.Results = append(out.Results, r)
 		}
 		msg.Parts = append(msg.Parts, llm.Part{Kind: llm.PartToolResult, ToolResult: &r})
 	}
+	c.inspection.toolsDone(ctx, out, env.fs, env.state)
 	return msg
 }
 

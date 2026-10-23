@@ -57,7 +57,7 @@ func (e *Endpoint) startTrace(req *http.Request, body []byte, call Call) *traceF
 		return nil
 	}
 	t := &traceFile{f: f, path: path}
-	t.printf("%s %s\n", req.Method, req.URL.String())
+	t.printf("%s %s\n", req.Method, safeURL(req.URL))
 	writeHeaders(f, req.Header)
 	return t
 }
@@ -70,7 +70,7 @@ func writeHeaders(w io.Writer, h http.Header) {
 	sort.Strings(keys)
 	for _, k := range keys {
 		v := strings.Join(h[k], ", ")
-		if secretHeaders[strings.ToLower(k)] {
+		if sensitiveHeader(k) {
 			v = "***"
 		}
 		_, _ = fmt.Fprintf(w, "%s: %s\n", k, v)

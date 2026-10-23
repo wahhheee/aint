@@ -1,7 +1,7 @@
 # 决策记录：脚手架评审（2026-10-20）
 
 本文记录当前决策及其代码位置。
-编号与 `.local/docs/README.md` 的决策记录一致（D-23～D-62）。
+编号范围 D-23～D-63；本地设计材料在 `.local/docs/`。
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
@@ -13,7 +13,7 @@
 | D-28 | `<cg>` 只在有非背景图片素材时启用；背景图只用于 `<scene bg>` | `internal/contextx/profile.go` |
 | D-29 | 选项待答时玩家另有输入（命令 / 场外 / 继续）：工具结果如实写"没有从选项中作答"，输入照常跟在后面 | `internal/contextx/envelope.go` |
 | D-30 | 内置标签 `<ooc>`（随 `features.ooc`）：AI 的场外回应写在其中，浅色块显示，不进入原文检索 | `prompts/l0.go`、`markup/`、`web/src/markup/` |
-| D-31 | **开发目录**用于作品链接本地目录；**开发者选项**是设置开关，默认关，开启后显示检查器、回合检查、完整状态与状态编辑，开发目录作品默认显示。状态编辑属于开发者工具，只在显示开发者工具时可用 | `internal/settings`、阅读页 |
+| D-31 | **开发目录**用于作品链接本地目录；**开发者选项**是设置开关，默认关，开启后显示完整状态与状态编辑，开发目录作品默认显示。游玩调试使用阅读页独立开关（D-63），状态编辑仍属于开发者工具 | `internal/settings`、阅读页 |
 | D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.0`），与程序发布版本解耦 | `internal/work/engine.go` |
 | D-33 | 静态开场节点存两条消息：合成的 user `<input kind="opening">（开场）</input>` + 助手开场正文，历史始终以 user 开头 | `internal/save/service.go` |
 | D-34 | 模型价格带货币；费用按货币分别汇总，不做汇率换算 | `internal/llm/usage.go`、`usage_log.currency`、`internal/usage`（汇总） |
@@ -79,3 +79,9 @@
 | D-60 | 原文与检索：原文索引的一行就是 `/transcript/NNNN` 首行之后的内容（玩家输入行 + 正文纯文本，`<say who>` 换成人物名），读取与检索看到同一份文字；检索的字面匹配不区分大小写，每个词至少 3 字时原文先走 trigram 索引，否则扫描本存档的原文，结果都按进度线过滤；结果带行号；同一批工具调用按原顺序执行，相邻的读类并行，写入之后的读取能读到新内容 | `internal/save/transcript.go`、`internal/vfs/search.go`、`internal/tools/registry.go` |
 | D-61 | 分支与编辑：修改 AI 正文生成原回合的兄弟节点（各段助手文本合并为一段放在第一段的位置，去掉协议原生内容），不附加注记，前端的修改框说明修改的结果；修改玩家输入即以新输入重新生成；编辑节点与整理节点的回合号是它们所跟随的回合；玩家修改记忆或状态产生编辑节点，注记附在下一回合的 `<notes>`；时间线包含编辑与整理节点 | `internal/save/branch.go`、`edit.go`、`web/src/features/reader/stream/TurnToolbar.tsx` |
 | D-62 | 轻量模型在设置 → 模型的"⋯"菜单中设定；separate 整理使用它，没有设定时 separate 改用 inline（超限时的紧急整理除外，见 D-57） | `internal/runtime/tokens.go`（`lightModel`）、`web/src/features/settings/sections/ProvidersSection.tsx` |
+
+## 游玩调试（2026-10-23）
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-63 | 阅读页提供按存档独立的调试开关，默认关闭；开启后记录模型调用并提供可收起的侧边检查器。模型明文推理只展示供应商返回的内容；HTTP 鉴权头与 URL 的密钥字段脱敏。调试记录仅保留在进程内，全局至多 100 次调用 / 64 MiB，单次至多 8 MiB；VFS 在调用前与工具执行后冻结快照。状态编辑仍由开发者选项控制 | runtime/inspect.go、llm/observe.go、reader/debug/ |

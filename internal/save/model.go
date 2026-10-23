@@ -87,7 +87,7 @@ type Node struct {
 	CreatedAt     int64      `json:"created_at"`
 }
 
-// NodeMeta 是节点的排查信息：检查器"概览"页与日志都从这里取。
+// NodeMeta 是随节点保存的排查信息，记录停止原因、调用次数、耗时与上下文规模。
 type NodeMeta struct {
 	Model         string `json:"model,omitzero"`
 	Stop          string `json:"stop,omitzero"`     // 归一停止原因（或 budget / canceled / choices）

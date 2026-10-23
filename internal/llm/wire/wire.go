@@ -18,6 +18,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"strings"
@@ -98,16 +99,44 @@ func (e *Endpoint) PostStream(ctx context.Context, path string, body []byte, cal
 	req.Header.Set("Accept", "text/event-stream")
 
 	tr := e.startTrace(req, body, call)
+	var observation llm.HTTPObserver
+	if o := llm.ObserverFrom(ctx); o != nil {
+		h := req.Header.Clone()
+		h.Set("Host", req.URL.Host)
+		h.Set("Content-Length", strconv.Itoa(len(body)))
+		observation = o.HTTP(req.Method, safeURL(req.URL), safeHeaders(h), body)
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{
+			WroteHeaderField: func(name string, values []string) {
+				if sensitiveHeader(name) {
+					values = []string{"***"}
+				}
+				observation.RequestHeader(name, values)
+			},
+		}))
+	}
 	start := time.Now()
 	resp, err := e.Client.Do(req)
 	if err != nil {
 		tr.fail(err)
+		if observation != nil {
+			observation.End(transportError(ctx, err))
+		}
 		return nil, transportError(ctx, err)
 	}
 	tr.response(resp, time.Since(start))
+	if observation != nil {
+		observation.Response(resp.StatusCode, safeHeaders(resp.Header))
+		resp.Body = &observedBody{ReadCloser: resp.Body, o: observation}
+	}
 	if resp.StatusCode/100 != 2 {
 		defer func() { _ = resp.Body.Close() }() // 错误响应体只读开头，关闭错误无影响
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody+1))
+		if len(b) > maxErrorBody {
+			if observation != nil {
+				observation.Truncated()
+			}
+			b = b[:maxErrorBody]
+		}
 		tr.body(b)
 		tr.close()
 		return nil, e.statusError(resp, b)
@@ -145,6 +174,12 @@ func (e *Endpoint) GetJSON(ctx context.Context, path string, out any) error {
 func transportError(ctx context.Context, err error) error {
 	if ctx.Err() != nil {
 		return &llm.APIError{Kind: llm.ErrCanceled, Err: ctx.Err()}
+	}
+	var uerr *url.Error
+	if errors.As(err, &uerr) {
+		if u, parseErr := url.Parse(uerr.URL); parseErr == nil {
+			err = &url.Error{Op: uerr.Op, URL: safeURL(u), Err: uerr.Err}
+		}
 	}
 	return &llm.APIError{Kind: llm.ErrNetwork, Message: "连接供应商失败", Err: err}
 }

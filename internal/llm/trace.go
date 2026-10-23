@@ -21,8 +21,6 @@ import (
 // 用于排查"模型为什么这样写""适配器转换是否正确""缓存为什么没命中"等问题。
 // 启用方式：yanyi --trace-llm（文件写到 <数据目录>/logs/llm-trace/）。
 // 文件只包含中立格式，不含 API Key；但包含完整正文，分享前请注意内容。
-//
-// TODO(M4)：适配器层另加"协议原始请求/响应"追踪（检查器"原始"页，脱敏）。
 func WithTrace(p Provider, dir string) Provider {
 	return &traceProvider{Provider: p, dir: dir}
 }

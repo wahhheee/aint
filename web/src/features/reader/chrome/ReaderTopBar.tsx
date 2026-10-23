@@ -1,8 +1,7 @@
-import { ArrowLeft, BookMarked, Braces, Ellipsis, GitBranch, PanelBottom, PanelRight, ScanSearch } from 'lucide-react'
+import { ArrowLeft, BookMarked, Braces, Ellipsis, GitBranch, PanelBottom, PanelRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
-import { toast } from 'sonner'
 
 import type { Save } from '@/api/types'
 import { Button } from '@/components/ui/button'
@@ -28,6 +27,8 @@ export function ReaderTopBar({
   onOpenState,
   compactions,
   onCompact,
+  debugControl,
+  onInspect,
 }: {
   saveId: string
   save?: Save
@@ -44,14 +45,15 @@ export function ReaderTopBar({
   panelsAvailable: boolean
   /** 宽屏同时有侧栏与抽屉面板时，抽屉单独一个入口 */
   onOpenDrawer?: () => void
-  /** 开发者工具（D-31）：普通玩家看不到调试入口 */
+  /** 开发者工具（D-31）：控制状态编辑入口；模型调用调试使用独立开关。 */
   devTools: boolean
+  debugControl: ReactNode
+  onInspect?: () => void
 }) {
   const { t } = useTranslation()
   const context = useReader((s) => s.context)
   const compacting = useReader((s) => s.compacting)
   const busy = useReader(selectBusy)
-  const todo = () => toast(t('common.notImplemented'))
 
   return (
     <header className="relative z-10 flex h-14 shrink-0 items-center gap-2 px-2 sm:gap-3 sm:px-4">
@@ -73,9 +75,10 @@ export function ReaderTopBar({
           compactions={compactions}
           onCompact={onCompact}
           busy={busy}
+          onInspect={onInspect}
         />
         <span aria-hidden className="mx-1 h-4 w-px bg-rule-strong sm:mx-1.5" />
-        {/* 窄屏时记忆、分支、检查器收进"更多"菜单，给标题留出位置 */}
+        {/* 窄屏时记忆、分支与状态入口收进“更多”菜单，给标题留出位置。 */}
         <div className="hidden items-center gap-1 sm:flex">
           <IconButton label={t('reader.memory')} onClick={onOpenMemory}>
             <BookMarked />
@@ -90,14 +93,7 @@ export function ReaderTopBar({
           )}
         </div>
         <ReadingSettingsPopover />
-        {/* TODO(M5-9)：检查器（概览 / 上下文 / 工具 / 状态 / 记忆 / 原始） */}
-        {devTools && (
-          <span className="hidden sm:contents">
-            <IconButton label={t('reader.inspector')} onClick={todo}>
-              <ScanSearch />
-            </IconButton>
-          </span>
-        )}
+        {debugControl}
         {onOpenDrawer && (
           <span className="hidden min-[1200px]:contents">
             <IconButton label={t('reader.drawer')} onClick={onOpenDrawer}>
@@ -129,12 +125,6 @@ export function ReaderTopBar({
               <DropdownMenuItem onSelect={onOpenState}>
                 <Braces />
                 {t('reader.stateDrawer.title')}
-              </DropdownMenuItem>
-            )}
-            {devTools && (
-              <DropdownMenuItem onSelect={todo}>
-                <ScanSearch />
-                {t('reader.inspector')}
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

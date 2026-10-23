@@ -5,6 +5,9 @@ import { http, type UploadOptions } from './client'
 import type {
   BranchTree,
   DeepPartial,
+  DebugStatus,
+  DebugCall,
+  DebugFileContent,
   ImportPreview,
   ImportResult,
   MemoryFile,
@@ -50,6 +53,15 @@ export interface CreateSaveParams {
 }
 
 export const api = {
+  debug: {
+    imageURL: (id: string, call: string, blob: string) => `/api/v1/saves/${id}/debug/calls/${call}/images/${blob.replace(/^sha256:/, '')}`,
+    status: (id: string) => http.get<DebugStatus>(`/saves/${id}/debug`),
+    set: (id: string, enabled: boolean) => http.patch<DebugStatus>(`/saves/${id}/debug`, { enabled }),
+    clear: (id: string) => http.del<DebugStatus>(`/saves/${id}/debug`),
+    call: (id: string, call: string) => http.get<DebugCall>(`/saves/${id}/debug/calls/${call}`),
+    file: (id: string, call: string, phase: string, path: string, offset: number) =>
+      http.get<DebugFileContent>(`/saves/${id}/debug/calls/${call}/file?${new URLSearchParams({ phase, path, offset: String(offset) })}`),
+  },
   system: {
     info: () => http.get<SystemInfo>('/system/info'),
   },

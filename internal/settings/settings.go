@@ -26,7 +26,7 @@ type Settings struct {
 	Play         Play       `json:"play"`
 	Context      Context    `json:"context"`
 	Onboarded    bool       `json:"onboarded"` // 是否已看过欢迎页
-	// Developer 是"开发者选项"（SET-07，D-31）：显示检查器、回合检查、完整状态与状态编辑。
+	// Developer 是"开发者选项"（SET-07，D-31）：显示完整状态与状态编辑；游玩调试使用独立开关。
 	// 默认关闭；从开发目录链接的作品不论此开关如何都显示（Presentation.DevWork）。
 	Developer bool `json:"developer"`
 }

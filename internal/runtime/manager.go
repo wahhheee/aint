@@ -63,7 +63,8 @@ type Manager struct {
 	cancelAll context.CancelFunc
 	wg        sync.WaitGroup
 
-	cal calibration // token 估算的按模型校准
+	cal   calibration // token 估算的按模型校准
+	debug debugStore
 
 	mu sync.Mutex
 	// sessions 只保存有任务（回合或整理）在运行的存档：任务结束（让出写者槽位）时删除，空闲存档不占内存。

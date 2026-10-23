@@ -23,8 +23,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
+import { toast } from 'sonner'
 
-import { usePanels, usePresentation, useSettings, useTimeline } from '@/api/queries'
+import { useDebugActions, useDebugStatus, usePanels, usePresentation, useSettings, useTimeline } from '@/api/queries'
+import { errorMessage } from '@/api/errors'
 import { LoadError } from '@/components/common/LoadError'
 import { MarkupProvider, useMarkupContext } from '@/markup/context'
 import { workTagCSS } from '@/markup/workStyles'
@@ -33,6 +35,8 @@ import { useUI } from '@/stores/ui'
 
 import { HelpDialog } from './chrome/HelpDialog'
 import { ReaderTopBar } from './chrome/ReaderTopBar'
+import { DebugControl } from './debug/DebugControl'
+import { DebugInspector } from './debug/DebugInspector'
 import { BranchDrawer } from './drawers/BranchDrawer'
 import { MemoryDrawer } from './drawers/MemoryDrawer'
 import { StateDrawer } from './drawers/StateDrawer'
@@ -67,6 +71,7 @@ export function ReaderPage() {
 
   return (
     <ReaderView
+      key={saveId}
       saveId={saveId}
       presentation={presentation.data}
       timeline={timeline.data}
@@ -86,7 +91,7 @@ type ViewProps = {
   reading: ReaderContextValue['reading']
   /** 使用作品主题（设置中可关闭；样式标签不受影响） */
   workTheme: boolean
-  /** 显示开发者工具（检查器等）：开发者选项开启，或作品来自开发目录 */
+  /** 显示状态编辑工具：开发者选项开启，或作品来自开发目录。 */
   devTools: boolean
 }
 
@@ -101,6 +106,22 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
   const setSidebarOpen = useUI((s) => s.setSidebarOpen)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [drawer, setDrawer] = useState<'memory' | 'branches' | 'state' | null>(null)
+  const debug = useDebugStatus(saveId)
+  const debugActions = useDebugActions(saveId)
+  const [debugOpen, setDebugOpen] = useState(false)
+  const [debugTurn, setDebugTurn] = useState<string>()
+  const debugAvailable = !!debug.data?.enabled || !!debug.data?.calls.length
+  const inspect = useCallback((turnId?: string) => {
+    setDebugTurn(turnId)
+    setDebugOpen(true)
+  }, [])
+  const toggleDebug = (enabled: boolean) =>
+    debugActions.toggle.mutate(enabled, {
+      onSuccess: () => {
+        if (enabled) inspect()
+      },
+      onError: (err) => toast.error(errorMessage(err)),
+    })
 
   // 打开存档（或存档信息刷新）时，用呈现信息初始化上下文用量与整理状态；回合中的用量由 turn.usage 更新
   const initReader = useReader((s) => s.init)
@@ -125,6 +146,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
   // 快捷键：Esc 停止；/ 聚焦输入栏并打开命令面板
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || (e.target as HTMLElement).closest('[role="dialog"]')) return
       const inField = (e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')
       if (e.key === 'Escape' && busy) void actions.stop()
       if (e.key === '/' && !inField) {
@@ -147,8 +169,9 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
       focusInput: () => dockRef.current?.focus(),
       runCommand,
       actions,
+      inspect: debugAvailable ? inspect : undefined,
     }),
-    [saveId, ui, presentation.model.vision, reading, actions, runCommand],
+    [saveId, ui, presentation.model.vision, reading, actions, runCommand, debugAvailable, inspect],
   )
 
   // 舞台背景：进度线上（含进行中的回合）最近一次 <scene bg>
@@ -209,6 +232,16 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
               onOpenState={() => setDrawer('state')}
               compactions={presentation.compactions}
               onCompact={() => void actions.compact()}
+              onInspect={debugAvailable ? () => inspect() : undefined}
+              debugControl={
+                <DebugControl
+                  enabled={!!debug.data?.enabled}
+                  pending={debug.isPending || debugActions.toggle.isPending}
+                  available={debugAvailable}
+                  onToggle={toggleDebug}
+                  onOpen={() => inspect()}
+                />
+              }
             />
             <TopbarPanels meta={ui.panels} rendered={panels} />
             <Stream timeline={timeline} onRetry={() => void actions.retry()} onContinue={() => void actions.submit({ kind: 'continue' })} />
@@ -243,6 +276,17 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
         />
 
         <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+        <DebugInspector
+          saveId={saveId}
+          open={debugOpen}
+          onOpenChange={setDebugOpen}
+          status={debug.data}
+          pending={debugActions.toggle.isPending || debugActions.clear.isPending}
+          onToggle={toggleDebug}
+          onClear={() => debugActions.clear.mutate(undefined, { onError: (err) => toast.error(errorMessage(err)) })}
+          turnId={debugTurn}
+          onAllTurns={() => setDebugTurn(undefined)}
+        />
         <MemoryDrawer saveId={saveId} open={drawer === 'memory'} onOpenChange={(o) => setDrawer(o ? 'memory' : null)} />
         <BranchDrawer saveId={saveId} open={drawer === 'branches'} onOpenChange={(o) => setDrawer(o ? 'branches' : null)} />
         {devTools && <StateDrawer saveId={saveId} open={drawer === 'state'} onOpenChange={(o) => setDrawer(o ? 'state' : null)} />}

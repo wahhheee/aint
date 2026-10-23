@@ -27,7 +27,14 @@ export function ChoiceList({ item, selected }: { item: ChoicesItem; selected?: s
     if (locked) return
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
-      if (el.closest('input, textarea, [contenteditable="true"]') || e.ctrlKey || e.metaKey || e.altKey) return
+      if (
+        e.defaultPrevented ||
+        el.closest('input, textarea, [contenteditable="true"], [role="dialog"]') ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey
+      )
+        return
       const n = Number(e.key)
       if (n >= 1 && n <= item.items.length) {
         e.preventDefault()

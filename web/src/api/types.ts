@@ -653,6 +653,90 @@ export interface TestReport {
   steps: TestStep[]
 }
 
+/** runtime.DebugSummary */
+export interface DebugSummary {
+  id: string
+  turn_id: string
+  turn_no: number
+  model: string
+  protocol: string
+  purpose: string
+  started: string
+  duration_ms: number
+  status: 'running' | 'complete' | 'error'
+  stop: string
+  error: string
+  usage: Usage
+  tool_count: number
+  http_count: number
+  revision: number
+  truncated: boolean
+}
+
+export interface DebugStatus {
+  enabled: boolean
+  calls: DebugSummary[]
+  dropped: number
+}
+
+export interface DebugToolCall {
+  id: string
+  name: string
+  args?: unknown
+}
+export interface DebugPart {
+  kind: string
+  text?: string
+  image?: { blob: string; mime: string }
+  tool_call?: DebugToolCall
+  tool_result?: { call_id: string; parts: DebugPart[]; is_error?: boolean }
+}
+export interface DebugSnapshot {
+  state: Record<string, unknown>
+  roots: string[]
+  files: { path: string; size: number; summary: string; blob: string }[]
+  error: string
+}
+export interface DebugCall extends DebugSummary {
+  request?: {
+    system: { text: string }[]
+    messages: { role: string; parts: DebugPart[] }[]
+    tools: { name: string; description: string; schema: unknown }[]
+    max_output: number
+    reasoning: string
+    cache_key: string
+    cache_ttl: string
+  }
+  steps: { kind: 'text' | 'reasoning' | 'tool'; at_ms: number; text: string; call?: DebugToolCall }[]
+  tools: { id: string; name: string; args: unknown; result: string; is_error?: boolean; duration_ms: number }[]
+  results: { call_id: string; parts: DebugPart[]; is_error?: boolean }[]
+  http: {
+    method: string
+    url: string
+    request_headers: Record<string, string[]>
+    request_body: string
+    status: number
+    response_headers: Record<string, string[]>
+    truncated: boolean
+    response_body: string
+    header_ms: number
+    duration_ms: number
+    error: string
+    complete: boolean
+  }[]
+  before?: DebugSnapshot
+  after?: DebugSnapshot
+}
+
+export interface DebugFileContent {
+  path: string
+  text: string
+  from_char: number
+  to_char: number
+  total_chars: number
+  image?: { blob: string; mime: string }
+}
+
 /** llm.Usage */
 export interface Usage {
   input_uncached: number

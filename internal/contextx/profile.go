@@ -11,7 +11,7 @@
 //   - 历史消息以发送形态存储，构建时只读取不改写；序列化统一 jsonx（确定性）；
 //   - 任何层都不放时间戳、随机数、请求 ID。
 //
-// 调试：Built.Fragments 列出每个片段的启用状态与原因（检查器"上下文"页），
+// 调试：Built.Fragments 列出每个片段的启用状态与原因（work prompt 可查看），
 // Built.PrefixHash 变化即意味着缓存重建（记录在节点 meta）。
 package contextx
 

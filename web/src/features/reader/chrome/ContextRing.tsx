@@ -13,7 +13,6 @@ import { useReader } from '@/stores/reader'
  * 上下文用量环（《04-交互与界面设计》8.10）：当前上下文 ÷ 整理阈值；超过 90% 变为提醒色。
  * 点开是一个小浮层：上下文用量；本回合各类 token 与费用；本存档的累计费用、其中整理的花费与整理次数；"立即整理"。
  * 整理进行中时环旁显示"正在整理记忆"。
- * TODO(M5-9)：浮层中"查看详情"打开检查器。
  */
 export function ContextRing({
   saveId,
@@ -24,6 +23,7 @@ export function ContextRing({
   compactions,
   onCompact,
   busy,
+  onInspect,
 }: {
   saveId: string
   /** 进度线上最近的回合（时间线最后一个回合节点） */
@@ -35,6 +35,7 @@ export function ContextRing({
   onCompact: () => void
   /** 回合进行中：不能手动整理 */
   busy: boolean
+  onInspect?: () => void
 }) {
   const { t } = useTranslation()
   const ratio = used !== undefined && threshold ? Math.min(1, used / threshold) : 0
@@ -77,6 +78,11 @@ export function ContextRing({
         <UsageDetails saveId={saveId} lastTurnId={lastTurnId} used={used} threshold={threshold} compactions={compactions} />
         <p className="text-xs leading-5 text-ink-muted">{t('reader.contextHint')}</p>
         <div className="flex justify-end">
+          {onInspect && (
+            <Button size="xs" variant="ghost" className="mr-auto" onClick={onInspect}>
+              {t('reader.inspector')}
+            </Button>
+          )}
           <Button size="xs" variant="outline" disabled={compacting || busy} onClick={onCompact}>
             {compacting ? t('reader.compacting') : t('reader.compactNow')}
           </Button>

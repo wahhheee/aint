@@ -50,13 +50,14 @@ type draft struct {
 	onCard       func(item save.DisplayItem)  // 追加展示项后的通知：推送 turn.display
 
 	// 本回合产生的内容
-	req      *llm.Request  // 随调用追加消息
-	turnMsgs []llm.Message // 本回合的消息（玩家消息 + 助手 + 工具结果），提交时存为节点 messages
-	display  []save.DisplayItem
-	choices  *save.DisplayItem
-	seq      int // turn.text 事件序号
-	records  []usage.Record
-	toolLog  []tools.CallRecord
+	req        *llm.Request  // 随调用追加消息
+	turnMsgs   []llm.Message // 本回合的消息（玩家消息 + 助手 + 工具结果），提交时存为节点 messages
+	display    []save.DisplayItem
+	choices    *save.DisplayItem
+	seq        int // turn.text 事件序号
+	records    []usage.Record
+	toolLog    []tools.CallRecord
+	inspection *debugRecorder
 
 	// 上下文规模（token）：threshold 是整理阈值（用量环的分母），hardLimit 是回合内必须先整理的硬上限；
 	// lastInput / lastOutput 是最近一次调用的实际用量，提交时记为节点的上下文规模。

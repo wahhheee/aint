@@ -76,7 +76,9 @@ func (s *Server) serveMedia(w http.ResponseWriter, r *http.Request, hash string,
 	}
 	h := w.Header()
 	h.Set("Content-Type", contentType)
-	h.Set("Cache-Control", "public, max-age=31536000, immutable")
+	if h.Get("Cache-Control") == "" {
+		h.Set("Cache-Control", "public, max-age=31536000, immutable")
+	}
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	// 写失败即客户端已断开，没有可补救的。

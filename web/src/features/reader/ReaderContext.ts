@@ -17,6 +17,8 @@ export interface ReaderContextValue {
   runCommand: (text: string, confirmed?: boolean) => void
   /** 回合与分支操作（重新生成、修改、回到此处、切换版本……） */
   actions: TurnActions
+  /** 打开调试记录，可按回合过滤。 */
+  inspect?: (turnId?: string) => void
 }
 
 export const ReaderContext = createContext<ReaderContextValue | null>(null)

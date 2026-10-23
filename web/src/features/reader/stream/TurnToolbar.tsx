@@ -6,7 +6,7 @@
  *
  * 修改在对话框中进行，说明会产生什么：新版本成为当前进度，原来的版本与后续保留为另一条分支。
  */
-import { ChevronLeft, ChevronRight, Copy, CornerUpLeft, Ellipsis, PencilLine, RotateCcw, SquarePen } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, CornerUpLeft, Ellipsis, PencilLine, RotateCcw, SquarePen, ScanSearch } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -32,7 +32,7 @@ type Editing = { kind: 'text' | 'input'; value: string } | null
 
 export function TurnToolbar({ node, latest, disabled }: { node: TimelineNode; latest: boolean; disabled: boolean }) {
   const { t } = useTranslation()
-  const { actions, ui } = useReaderContext()
+  const { actions, ui, inspect } = useReaderContext()
   const [editing, setEditing] = useState<Editing>(null)
   const [saving, setSaving] = useState(false)
 
@@ -108,6 +108,12 @@ export function TurnToolbar({ node, latest, disabled }: { node: TimelineNode; la
             <TooltipContent>{t('reader.turnActions')}</TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end">
+            {inspect && (
+              <DropdownMenuItem onSelect={() => inspect(node.id)}>
+                <ScanSearch />
+                {t('reader.inspector')}
+              </DropdownMenuItem>
+            )}
             {latest && !staticOpening && (
               <DropdownMenuItem
                 disabled={disabled}

@@ -287,6 +287,7 @@ func (m *Manager) runTools(ctx context.Context, d *draft, calls []llm.ToolCall) 
 		m.publish(d.save.ID, event.TurnTool, event.TurnToolData{TurnID: d.id, CallID: c.ID, Name: c.Name, Phase: "start", Display: m.displayOf(c.Name)})
 	}
 	out := m.d.Tools.Execute(ctx, d, calls)
+	d.inspection.toolsDone(ctx, out, d.vfs, d.state)
 	d.toolLog = append(d.toolLog, out.Records...)
 
 	reads := 0
@@ -345,7 +346,8 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	start := time.Now()
 	raw := contextx.EstimateRequest(d.req)
 
-	stream, err := d.provider.Stream(ctx, d.model, d.req)
+	d.inspection = m.debugStart(ctx, d.save.ID, d.id, d.turnNo, d.provider, d.model, d.req, d.vfs, d.state)
+	stream, err := debugStream(ctx, d.provider, d.model, d.req, d.inspection)
 	if err != nil {
 		return nil, err
 	}
