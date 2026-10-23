@@ -23,8 +23,8 @@ import (
 )
 
 // runTurn 是一个回合的完整生命周期（在独立 goroutine 中运行）。
-func (m *Manager) runTurn(ctx context.Context, saveID, turnID string, in save.TurnInput, release func()) {
-	d, err := m.prepare(ctx, saveID, turnID, in)
+func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput, release func()) {
+	d, err := m.prepare(ctx, saveID, turnID, parentID, in)
 	if err != nil {
 		code, msg, recoverable := describeError(err)
 		slog.WarnContext(ctx, "回合准备失败", "err", err)
@@ -50,11 +50,16 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID string, in save.Tu
 	m.commit(ctx, d)
 }
 
-// prepare 读取进度线、作品与模型，封装玩家消息，构建首个请求。
-func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.TurnInput) (*draft, error) {
+// prepare 读取进度线（到父节点为止；parentID 为空时到 head）、作品与模型，封装玩家消息，构建首个请求。
+func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput) (*draft, error) {
 	sv, line, err := m.d.Saves.ProgressLine(ctx, saveID)
 	if err != nil {
 		return nil, err
+	}
+	if parentID != "" && parentID != sv.HeadNodeID {
+		if line, err = m.d.Saves.ProgressLineAt(ctx, saveID, parentID); err != nil {
+			return nil, err
+		}
 	}
 	root, head := line[0], line[len(line)-1]
 	w, err := m.d.Works.Model(ctx, head.WorkVersionID)
@@ -97,7 +102,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 	}
 
 	// 封装玩家消息
-	env := contextx.Envelope{Input: in, Pace: firstNonEmpty(in.Pace, sv.Settings.Pace, w.Manifest.Narrator.Length)}
+	env := contextx.Envelope{Input: in, Notes: save.PendingNotes(line), Pace: firstNonEmpty(in.Pace, sv.Settings.Pace, w.Manifest.Narrator.Length)}
 	switch in.Kind {
 	case save.InputOpening:
 		if head.Kind != save.KindRoot {

@@ -67,7 +67,7 @@ CREATE TABLE nodes (
   depth           INTEGER NOT NULL,      -- 根为 0
   kind            TEXT NOT NULL,         -- root | turn | compaction | edit
   status          TEXT NOT NULL,         -- committed | interrupted
-  turn_no         INTEGER,               -- 进度线上的回合序号（turn 节点）
+  turn_no         INTEGER,               -- 进度线上的回合序号；edit / compaction 节点为它们所跟随的回合（root 为空）
   input           TEXT,                  -- JSON：TurnInput（turn）/ EditInfo（edit）
   messages        TEXT,                  -- blob hash：本节点产生的 LLM 消息
   display         TEXT,                  -- blob hash：显示项列表

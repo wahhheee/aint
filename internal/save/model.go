@@ -45,19 +45,20 @@ type Settings struct {
 
 // Save 是一个存档条目。
 type Save struct {
-	ID            string   `json:"id"`
-	WorkID        string   `json:"work_id"`
-	WorkVersionID string   `json:"work_version_id"`
-	WorkTitle     string   `json:"work_title"`
-	Title         string   `json:"title"`        // 为空时界面显示"未命名存档 · 最近游玩时间"
-	TitleSource   string   `json:"title_source"` // generated | manual | ""
-	HeadNodeID    string   `json:"head_node_id"`
-	TurnCount     int      `json:"turn_count"` // head 所在进度线的回合数
-	Settings      Settings `json:"settings"`
-	CreatedAt     int64    `json:"created_at"`
-	UpdatedAt     int64    `json:"updated_at"`
-	LastPlayedAt  int64    `json:"last_played_at"`
-	// TODO(M3-5)：BranchCount（叶子数）。
+	ID            string    `json:"id"`
+	WorkID        string    `json:"work_id"`
+	WorkVersionID string    `json:"work_version_id"`
+	WorkTitle     string    `json:"work_title"`
+	Title         string    `json:"title"`        // 为空时界面显示"未命名存档 · 最近游玩时间"
+	TitleSource   string    `json:"title_source"` // generated | manual | ""
+	HeadNodeID    string    `json:"head_node_id"`
+	TurnCount     int       `json:"turn_count"`   // head 所在进度线的回合数
+	BranchCount   int       `json:"branch_count"` // 分支数（叶子数）
+	ForkedFrom    *ForkInfo `json:"forked_from,omitzero"`
+	Settings      Settings  `json:"settings"`
+	CreatedAt     int64     `json:"created_at"`
+	UpdatedAt     int64     `json:"updated_at"`
+	LastPlayedAt  int64     `json:"last_played_at"`
 }
 
 // Node 是存档树上的一个节点。
@@ -68,7 +69,7 @@ type Node struct {
 	Depth         int        `json:"depth"`
 	Kind          NodeKind   `json:"kind"`
 	Status        NodeStatus `json:"status"`
-	TurnNo        int        `json:"turn_no,omitzero"`
+	TurnNo        int        `json:"turn_no,omitzero"` // turn：回合序号；edit / compaction：所跟随的回合
 	Input         *TurnInput `json:"input,omitzero"`
 	MessagesHash  string     `json:"messages_hash,omitzero"`
 	DisplayHash   string     `json:"display_hash,omitzero"`

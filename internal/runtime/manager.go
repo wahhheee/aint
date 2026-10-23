@@ -113,9 +113,38 @@ func (m *Manager) runningSession(saveID string) *session {
 	return s
 }
 
-// Submit 提交玩家输入并在后台开始一个回合，立即返回回合 ID（也是提交后的节点 ID）。
+// Submit 提交玩家输入并在后台开始一个回合（父节点为当前 head），立即返回回合 ID（也是提交后的节点 ID）。
 // 存档已有回合在运行时返回 Conflict（HTTP 409）。
 func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) (string, error) {
+	return m.submit(ctx, saveID, "", in)
+}
+
+// Regenerate 重新生成回合 nodeID：以它的父节点为父、以同样的输入（in 非空时用新的输入，即"修改玩家输入"）
+// 开始一个新回合，原回合保留为另一个版本；新回合提交后成为 head。
+func (m *Manager) Regenerate(ctx context.Context, saveID, nodeID string, in *save.TurnInput) (string, error) {
+	n, err := m.d.Saves.Node(ctx, saveID, nodeID)
+	if err != nil {
+		return "", err
+	}
+	if n.Kind != save.KindTurn || n.Input == nil {
+		return "", errs.Invalid("只能重新生成回合")
+	}
+	if n.Meta.Stop == "static_opening" {
+		return "", errs.Invalid("静态开场是作品写好的，不需要重新生成")
+	}
+	input := *n.Input
+	if in != nil {
+		if input.Kind == save.InputOpening {
+			return "", errs.Invalid("开场没有玩家输入可以修改")
+		}
+		input = *in
+	}
+	input.ChoiceLabel = "" // 由 prepare 依据父节点的选项重新补全
+	return m.submit(ctx, saveID, n.ParentID, input)
+}
+
+// submit 在后台开始一个回合。parentID 为空时以 head 为父节点。
+func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.TurnInput) (string, error) {
 	if err := validateInput(in); err != nil {
 		return "", err
 	}
@@ -138,16 +167,7 @@ func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) 
 
 	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
 	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
-	release := sync.OnceFunc(func() {
-		m.mu.Lock()
-		s.mu.Lock()
-		s.running = nil
-		if m.sessions[saveID] == s {
-			delete(m.sessions, saveID)
-		}
-		s.mu.Unlock()
-		m.mu.Unlock()
-	})
+	release := sync.OnceFunc(func() { m.releaseSession(saveID, s) })
 	m.wg.Go(func() {
 		defer func() {
 			stop()
@@ -163,9 +183,58 @@ func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) 
 				})
 			}
 		}()
-		m.runTurn(turnCtx, saveID, turnID, in, release)
+		m.runTurn(turnCtx, saveID, turnID, parentID, in, release)
 	})
 	return turnID, nil
+}
+
+// releaseSession 清除会话的运行标记，并在会话空闲时删除它（空闲存档不占内存）。
+func (m *Manager) releaseSession(saveID string, s *session) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.running = nil
+	if m.sessions[saveID] == s {
+		delete(m.sessions, saveID)
+	}
+}
+
+// Exclusive 在存档没有回合运行时执行 fn（移动 head、修改正文、编辑记忆或状态等直接改存档的操作），
+// 执行期间不能开始新回合（不变量 5：单一写者）。有回合在运行时返回 Conflict。
+// fn 返回后发布 timeline.changed 与最新的面板，其他标签页据此刷新。
+func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func() error) error {
+	if _, err := m.d.Saves.Get(ctx, saveID); err != nil {
+		return err
+	}
+	s := m.lockSession(saveID)
+	if s.running != nil {
+		id := s.running.id
+		s.mu.Unlock()
+		return errs.Conflict("回合还在进行中，请等它结束或先停止").WithDetails(map[string]string{"turn_id": id})
+	}
+	err := fn()
+	s.mu.Unlock()
+	m.dropIdle(saveID, s)
+	if err != nil {
+		return err
+	}
+	if sv, err := m.d.Saves.Get(ctx, saveID); err == nil {
+		m.publish(saveID, event.TimelineChanged, event.TimelineChangedData{HeadID: sv.HeadNodeID, Reason: reason})
+	}
+	m.publishPanels(ctx, saveID)
+	return nil
+}
+
+// dropIdle 删除没有运行任何任务的会话。
+func (m *Manager) dropIdle(saveID string, s *session) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running == nil && m.sessions[saveID] == s {
+		delete(m.sessions, saveID)
+	}
 }
 
 // Cancel 停止正在运行的回合。turnID 不匹配（已结束或是别的回合）时返回 NotFound。

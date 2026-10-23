@@ -66,9 +66,13 @@ func (p *Provider) Stream(ctx context.Context, _ *llm.Model, req *llm.Request) (
 	}
 	var resp Response
 	n := 0
-	if p.script.OOC != nil && lastPlayerIsOOC(req) {
+	switch {
+	case req.Purpose == "compact" && len(p.script.Compact) > 0:
+		i := min(compactCalls(req), len(p.script.Compact)-1)
+		resp, n = p.script.Compact[i], 1000+i
+	case p.script.OOC != nil && lastPlayerIsOOC(req):
 		resp = *p.script.OOC
-	} else {
+	default:
 		p.mu.Lock()
 		n = p.calls[req.CacheKey]
 		p.calls[req.CacheKey] = n + 1
@@ -78,7 +82,15 @@ func (p *Provider) Stream(ctx context.Context, _ *llm.Model, req *llm.Request) (
 	if resp.Error != "" {
 		return nil, &llm.APIError{Kind: llm.ErrorKind(resp.Error), Message: "假模型按脚本模拟的错误"}
 	}
-	text := strings.ReplaceAll(resp.Text, "{{input}}", lastPlayerText(req))
+	input := lastPlayerText(req)
+	text := strings.ReplaceAll(resp.Text, "{{input}}", input)
+	if len(resp.ToolCalls) > 0 {
+		calls := make([]ToolCall, len(resp.ToolCalls))
+		for i, tc := range resp.ToolCalls {
+			calls[i] = ToolCall{Name: tc.Name, Args: substitute(tc.Args, input).(map[string]any)}
+		}
+		resp.ToolCalls = calls
+	}
 	return &stream{ctx: ctx, resp: resp, text: text, call: n, inputChars: requestChars(req)}, nil
 }
 
@@ -179,6 +191,45 @@ var (
 	inputTag = regexp.MustCompile(`(?s)<input[^>]*>(.*?)</input>`)
 	oocTag   = regexp.MustCompile(`(?s)<ooc>(.*?)</ooc>`)
 )
+
+// substitute 把参数中所有字符串里的 {{input}} 换成玩家输入（返回新值，不修改脚本）。
+func substitute(v any, input string) any {
+	switch x := v.(type) {
+	case string:
+		return strings.ReplaceAll(x, "{{input}}", input)
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, e := range x {
+			out[k] = substitute(e, input)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = substitute(e, input)
+		}
+		return out
+	}
+	if v == nil {
+		return map[string]any{}
+	}
+	return v
+}
+
+// compactCalls 返回本次整理中已经完成的调用数：最后一条整理指令（<system_task kind="compaction">）之后的助手消息数。
+func compactCalls(req *llm.Request) int {
+	n := 0
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		m := req.Messages[i]
+		if m.Role == llm.RoleUser && strings.Contains(m.TextOf(), `<system_task kind="compaction">`) {
+			return n
+		}
+		if m.Role == llm.RoleAssistant {
+			n++
+		}
+	}
+	return n
+}
 
 // lastPlayerIsOOC 判断最后一条玩家消息是否是场外发言。
 func lastPlayerIsOOC(req *llm.Request) bool {

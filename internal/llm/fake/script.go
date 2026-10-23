@@ -25,11 +25,15 @@ import (
 //	  - error: rate_limited  # 模拟错误（llm.ErrorKind），用于测试重试与错误提示
 //	ooc:                     # 可选：玩家场外发言（<ooc>）时使用，不计入 responses 的循环
 //	  text: "<ooc>收到。</ooc>"
+//	compact:                 # 可选：上下文整理（请求用途为 compact）时依次使用，不计入 responses 的循环
+//	  - tool_calls: [{name: write, args: {path: /memory/chronicle/01.md, content: "……"}}]
+//	  - text: "## 故事至今 ……"   # 最后一项是交接摘要；整理中的调用次数超过列表长度时一直用最后一项
 //
-// 每个存档独立计数，依次循环使用 responses。
+// 每个存档独立计数，依次循环使用 responses。正文与工具参数中的字符串都可以写 {{input}}。
 type Script struct {
 	Responses []Response `yaml:"responses"`
 	OOC       *Response  `yaml:"ooc"`
+	Compact   []Response `yaml:"compact"`
 }
 
 // Response 是一次调用的脚本。

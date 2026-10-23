@@ -12,28 +12,32 @@ type Versions struct {
 }
 
 // TimelineNode 是时间线中的一个节点（只含展示所需字段）。
+// 回合节点带显示项与版本信息；编辑节点带注记（玩家修改了状态或记忆）；整理节点只标出位置。
 type TimelineNode struct {
-	ID        string        `json:"id"`
-	ParentID  string        `json:"parent_id"`
-	Kind      NodeKind      `json:"kind"`
-	Status    NodeStatus    `json:"status"`
-	TurnNo    int           `json:"turn_no"`
-	CreatedAt int64         `json:"created_at"`
-	Display   []DisplayItem `json:"display"`
-	Stop      string        `json:"stop,omitzero"`
-	Error     string        `json:"error,omitzero"`
-	Versions  Versions      `json:"versions"`
+	ID         string        `json:"id"`
+	ParentID   string        `json:"parent_id"`
+	Kind       NodeKind      `json:"kind"`
+	Status     NodeStatus    `json:"status"`
+	TurnNo     int           `json:"turn_no"`
+	CreatedAt  int64         `json:"created_at"`
+	Display    []DisplayItem `json:"display"`
+	Notes      []string      `json:"notes,omitzero"`
+	Stop       string        `json:"stop,omitzero"`
+	Error      string        `json:"error,omitzero"`
+	EditedFrom string        `json:"edited_from,omitzero"` // 修改正文得到的版本：原回合的节点 ID
+	Versions   Versions      `json:"versions"`
 }
 
 // Timeline 是当前分支的时间线（分页，向前加载）。
 type Timeline struct {
-	SaveID  string         `json:"save_id"`
-	HeadID  string         `json:"head_id"`
-	Nodes   []TimelineNode `json:"nodes"`
-	HasMore bool           `json:"has_more"` // 更早的回合还有
+	SaveID   string         `json:"save_id"`
+	HeadID   string         `json:"head_id"`
+	Nodes    []TimelineNode `json:"nodes"`
+	HasMore  bool           `json:"has_more"`  // 更早的回合还有
+	HasLater bool           `json:"has_later"` // head 之后还有内容（回到了更早的回合）：继续游玩会开启新分支
 }
 
-// Timeline 返回进度线上的回合，before 为空时取最新的 limit 个，否则取 before 之前的 limit 个。
+// Timeline 返回进度线上的节点（回合、编辑、整理），before 为空时取最新的 limit 个，否则取 before 之前的 limit 个。
 //
 // TODO(M5)：2,000 回合级别的存档需要按深度直接分页查询（目前先取整条进度线再切片），并批量查询兄弟数。
 func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int) (*Timeline, error) {
@@ -41,51 +45,65 @@ func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int
 	if err != nil {
 		return nil, err
 	}
-	turns := slices.DeleteFunc(slices.Clone(line), func(n *Node) bool { return n.Kind != KindTurn })
+	turns := slices.DeleteFunc(slices.Clone(line), func(n *Node) bool { return n.Kind == KindRoot })
 	if before != "" {
 		if i := slices.IndexFunc(turns, func(n *Node) bool { return n.ID == before }); i >= 0 {
 			turns = turns[:i]
 		}
 	}
 	tl := &Timeline{SaveID: saveID, HeadID: sv.HeadNodeID, Nodes: []TimelineNode{}}
+	if tl.HasLater, err = hasChildren(ctx, s.db.Read(), saveID, sv.HeadNodeID); err != nil {
+		return nil, err
+	}
 	if limit > 0 && len(turns) > limit {
 		tl.HasMore = true
 		turns = turns[len(turns)-limit:]
 	}
 	for _, n := range turns {
-		display, err := s.LoadDisplay(ctx, n.DisplayHash)
-		if err != nil {
-			return nil, err
+		tn := TimelineNode{
+			ID: n.ID, ParentID: n.ParentID, Kind: n.Kind, Status: n.Status, TurnNo: n.TurnNo, CreatedAt: n.CreatedAt,
+			Display: []DisplayItem{}, Notes: n.Notes, Stop: n.Meta.Stop, Error: n.Meta.Error, EditedFrom: n.Meta.EditedFrom,
 		}
-		v, err := s.versions(ctx, n)
-		if err != nil {
-			return nil, err
+		if n.Kind == KindTurn {
+			if tn.Display, err = s.LoadDisplay(ctx, n.DisplayHash); err != nil {
+				return nil, err
+			}
+			if tn.Versions, err = s.versions(ctx, n); err != nil {
+				return nil, err
+			}
 		}
-		tl.Nodes = append(tl.Nodes, TimelineNode{
-			ID: n.ID, ParentID: n.ParentID, Kind: n.Kind, Status: n.Status, TurnNo: n.TurnNo,
-			CreatedAt: n.CreatedAt, Display: display, Stop: n.Meta.Stop, Error: n.Meta.Error, Versions: v,
-		})
+		tl.Nodes = append(tl.Nodes, tn)
 	}
 	return tl, nil
 }
 
-func (s *Service) versions(ctx context.Context, n *Node) (Versions, error) {
+// Siblings 返回与回合 n 同一父节点的全部回合版本（按创建先后），含 n 自身。
+func (s *Service) Siblings(ctx context.Context, n *Node) ([]string, error) {
 	rows, err := s.db.Read().QueryContext(ctx,
-		`SELECT id FROM nodes WHERE parent_id = ? AND kind = 'turn' ORDER BY created_at`, n.ParentID)
+		`SELECT id FROM nodes WHERE save_id = ? AND parent_id = ? AND kind = 'turn' ORDER BY created_at, id`, n.SaveID, n.ParentID)
 	if err != nil {
-		return Versions{}, err
+		return nil, err
 	}
 	defer rows.Close()
-	v := Versions{Index: 1}
+	var out []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			return v, err
+			return nil, err
 		}
-		v.Count++
-		if id == n.ID {
-			v.Index = v.Count
-		}
+		out = append(out, id)
 	}
-	return v, rows.Err()
+	return out, rows.Err()
+}
+
+func (s *Service) versions(ctx context.Context, n *Node) (Versions, error) {
+	sibs, err := s.Siblings(ctx, n)
+	if err != nil {
+		return Versions{}, err
+	}
+	v := Versions{Index: 1, Count: len(sibs)}
+	if i := slices.Index(sibs, n.ID); i >= 0 {
+		v.Index = i + 1
+	}
+	return v, nil
 }

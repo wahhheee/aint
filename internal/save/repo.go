@@ -16,11 +16,11 @@ func insertSave(ctx context.Context, q store.Querier, s *Save) error {
 		return err
 	}
 	_, err = q.ExecContext(ctx, `
-		INSERT INTO saves (id, work_id, work_version_id, title, title_source, head_node_id, settings,
+		INSERT INTO saves (id, work_id, work_version_id, title, title_source, forked_from, head_node_id, settings,
 		                   created_at, updated_at, last_played_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.WorkID, s.WorkVersionID, store.NullString(s.Title), store.NullString(s.TitleSource), store.NullString(s.HeadNodeID),
-		string(settings), s.CreatedAt, s.UpdatedAt, s.LastPlayedAt)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.WorkID, s.WorkVersionID, store.NullString(s.Title), store.NullString(s.TitleSource), marshalFork(s.ForkedFrom),
+		store.NullString(s.HeadNodeID), string(settings), s.CreatedAt, s.UpdatedAt, s.LastPlayedAt)
 	return err
 }
 
@@ -35,18 +35,29 @@ func setHead(ctx context.Context, q store.Querier, saveID, headID string, played
 	return err
 }
 
-// saveColumns 附带作品标题与 head 的回合号，存档列表与详情都用它。
+// saveColumns 附带作品标题、head 的回合号与分支数（叶子数），存档列表与详情都用它。
+// 编辑、整理节点的回合号是它们所跟随的回合，head 停在这类节点上时回合数照样正确。
 const saveColumns = `s.id, s.work_id, s.work_version_id, w.title, COALESCE(s.title, ''), COALESCE(s.title_source, ''),
-	COALESCE(s.head_node_id, ''), COALESCE(n.turn_no, 0), s.settings, s.created_at, s.updated_at, COALESCE(s.last_played_at, 0)`
+	COALESCE(s.head_node_id, ''), COALESCE(n.turn_no, 0),
+	(SELECT COUNT(*) FROM nodes c WHERE c.save_id = s.id
+		AND NOT EXISTS (SELECT 1 FROM nodes k WHERE k.save_id = c.save_id AND k.parent_id = c.id)),
+	s.forked_from, s.settings, s.created_at, s.updated_at, COALESCE(s.last_played_at, 0)`
 
 const saveFrom = ` FROM saves s JOIN works w ON w.id = s.work_id LEFT JOIN nodes n ON n.id = s.head_node_id `
 
 func scanSave(sc interface{ Scan(...any) error }) (*Save, error) {
 	s := &Save{}
 	var settings string
+	var fork sql.NullString
 	if err := sc.Scan(&s.ID, &s.WorkID, &s.WorkVersionID, &s.WorkTitle, &s.Title, &s.TitleSource, &s.HeadNodeID,
-		&s.TurnCount, &settings, &s.CreatedAt, &s.UpdatedAt, &s.LastPlayedAt); err != nil {
+		&s.TurnCount, &s.BranchCount, &fork, &settings, &s.CreatedAt, &s.UpdatedAt, &s.LastPlayedAt); err != nil {
 		return nil, err
+	}
+	if fork.Valid {
+		s.ForkedFrom = &ForkInfo{}
+		if err := jsonx.Unmarshal([]byte(fork.String), s.ForkedFrom); err != nil {
+			return nil, err
+		}
 	}
 	if err := jsonx.Unmarshal([]byte(settings), &s.Settings); err != nil {
 		return nil, err

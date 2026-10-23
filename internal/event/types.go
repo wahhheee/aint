@@ -19,6 +19,9 @@ const (
 	TurnCommitted = "turn.committed" // TurnCommittedData：回合已提交，前端应以时间线接口为准
 	TurnFailed    = "turn.failed"    // TurnFailedData
 	Panels        = "panels"         // PanelsData
+	// TimelineChanged：回合以外的操作改了存档（移动 head、修改正文、丢弃、删除分支、编辑记忆或状态），
+	// 前端应重新拉取时间线与存档信息。
+	TimelineChanged = "timeline.changed" // TimelineChangedData
 
 	CompactionStarted = "compaction.started" // CompactionStartedData
 	CompactionDone    = "compaction.done"    // CompactionDoneData
@@ -104,6 +107,11 @@ type PanelRender struct {
 	ID   string `json:"id"`
 	HTML string `json:"html"`
 	Hash string `json:"hash"`
+}
+
+type TimelineChangedData struct {
+	HeadID string `json:"head_id"`
+	Reason string `json:"reason"` // head | rewrite | discard | delete_branch | edit_memory | edit_state | compaction
 }
 
 type CompactionStartedData struct {

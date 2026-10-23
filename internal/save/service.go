@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 
 	"github.com/wahhheee/yanyi/internal/llm"
@@ -401,53 +400,4 @@ func (s *Service) LoadMemory(ctx context.Context, hash string) (MemoryManifest, 
 // Blob 按哈希读取内容（记忆文件等）。
 func (s *Service) Blob(ctx context.Context, hash string) ([]byte, error) {
 	return s.blobs.Get(ctx, s.db.Read(), hash)
-}
-
-// TODO(M3-5)：分支操作——Regenerate（兄弟回合）、SetHead(here | latest-leaf)、Rewrite（修改 AI 正文）、
-//   Discard（丢弃中断回合）、DeleteBranch（P1）、CopyAsNew（P1，技术方案 6.2–6.4）。
-// TODO(M3-2/M3-9)：记忆与状态的玩家编辑（edit 节点 + 注记）。
-// TODO(M5-13)：Exit 与标题生成（技术方案 6.5）。
-
-// MemoryEntry 是记忆目录中的一项（阶段块 <memory_index>）。
-type MemoryEntry struct {
-	Path    string
-	Summary string // frontmatter 的 summary 或首个非空行（≤ 60 字）
-}
-
-// MemoryIndex 生成记忆目录（《02-技术方案》12.6）。
-// TODO(M3-6)：文件超过 80 个时按目录折叠为"目录名（N 个文件）"；frontmatter summary。
-func (s *Service) MemoryIndex(ctx context.Context, memoryHash string) ([]MemoryEntry, error) {
-	var mf MemoryManifest
-	if err := s.blobs.GetJSON(ctx, s.db.Read(), memoryHash, &mf); err != nil {
-		return nil, err
-	}
-	paths := make([]string, 0, len(mf.Files))
-	for p := range mf.Files {
-		paths = append(paths, p)
-	}
-	slices.Sort(paths)
-	out := make([]MemoryEntry, 0, len(paths))
-	for _, p := range paths {
-		data, err := s.blobs.Get(ctx, s.db.Read(), mf.Files[p].Blob)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, MemoryEntry{Path: p, Summary: FirstLineSummary(string(data))})
-	}
-	return out, nil
-}
-
-// FirstLineSummary 取文本的首个非空行（去掉标题符号与注释，≤ 60 字）作为一行说明。
-func FirstLineSummary(text string) string {
-	for _, line := range strings.Split(text, "\n") {
-		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "#"))
-		if line == "" || strings.HasPrefix(line, "<!--") || line == "---" {
-			continue
-		}
-		if r := []rune(line); len(r) > 60 {
-			line = string(r[:60]) + "…"
-		}
-		return line
-	}
-	return ""
 }

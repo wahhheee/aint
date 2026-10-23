@@ -17,6 +17,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/tmpl"
 	"github.com/wahhheee/yanyi/internal/tools"
+	"github.com/wahhheee/yanyi/internal/vfs"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -138,7 +139,7 @@ func workPrompt(args []string) error {
 	for _, p := range set.Paths() {
 		if rest, ok := strings.CutPrefix(p, "memory/"); ok {
 			data, _ := set.Get(p)
-			memory = append(memory, save.MemoryEntry{Path: "/memory/" + rest, Summary: save.FirstLineSummary(string(data))})
+			memory = append(memory, save.MemoryEntry{Path: "/memory/" + rest, Summary: vfs.Summary(string(data))})
 		}
 	}
 	initState := m.State.Defaults()
