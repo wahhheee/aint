@@ -1,6 +1,8 @@
 package vfs
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"maps"
 	"slices"
 )
@@ -16,14 +18,15 @@ type FileRef struct {
 // 回合提交时生成新清单，回合被丢弃则写操作作废（12.2）。不并发安全（工具写操作串行执行）。
 type Overlay struct {
 	base    map[string]FileRef
+	turn    int // 本回合的回合号，写入的文件记为在这一回合修改
 	changed map[string]FileRef
 	removed map[string]bool
 	content map[string][]byte // 本回合新写入的内容（提交时写 blob）
 }
 
-// NewOverlay 以父节点的记忆清单为底创建覆盖层。base 不会被修改。
-func NewOverlay(base map[string]FileRef) *Overlay {
-	return &Overlay{base: base, changed: map[string]FileRef{}, removed: map[string]bool{}, content: map[string][]byte{}}
+// NewOverlay 以父节点的记忆清单为底创建覆盖层；turn 是写入时记录的回合号。base 不会被修改。
+func NewOverlay(base map[string]FileRef, turn int) *Overlay {
+	return &Overlay{base: base, turn: turn, changed: map[string]FileRef{}, removed: map[string]bool{}, content: map[string][]byte{}}
 }
 
 // Get 返回文件引用与本回合写入的内容（若有）。
@@ -38,10 +41,10 @@ func (o *Overlay) Get(p string) (ref FileRef, data []byte, ok bool) {
 	return r, nil, ok
 }
 
-// Put 写入文件（内容哈希由调用方计算，提交时写 blob）。
-func (o *Overlay) Put(p string, data []byte, blob string, turn int) {
+// Put 写入文件。引用中的 Blob 与 blob 存储的哈希格式相同（'sha256:<hex>'），提交时内容按同一哈希写入。
+func (o *Overlay) Put(p string, data []byte) {
 	delete(o.removed, p)
-	o.changed[p] = FileRef{Blob: blob, Size: len(data), Turn: turn}
+	o.changed[p] = FileRef{Blob: ContentHash(data), Size: len(data), Turn: o.turn}
 	o.content[p] = data
 }
 
@@ -59,20 +62,42 @@ func (o *Overlay) Dirty() bool { return len(o.changed) > 0 || len(o.removed) > 0
 
 // Paths 返回当前全部文件路径（已排序）。
 func (o *Overlay) Paths() []string {
-	all := maps.Clone(o.base)
-	maps.Copy(all, o.changed)
-	for p := range o.removed {
-		delete(all, p)
+	return slices.Sorted(maps.Keys(o.files()))
+}
+
+// TotalSize 返回当前全部记忆文件的字节数。
+func (o *Overlay) TotalSize() int {
+	n := 0
+	for _, f := range o.files() {
+		n += f.Size
 	}
-	return slices.Sorted(maps.Keys(all))
+	return n
 }
 
 // Result 返回合并后的清单与本回合新写入的内容（供提交）。
 func (o *Overlay) Result() (files map[string]FileRef, written map[string][]byte) {
-	files = maps.Clone(o.base)
-	maps.Copy(files, o.changed)
-	for p := range o.removed {
-		delete(files, p)
+	return o.files(), maps.Clone(o.content)
+}
+
+// Changes 返回本回合改动过的路径（写入的与删除的，各自排序）。
+func (o *Overlay) Changes() (written, removed []string) {
+	return slices.Sorted(maps.Keys(o.changed)), slices.Sorted(maps.Keys(o.removed))
+}
+
+func (o *Overlay) files() map[string]FileRef {
+	all := maps.Clone(o.base)
+	if all == nil {
+		all = map[string]FileRef{}
 	}
-	return files, maps.Clone(o.content)
+	maps.Copy(all, o.changed)
+	for p := range o.removed {
+		delete(all, p)
+	}
+	return all
+}
+
+// ContentHash 计算内容哈希，格式与 blob 存储一致（'sha256:<hex>'）。
+func ContentHash(data []byte) string {
+	sum := sha256.Sum256(data)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }

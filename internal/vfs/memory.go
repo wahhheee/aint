@@ -6,7 +6,7 @@ import (
 )
 
 // MemorySource 是 /memory 挂载点的来源：以回合覆盖层为准——本回合写入的内容立即可读，
-// 删除的文件立即消失（写入由 M3-2 实现）；未改动的文件按清单中的 blob 读取。
+// 删除的文件立即消失；未改动的文件按清单中的 blob 读取。写入的约束由 Table.Write 检查。
 type MemorySource struct {
 	overlay *Overlay
 	load    func(ctx context.Context, blob string) ([]byte, error)
@@ -20,7 +20,25 @@ func NewMemorySource(o *Overlay, load func(ctx context.Context, blob string) ([]
 	return &MemorySource{overlay: o, load: load, summaries: map[string]string{}}
 }
 
-var _ Source = (*MemorySource)(nil)
+var (
+	_ Source = (*MemorySource)(nil)
+	_ Writer = (*MemorySource)(nil)
+)
+
+// Write 把文件写入覆盖层。
+func (s *MemorySource) Write(_ context.Context, p string, data []byte) error {
+	s.overlay.Put(p, data)
+	return nil
+}
+
+// Remove 从覆盖层删除文件。
+func (s *MemorySource) Remove(_ context.Context, p string) error {
+	s.overlay.Remove(p)
+	return nil
+}
+
+// TotalSize 返回当前全部记忆文件的字节数。
+func (s *MemorySource) TotalSize() int { return s.overlay.TotalSize() }
 
 // Files 返回全部记忆文件，附带一行说明（frontmatter summary 或首行，12.6）。
 func (s *MemorySource) Files(ctx context.Context) ([]File, error) {

@@ -3,7 +3,7 @@
 // 约定（《02-技术方案》第 10 节）：
 //   - 工具集合在一个阶段内固定：由作品版本、features、助手开关决定（前缀稳定）；
 //     工具"当前不可用"（如整理阶段）时返回说明，不从列表移除；
-//   - 同一条助手消息中的多个调用：read 类并行、write 类按原顺序串行、terminal 最后；结果按原顺序返回；
+//   - 同一条助手消息中的多个调用按原顺序执行：相邻的 read 类并行、write 类串行、terminal 最后；结果按原顺序返回；
 //   - 未执行时结果以"未执行："开头，陈述原因并给出可行写法（D-21：结果即事实）；
 //   - 工具只能通过 Env 访问本存档的数据（不变量：只能访问 VFS，写操作仅限 /memory）。
 package tools
@@ -56,8 +56,7 @@ type Env interface {
 	OfferChoices(item save.DisplayItem)
 	// ShowCard 在正文流中追加一个展示项（骰子卡片等），并实时推送给玩家。只由写类工具调用（串行）。
 	ShowCard(item save.DisplayItem)
-	// VFS 是本回合的虚拟文件系统（/work /memory /transcript /uploads）。
-	// TODO(M3-2)：写入（write / edit / remove 进回合覆盖层）。
+	// VFS 是本回合的虚拟文件系统（/work /memory /transcript /uploads）；写入只进 /memory 的回合覆盖层。
 	VFS() vfs.FS
 	// State 返回本回合当前的状态（以父节点快照为起点，含本回合已生效的修改）。只读：不得修改返回的映射。
 	State() map[string]any
@@ -147,7 +146,7 @@ type Outcome struct {
 	Records  []CallRecord
 }
 
-// Execute 执行一批工具调用：读并行、写串行、终止型最后；结果按原顺序返回。
+// Execute 执行一批工具调用：相邻的读类并行、写类串行、终止型最后；结果按原顺序返回。
 func (r *Registry) Execute(ctx context.Context, env Env, calls []llm.ToolCall) Outcome {
 	results := make([]*Result, len(calls))
 	durations := make([]time.Duration, len(calls))
@@ -157,8 +156,17 @@ func (r *Registry) Execute(ctx context.Context, env Env, calls []llm.ToolCall) O
 		results[i], durations[i] = &res, time.Since(start)
 	}
 
+	// 按原顺序分段执行：相邻的读类调用并行，写类逐个串行；读写之间保持原来的先后（写入后再读，读到的是写入后的内容）。
 	fs := env.Features()
-	var reads, writes []int
+	var batch []int // 待并行执行的一段读类调用
+	flush := func() {
+		var wg sync.WaitGroup
+		for _, i := range batch {
+			wg.Go(func() { run(i, r.byName[calls[i].Name]) })
+		}
+		wg.Wait()
+		batch = batch[:0]
+	}
 	terminal := -1
 	for i, c := range calls {
 		d, ok := r.byName[c.Name]
@@ -172,7 +180,7 @@ func (r *Registry) Execute(ctx context.Context, env Env, calls []llm.ToolCall) O
 			res := NotExecuted("没有名为 %s 的工具，可用的工具见工具列表。", c.Name)
 			results[i] = &res
 		case d.Kind == KindRead:
-			reads = append(reads, i)
+			batch = append(batch, i)
 		case d.Kind == KindTerminal:
 			if terminal >= 0 {
 				res := NotExecuted("本回合已经给出过选项，这一次调用没有生效。")
@@ -181,18 +189,11 @@ func (r *Registry) Execute(ctx context.Context, env Env, calls []llm.ToolCall) O
 				terminal = i
 			}
 		default:
-			writes = append(writes, i)
+			flush()
+			run(i, d)
 		}
 	}
-
-	var wg sync.WaitGroup
-	for _, i := range reads {
-		wg.Go(func() { run(i, r.byName[calls[i].Name]) })
-	}
-	wg.Wait()
-	for _, i := range writes {
-		run(i, r.byName[calls[i].Name])
-	}
+	flush()
 	if terminal >= 0 {
 		run(terminal, r.byName[calls[terminal].Name])
 	}

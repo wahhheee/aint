@@ -111,30 +111,15 @@ type Image struct {
 	Size int
 }
 
-// Query 是检索参数。
-type Query struct {
-	Text   string
-	Prefix string
-	Regex  bool
-	Limit  int
-}
-
-// Hit 是一条检索结果。
-type Hit struct {
-	Path    string
-	Line    int
-	Snippet string
-}
-
 // FS 是主笔看到的文件系统（每个回合草稿一个实例，见 Table）。
-//
-// TODO(M3-2)：Write / Edit / Remove——写入 /memory 的回合覆盖层（Overlay），约束见 Writable 与 12.2；
-// MemorySource 已经以覆盖层为准，写入后立即可读。
-// TODO(M3-4)：Search(ctx, Query) ([]Hit, error)——排序：记忆 > 作品资料 > 原文（新→旧），
-// 每个文件最多 5 条，总计 ≤ 50 条 / 约 6,000 字符；别名扩展（File.Names）。
+// 写操作只允许 /memory，写入回合的覆盖层（Overlay），约束见 Writable 与 12.2；检索见 search.go。
 type FS interface {
 	List(ctx context.Context, p string, depth int) ([]Entry, error)
 	Read(ctx context.Context, p string, offset, limit int) (*ReadResult, error)
+	ReadFile(ctx context.Context, p string) ([]byte, error)
+	Write(ctx context.Context, p string, data []byte) (*WriteResult, error)
+	Remove(ctx context.Context, p string) error
+	Search(ctx context.Context, q Query) (*SearchResult, error)
 }
 
 // 路径错误的类别（errors.Is 判断）。

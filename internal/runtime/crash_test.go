@@ -42,7 +42,6 @@ import (
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/markup"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/store"
 )
@@ -454,14 +453,8 @@ func inspectStore(t *testing.T, e *env, saveID string) storeSnapshot {
 		if err != nil || len(display) == 0 {
 			t.Fatalf("回合 %s 的显示项读不出：%v", n.id, err)
 		}
-		var text strings.Builder
-		for _, it := range display {
-			if it.T == "text" {
-				text.WriteString(it.Markup + "\n\n")
-			}
-		}
-		if plain := markup.PlainText(text.String()); plain != "" {
-			wantFTS[n.id] = plain
+		if body := save.TranscriptBody(display, nil); body != "" { // 测试作品的正文没有 <say>，不需要人物名
+			wantFTS[n.id] = body
 		}
 	}
 

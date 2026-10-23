@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/markup"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/prompts"
@@ -158,7 +157,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 		node, err := s.commitTx(ctx, tx, TurnCommit{
 			SaveID: sv.ID, Parent: root, TurnNo: 1, Input: TurnInput{Kind: InputOpening},
 			Messages: messages, Display: display, StateHash: stateHash, MemoryHash: memHash,
-			WorkVersionID: versionID, Status: StatusCommitted, PlainText: markup.PlainText(opening.Markup),
+			WorkVersionID: versionID, Status: StatusCommitted, PlainText: TranscriptBody(display, m.SpeakerName),
 			Meta: NodeMeta{Stop: "static_opening"},
 		})
 		if err != nil {
@@ -253,12 +252,13 @@ type TurnCommit struct {
 	Display       []DisplayItem
 	StateHash     string         // 未变化时传父节点的哈希
 	State         map[string]any // 非 nil 时在同一事务中写入新的状态快照，StateHash 取其哈希
-	MemoryHash    string
+	MemoryHash    string         // 未变化时传父节点的哈希
+	Memory        *MemoryWrite   // 非 nil 时在同一事务中写入记忆文件与新清单，MemoryHash 取新清单的哈希
 	WorkVersionID string
 	Status        NodeStatus
 	Usage         *llm.Usage
 	Meta          NodeMeta
-	PlainText     string         // 正文纯文本，写入原文索引
+	PlainText     string         // 原文正文（TranscriptBody），写入原文索引
 	UsageRecords  []usage.Record // 本回合的每次模型调用
 	NodeID        string         // 可选：预先分配的节点 ID（runtime 用回合 ID 作节点 ID，便于前后端对应）
 }
@@ -285,6 +285,11 @@ func (s *Service) commitTx(ctx context.Context, tx *sql.Tx, c TurnCommit) (*Node
 	}
 	if c.State != nil {
 		if c.StateHash, err = s.blobs.PutJSON(ctx, tx, c.State); err != nil {
+			return nil, err
+		}
+	}
+	if c.Memory != nil {
+		if c.MemoryHash, err = s.putMemory(ctx, tx, c.Memory); err != nil {
 			return nil, err
 		}
 	}
@@ -315,6 +320,43 @@ func (s *Service) commitTx(ctx context.Context, tx *sql.Tx, c TurnCommit) (*Node
 		return nil, err
 	}
 	return n, nil
+}
+
+// MemoryWrite 是一次提交中记忆的新内容：Files 是完整清单，Data 是本次新写入的文件内容（按路径）。
+type MemoryWrite struct {
+	Files map[string]MemoryFile
+	Data  map[string][]byte
+}
+
+// putMemory 写入记忆文件内容与新清单，返回清单哈希。
+func (s *Service) putMemory(ctx context.Context, q store.Querier, w *MemoryWrite) (string, error) {
+	files := make(map[string]MemoryFile, len(w.Files))
+	for p, f := range w.Files {
+		files[p] = f
+	}
+	for p, data := range w.Data {
+		f, ok := files[p]
+		if !ok {
+			continue // 写入后又删除了
+		}
+		hash, err := s.blobs.Put(ctx, q, data, memoryMIME(p))
+		if err != nil {
+			return "", err
+		}
+		f.Blob, f.Size = hash, len(data)
+		files[p] = f
+	}
+	return s.blobs.PutJSON(ctx, q, MemoryManifest{V: 1, Files: files})
+}
+
+func memoryMIME(p string) string {
+	switch {
+	case strings.HasSuffix(p, ".md"):
+		return "text/markdown; charset=utf-8"
+	case strings.HasSuffix(p, ".yaml"):
+		return "application/yaml"
+	}
+	return "text/plain; charset=utf-8"
 }
 
 // LoadMessages 读取节点的消息。

@@ -19,6 +19,7 @@ type fakeEnv struct {
 	w     *work.Model
 	st    map[string]any
 	cards []save.DisplayItem
+	fs    vfs.FS
 }
 
 func (e *fakeEnv) Features() prompts.FeatureSet {
@@ -27,7 +28,7 @@ func (e *fakeEnv) Features() prompts.FeatureSet {
 func (e *fakeEnv) Work() *work.Model              { return e.w }
 func (e *fakeEnv) OfferChoices(save.DisplayItem)  {}
 func (e *fakeEnv) ShowCard(item save.DisplayItem) { e.cards = append(e.cards, item) }
-func (e *fakeEnv) VFS() vfs.FS                    { return nil }
+func (e *fakeEnv) VFS() vfs.FS                    { return e.fs }
 func (e *fakeEnv) State() map[string]any          { return e.st }
 func (e *fakeEnv) ModelImage(_ context.Context, blob string) (llm.ImageRef, error) {
 	return llm.ImageRef{Blob: blob, MIME: "image/png"}, nil

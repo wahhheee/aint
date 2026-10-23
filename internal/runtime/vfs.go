@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"slices"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
@@ -17,12 +20,13 @@ import (
 // buildVFS 组装本回合的挂载表（《02-技术方案》12.1）：
 //
 //	/work        作品资料：lore/ 下的设定文档（读取时补全 [[id]] 链接，D-35）与 assets/ 下的素材
-//	/memory      本存档的记忆：以进度线 head 的记忆清单为底的写时复制覆盖层（写入随 M3-2）
-//	/transcript  已发生的原文（TODO(M3-3)：虚拟文件；目前挂载点存在但暂不可用）
+//	/memory      本存档的记忆：以进度线 head 的记忆清单为底的写时复制覆盖层，写入随回合提交
+//	/transcript  进度线上已提交回合的原文：/transcript/0042 是第 42 回合（虚拟文件，检索走全文索引）
 //	/uploads     进度线上（含本回合）玩家上传的图片，只在模型能看图时挂载：/uploads/0005-1.jpg 是第 5 回合的第 1 张
 //
 // 挂载表在回合开始时确定，之后不变；分支隔离由"只取进度线上的记忆清单与上传"保证（不变量 3）。
-func (m *Manager) buildVFS(ctx context.Context, w *work.Model, fs prompts.FeatureSet, head *save.Node, uploads []uploadFile) (*vfs.Table, *vfs.Overlay, error) {
+func (m *Manager) buildVFS(ctx context.Context, w *work.Model, fs prompts.FeatureSet, saveID string, line []*save.Node, turnNo int, uploads []uploadFile) (*vfs.Table, *vfs.Overlay, error) {
+	head := line[len(line)-1]
 	mf, err := m.d.Saves.LoadMemory(ctx, head.MemoryHash)
 	if err != nil {
 		return nil, nil, err
@@ -31,11 +35,11 @@ func (m *Manager) buildVFS(ctx context.Context, w *work.Model, fs prompts.Featur
 	for p, f := range mf.Files {
 		base[p] = vfs.FileRef{Blob: f.Blob, Size: f.Size, Turn: f.Turn}
 	}
-	overlay := vfs.NewOverlay(base)
+	overlay := vfs.NewOverlay(base, turnNo)
 	mounts := []vfs.Mount{
 		{Root: "/work", Title: "作品资料（只读）", Source: &workSource{w: w, works: m.d.Works}},
 		{Root: "/memory", Title: "你的记忆笔记", Source: vfs.NewMemorySource(overlay, m.d.Saves.Blob)},
-		{Root: "/transcript", Title: "已发生的原文（只读）"},
+		{Root: "/transcript", Title: "已发生的原文（只读）", Source: newTranscriptSource(m.d.Saves, saveID, w, line)},
 	}
 	if fs.Has(prompts.FVision) {
 		mounts = append(mounts, vfs.Mount{Root: "/uploads", Title: "玩家上传的图片（只读）", Source: uploadsSource{files: uploads, blob: m.d.Saves.Blob}})
@@ -176,4 +180,83 @@ func docImages(w *work.Model, d work.Doc) string {
 		lines = append(lines, line)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// transcriptSource 是 /transcript 挂载点：进度线上已提交的回合，每回合一个虚拟文件（《02-技术方案》12.4）。
+// 只含当前进度线（分支隔离，不变量 3）；正在进行的回合不在其中。
+type transcriptSource struct {
+	saves  *save.Service
+	saveID string
+	name   func(string) string // <say who> 的人物 ID → 人物名
+	turns  []*save.Node        // 进度线上的 turn 节点，按回合号升序
+	byNode map[string]*save.Node
+}
+
+func newTranscriptSource(saves *save.Service, saveID string, w *work.Model, line []*save.Node) *transcriptSource {
+	s := &transcriptSource{saves: saves, saveID: saveID, name: w.SpeakerName, byNode: map[string]*save.Node{}}
+	for _, n := range line {
+		if n.Kind == save.KindTurn {
+			s.turns = append(s.turns, n)
+			s.byNode[n.ID] = n
+		}
+	}
+	return s
+}
+
+func (s *transcriptSource) Files(context.Context) ([]vfs.File, error) {
+	out := make([]vfs.File, len(s.turns))
+	for i, n := range s.turns {
+		out[i] = vfs.File{Path: save.TranscriptPath(n.TurnNo), Summary: save.InputSummary(n.Input), Names: []string{strconv.Itoa(n.TurnNo)}}
+	}
+	return out, nil
+}
+
+func (s *transcriptSource) Open(ctx context.Context, f vfs.File) ([]byte, error) {
+	for _, n := range s.turns {
+		if save.TranscriptPath(n.TurnNo) != f.Path {
+			continue
+		}
+		// 由显示项生成（与写入原文索引的是同一个函数），按哈希读取，不必扫描全文索引
+		display, err := s.saves.LoadDisplay(ctx, n.DisplayHash)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(save.TranscriptFile(n.TurnNo, save.TranscriptBody(display, s.name))), nil
+	}
+	return nil, &vfs.PathError{Path: f.Path, Err: vfs.ErrNotFound}
+}
+
+// Search 检索原文：字面检索的词都不少于 3 个字时先用全文索引（trigram）取候选回合，否则读出进度线上的全部原文逐行扫描；
+// 结果只保留进度线上的回合，按回合号新→旧排列。
+func (s *transcriptSource) Search(ctx context.Context, m *vfs.Matcher, prefix string) ([]vfs.Hit, error) {
+	var texts map[string]string
+	var err error
+	if len(m.Terms) > 0 && !slices.ContainsFunc(m.Terms, func(t string) bool { return utf8.RuneCountInString(t) < 3 }) {
+		texts, err = s.saves.MatchTranscript(ctx, s.saveID, m.Terms)
+	} else {
+		texts, err = s.saves.TranscriptTexts(ctx, s.saveID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var hits []vfs.Hit
+	for id, body := range texts {
+		n, ok := s.byNode[id]
+		if !ok {
+			continue // 其他分支的回合
+		}
+		p := save.TranscriptPath(n.TurnNo)
+		if prefix != "/" && prefix != "/transcript" && prefix != p {
+			continue
+		}
+		lines := vfs.Lines([]byte(save.TranscriptFile(n.TurnNo, body)))
+		for _, h := range vfs.ScanLines(p, lines, m) {
+			if h.Line == 1 { // 标题行"# 第 N 回合"不参与检索
+				continue
+			}
+			h.Order = -n.TurnNo
+			hits = append(hits, h)
+		}
+	}
+	return hits, nil
 }

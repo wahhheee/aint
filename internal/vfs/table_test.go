@@ -45,7 +45,7 @@ func testTable() *Table {
 			"/work/lore/many.md":           []byte(many.String()),
 		},
 	}
-	memory := NewMemorySource(NewOverlay(map[string]FileRef{"/memory/index.md": {Blob: "b1", Size: 12}}),
+	memory := NewMemorySource(NewOverlay(map[string]FileRef{"/memory/index.md": {Blob: "b1", Size: 12}}, 1),
 		func(_ context.Context, blob string) ([]byte, error) {
 			return []byte("---\nsummary: 总索引\n---\n- a\n"), nil
 		})

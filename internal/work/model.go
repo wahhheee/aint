@@ -95,6 +95,16 @@ func (m *Model) DocByPath(p string) (Doc, bool) {
 	return Doc{}, false
 }
 
+// SpeakerName 把 <say who> 的值换成人物名：值是设定文档的 ID 时返回文档标题，否则原样返回。
+func (m *Model) SpeakerName(who string) string {
+	for _, d := range m.Docs {
+		if d.ID == who && d.Title != "" {
+			return d.Title
+		}
+	}
+	return who
+}
+
 // Asset 按 ID 或路径查找素材（规范：含 / 的引用视为路径）。
 func (m *Model) Asset(ref string) (Asset, bool) {
 	for _, a := range m.Assets {

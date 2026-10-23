@@ -91,16 +91,19 @@ func (o *Options) has(name string) bool {
 
 // PlainText 把叙事标记转为故事原文的纯文本（原文索引、/transcript），规则见 Plain。
 // 所有名称合法的标签都按已启用处理：模型写出的标签不论是否启用都不是故事内容。
-//
-// TODO(M3-3)：<say who> 写的是人物 ID 时换成人物名（需要作品人物表）。
-func PlainText(src string) string {
-	return Plain(Parse(src, Options{AllTags: true}))
+func PlainText(src string) string { return PlainTextWith(src, nil) }
+
+// PlainTextWith 同 PlainText；name 非空时用它把 <say who> 的值（可能是人物 ID）换成人物名。
+func PlainTextWith(src string, name func(who string) string) string {
+	return plain(Parse(src, Options{AllTags: true}), name)
 }
 
 // Plain 取 AST 的纯文本，与前端 plainText 一致：每个块一行；场景分隔为"◇"；段首场景、插图取标题、
 // 说明文字；<say who="林舟">台词</say> 为"林舟：台词"；场外内容（<ooc> 块与行内 <ooc>）不属于故事，
 // 整段去掉（D-30）；按原文显示的标签保留原文；其余标签只取其中的文字。
-func Plain(blocks []Node) string {
+func Plain(blocks []Node) string { return plain(blocks, nil) }
+
+func plain(blocks []Node, name func(string) string) string {
 	lines := make([]string, 0, len(blocks))
 	for _, b := range blocks {
 		var s string
@@ -115,7 +118,7 @@ func Plain(blocks []Node) string {
 			continue
 		default:
 			var sb strings.Builder
-			writeInline(&sb, b.Children)
+			writeInline(&sb, b.Children, name)
 			s = sb.String()
 		}
 		if s != "" {
@@ -125,7 +128,7 @@ func Plain(blocks []Node) string {
 	return strings.Join(lines, "\n")
 }
 
-func writeInline(sb *strings.Builder, nodes []Node) {
+func writeInline(sb *strings.Builder, nodes []Node, name func(string) string) {
 	for _, n := range nodes {
 		switch n.Type {
 		case NodeText, NodeRaw:
@@ -136,13 +139,16 @@ func writeInline(sb *strings.Builder, nodes []Node) {
 				continue
 			case "say":
 				if who := n.Attrs["who"]; who != "" {
+					if name != nil {
+						who = name(who)
+					}
 					sb.WriteString(who)
 					sb.WriteString("：")
 				}
 			}
-			writeInline(sb, n.Children)
+			writeInline(sb, n.Children, name)
 		default:
-			writeInline(sb, n.Children)
+			writeInline(sb, n.Children, name)
 		}
 	}
 }

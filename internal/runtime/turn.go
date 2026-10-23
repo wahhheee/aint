@@ -11,7 +11,6 @@ import (
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/markup"
 	"github.com/wahhheee/yanyi/internal/panel"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/prompts"
@@ -19,6 +18,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/tools"
 	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/yanyi/internal/vfs"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -164,7 +164,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID string, in save.Tu
 		return nil, err
 	}
 
-	fsys, memory, err := m.buildVFS(ctx, w, features, head, uploads.all)
+	fsys, memory, err := m.buildVFS(ctx, w, features, sv.ID, line, turnNo+1, uploads.all)
 	if err != nil {
 		return nil, err
 	}
@@ -413,15 +413,16 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		d.display = append(d.display, *d.choices)
 	}
 
-	// 状态有变化时写入新快照，否则沿用父节点的哈希。TODO(M3-2)：记忆有变化时写入新清单。
+	// 状态、记忆有变化时写入新快照与新清单，否则沿用父节点的哈希。
 	var newState map[string]any
 	if d.stateChanged {
 		newState = d.state
 	}
+	memory := memoryWrite(d.memory)
 	node, err := m.d.Saves.CommitTurn(ctx, save.TurnCommit{
 		SaveID: d.save.ID, Parent: d.parent, TurnNo: d.turnNo, Input: d.input, Messages: d.turnMsgs, Display: d.display,
-		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, WorkVersionID: d.parent.WorkVersionID,
-		Status: d.status, Usage: &d.usage, PlainText: markup.PlainText(d.markupText()), UsageRecords: d.records, NodeID: d.id,
+		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, Memory: memory, WorkVersionID: d.parent.WorkVersionID,
+		Status: d.status, Usage: &d.usage, PlainText: save.TranscriptBody(d.display, d.work.SpeakerName), UsageRecords: d.records, NodeID: d.id,
 		Meta: save.NodeMeta{
 			Model: d.model.Name, Stop: d.stop, StopRaw: d.stopRaw, Calls: d.calls, ToolCalls: d.toolCalls,
 			Continuations: d.continuations, DurationMS: time.Since(d.started).Milliseconds(), Error: d.errMsg,
@@ -479,6 +480,19 @@ func (m *Manager) expandCommand(w *work.Model, name string, args map[string]stri
 		return "", "", errs.Wrap(err, errs.CodeWorkInvalid, "命令 /%s 的模板渲染失败", name)
 	}
 	return strings.TrimSpace(text), modeLabel, nil
+}
+
+// memoryWrite 把记忆覆盖层的改动转为提交内容；没有改动时返回 nil（沿用父节点的清单）。
+func memoryWrite(o *vfs.Overlay) *save.MemoryWrite {
+	if o == nil || !o.Dirty() {
+		return nil
+	}
+	files, data := o.Result()
+	w := &save.MemoryWrite{Files: make(map[string]save.MemoryFile, len(files)), Data: data}
+	for p, f := range files {
+		w.Files[p] = save.MemoryFile{Blob: f.Blob, Size: f.Size, Turn: f.Turn}
+	}
+	return w
 }
 
 // pendingChoiceCall 返回历史末尾未作答的 offer_choices 调用 ID（上一回合以选项结束）。

@@ -30,6 +30,9 @@ func isText(data []byte) bool {
 	return utf8.Valid(data) && bytes.IndexByte(data, 0) < 0
 }
 
+// Lines 把文本拆成行（规则同 read：去掉 BOM，统一换行为 LF，末尾的换行不产生空行）。
+func Lines(data []byte) []string { return splitLines(data) }
+
 // splitLines 把文本拆成行：去掉 BOM，统一换行为 LF，末尾的换行不产生空行。
 func splitLines(data []byte) []string {
 	text := strings.TrimPrefix(string(data), bom)

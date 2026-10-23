@@ -37,7 +37,7 @@ type draft struct {
 	built    *contextx.Built
 	vfs      *vfs.Table   // 本回合的挂载表（buildVFS）
 	images   *media.Store // 发送给模型的图片（read 看图）
-	memory   *vfs.Overlay // 记忆覆盖层（写入随 M3-2；提交时 Dirty 才生成新清单）
+	memory   *vfs.Overlay // 记忆覆盖层：write / edit / remove 写在这里，提交时 Dirty 才生成新清单
 
 	// 状态：以父节点快照为起点，update_state 成功后整体替换（state.Apply 不修改原映射，读取方拿到的快照不会再变）
 	state        map[string]any
@@ -143,16 +143,4 @@ func (d *draft) hasContent() bool {
 		}
 	}
 	return d.choices != nil
-}
-
-// markupText 汇总本回合正文的标记源码（提交时转纯文本写入原文索引）。
-func (d *draft) markupText() string {
-	var b strings.Builder
-	for _, it := range d.display {
-		if it.T == "text" {
-			b.WriteString(it.Markup)
-			b.WriteString("\n\n")
-		}
-	}
-	return b.String()
 }
