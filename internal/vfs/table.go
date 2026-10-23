@@ -76,7 +76,7 @@ type dirInfo struct {
 	seen     map[string]bool
 }
 
-// load 读取挂载点的文件清单，推导出目录结构。每次调用都重新读取：记忆在回合内会变化（M3-2）。
+// load 读取挂载点的文件清单，推导出目录结构。每次调用都重新读取：记忆在回合内会变化。
 func (t *Table) load(ctx context.Context, m *Mount) (*tree, error) {
 	list, err := m.Source.Files(ctx)
 	if err != nil {

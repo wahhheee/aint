@@ -86,6 +86,19 @@ export function useRenameSave() {
   })
 }
 
+/** 复制为新存档：从 nodeId（通常是 head）复制出一个独立的存档。 */
+export function useCopySave() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, nodeId }: { id: string; nodeId: string }) => api.saves.copy(id, nodeId),
+    onSuccess: (sv) => {
+      void qc.invalidateQueries({ queryKey: qk.workSaves(sv.work_id) })
+      void qc.invalidateQueries({ queryKey: qk.recentSaves })
+      void qc.invalidateQueries({ queryKey: qk.works })
+    },
+  })
+}
+
 export function useDeleteSave() {
   const qc = useQueryClient()
   return useMutation({

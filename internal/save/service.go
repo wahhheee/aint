@@ -123,7 +123,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 			ID: ids.New(), SaveID: sv.ID, Kind: KindRoot, Status: StatusCommitted,
 			StateHash: stateHash, MemoryHash: memHash, WorkVersionID: versionID, CreatedAt: now,
 		}
-		// TODO(M3-6)：第 0 阶段的阶段块（初始状态 + 记忆目录）；全为空时不生成。
+		// 第 0 阶段的阶段块只由初始状态与初始记忆决定，构建请求时即时渲染，不存储（D-39）
 		sv.HeadNodeID = root.ID
 		if err := insertSave(ctx, tx, sv); err != nil {
 			return err

@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 
 import { errorMessage } from '@/api/errors'
-import { useDeleteSave, useRenameSave } from '@/api/queries'
+import { useCopySave, useDeleteSave, useRenameSave } from '@/api/queries'
 import type { Save } from '@/api/types'
 import {
   AlertDialog,
@@ -30,6 +30,12 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
   const [deleting, setDeleting] = useState<Save | null>(null)
   const rename = useRenameSave()
   const remove = useDeleteSave()
+  const copyMutation = useCopySave()
+  const copy = (s: Save) =>
+    copyMutation.mutate(
+      { id: s.id, nodeId: s.head_node_id },
+      { onSuccess: () => toast(t('work.copied')), onError: (e) => toast.error(errorMessage(e)) },
+    )
 
   if (!saves) return null
   if (saves.length === 0) {
@@ -74,7 +80,8 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setRenaming(s)}>{t('common.rename')}</DropdownMenuItem>
-                {/* TODO(M5-13)：生成标题；TODO(M3-5)：复制为新存档；TODO(M6-6)：升级到新版本 */}
+                <DropdownMenuItem onSelect={() => copy(s)}>{t('work.copySave')}</DropdownMenuItem>
+                {/* TODO(M5-13)：生成标题；TODO(M6-6)：升级到新版本 */}
                 <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(s)}>
                   {t('common.delete')}
                 </DropdownMenuItem>

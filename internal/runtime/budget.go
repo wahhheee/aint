@@ -2,7 +2,7 @@ package runtime
 
 import "time"
 
-// Budget 是每回合的预算（《02-技术方案》9.5；存档设置可覆盖，TODO(M3)）。
+// Budget 是每回合的预算（《02-技术方案》9.5）。TODO(M5-10)：存档设置覆盖每回合上限。
 // 超预算时优雅停止并提交，界面提示"本回合已达上限"并提供"继续"。
 type Budget struct {
 	MaxCalls         int           // 最大模型调用数

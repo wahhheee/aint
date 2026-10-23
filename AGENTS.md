@@ -5,14 +5,14 @@
 ## 项目
 
 演义（Yanyi）：以作品为单位、本地运行的 AI 互动小说运行时。Go 后端 + React 前端，单可执行文件分发。
-当前处于脚手架阶段：架构与骨架就位，大量功能以 `TODO(任务编号)` 标注。
+当前处于开发预览阶段：M0–M3 完成（真实模型、作品能力、记忆与整理、分支），M4–M6 进行中，未完成处以 `TODO(任务编号)` 标注。
 
 ## 先读这些
 
 - `docs/progress.md`：**进度**——每个任务的状态、已有与缺口、建议的下一步、按功能找任务；搜任务编号找代码
 - `docs/architecture.md`：分层与依赖方向、回合生命周期、前后端契约、**扩展指南（想加 X 改哪里）**
 - `docs/development.md`：开发命令与**调试手册**
-- `docs/notes/decisions.md`：已确认的决策（D-23～D-56）；`docs/notes/open-questions.md`：待确认事项
+- `docs/notes/decisions.md`：已确认的决策（D-23～D-62）；`docs/notes/open-questions.md`：待确认事项
 - `.local/docs/`（不入库）：需求、技术方案、作品格式规范、交互设计、实施计划。`TODO(M3-6)` 这类编号对应实施计划
 
 ## 现阶段不做向后兼容（D-43）

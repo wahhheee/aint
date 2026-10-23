@@ -137,7 +137,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
                 ))}
               </ToggleGroup>
             </div>
-            {/* TODO(M3)：高级——上下文预算、保留原文量、后台助手、缓存时长 */}
+            {/* TODO(M5-10)：高级——上下文预算、保留原文量（存档级覆盖）、后台助手、缓存时长 */}
           </fieldset>
 
           {create.isError && (

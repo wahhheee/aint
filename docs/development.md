@@ -37,6 +37,7 @@ task dev:server:real
   第一个添加的模型自动设为主笔。密钥只写入 `.devdata/secrets.json`，不进数据库、不发给浏览器。
 - 中转站：Base URL 按站点文档填写（OpenAI 协议一般以 `/v1` 结尾）；有分组倍率时填在供应商的"价格倍率"里，模型单价照抄站点标价。
 - DeepSeek 建议用 Responses 协议接入（Anthropic 兼容接口在多轮工具调用上不可靠，见 [api-verification.md](notes/api-verification.md)）。
+- 轻量模型（可选）：模型列表中某个模型的"⋯" → 设为轻量模型；之后可以在设置 → 上下文中改用轻量模型独立整理（不复用主笔的缓存）。
 - `--trace-llm` 除中立追踪外，还会把**协议原始请求与响应**写到 `<数据目录>/logs/llm-trace/raw/`（鉴权头脱敏），
   排查"适配器发出去的到底是什么"、制作回放夹具都用它。
 
@@ -60,7 +61,7 @@ task dev:server:real
 | --- | --- |
 | `task prompt -- <作品目录> [--vision] [--helpers] [--json]` | 打印 AI 实际收到的系统提示词、首条消息、工具定义，以及每个片段的启用情况与原因 |
 | `--trace-llm` | 每次模型调用的**完整中立请求 + 全部流事件（带毫秒时间戳）+ 错误**写成一个 JSON：`<数据目录>/logs/llm-trace/` |
-| 节点 meta | 数据库 `nodes.meta`：模型、停止原因、调用次数、续写次数、耗时、错误、前缀哈希、提示词版本 |
+| 节点 meta | 数据库 `nodes.meta`：模型、停止原因、调用次数、续写次数、耗时、错误、前缀哈希、提示词版本、`context_tokens`（这个节点之后的上下文规模）；整理节点另有 `compact_reason`、`summary_from` / `summary_to`、`keep_from_turn` |
 | 检查器 | TODO(M5-9)：阅读页内查看每回合的上下文分层、工具调用、状态与记忆差异 |
 
 前缀哈希（`meta.prefix_hash`）在相邻回合间变化，说明缓存被重建了——看 `task prompt` 的片段列表找原因。
@@ -74,16 +75,29 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 ```
 
 脚本可以模拟：任意正文与叙事标记、工具调用、截断（`stop: max_tokens`）、错误（`error: rate_limited`）、首字延迟；
-`ooc:` 段是玩家场外发言时的回应（内置的 `demo` 脚本有示例）。
+`ooc:` 段是玩家场外发言时的回应，`compact:` 段是上下文整理时依次使用的回复（先写记忆、再给摘要；内置的 `demo` 脚本都有示例）。
+正文与工具参数中的字符串都可以写 `{{input}}`（换成玩家最近一次输入），方便每回合写入不同的记忆。
 
-### 3.4 前端
+### 3.4 上下文整理与分支
+
+- **很快触发整理**：新建存档时把预算调低（存档设置覆盖全局设置），例如
+  `POST /api/v1/saves {"work_id": "yanyi.misty-harbor", "settings": {"context_budget": 9000, "keep_recent": 2000}}`，
+  假模型下十来个回合就会整理；也可以点用量环里的"立即整理"或输入 `/compact`。全局默认值在设置 → 上下文。
+- **整理做了什么**：日志 `上下文整理完成`（原因、方式、摘要掉的回合区间、保留起点、落盘写了几个文件、整理前后的上下文规模、调用次数）；
+  整理节点的 `epoch_block` 是新阶段块（blob，文本），`messages` 是整理过程的全部消息（不进入之后的上下文）；`--trace-llm` 中用途为 `compact` 的调用。
+- **之后的请求长什么样**：`--trace-llm` 中整理之后的第一个 `narrate` 请求，首条消息是新阶段块，后接保留的回合（推理与协议原生内容已去掉）。
+- **整理方式**：设置 → 上下文。轻量模型在设置 → 模型的"⋯"菜单中设定；没有轻量模型时 separate 自动改用 inline。
+- **分支**：`GET /api/v1/saves/{id}/tree` 看分叉点与各段；`GET /api/v1/saves/{id}/timeline` 的 `has_later` 表示 head 在较早的回合；
+  修改正文、移动 head、编辑记忆或状态等操作完成后，存档事件流推送 `timeline.changed`。
+
+### 3.5 前端
 
 - 控制台执行 `localStorage.debugSSE = 1` 后刷新：打印每一条 SSE 事件。
 - 失败的请求会在控制台打印 `method path → status code` 与 `request_id`。
 - 阅读页的事件处理是纯函数 `reduceEvent`（`web/src/stores/reader.ts`），可以直接写单测复现。
 - 渲染出错会进入路由错误页，显示错误信息与请求编号。
 
-### 3.5 数据
+### 3.6 数据
 
 - `yanyi.db` 是普通 SQLite（WAL），可以用任意 SQLite 工具只读打开查看；表结构见 `internal/store/migrations/`。
 - 大于 64 KiB 的 blob 在 `blobs/ab/cd/<sha256>`，小的内联在 `blobs` 表。
@@ -92,7 +106,7 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 - 导入作品是两段式的：解析后的文件暂存在 `tmp/imports/<任务 ID>/`（按内容哈希命名），确认、放弃或 30 分钟后删除，启动时整个清空。
   想知道一个 zip 包为什么导入失败，用 `yanyi work validate <zip 包>`：与导入走同一条流水线（作品根定位、忽略规则、安全限制、校验）。
 
-### 3.6 常见问题
+### 3.7 常见问题
 
 | 现象 | 原因与处理 |
 | --- | --- |
@@ -105,6 +119,7 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 | 回合失败"请求被模型服务拒绝" | 看 `<数据目录>/logs/llm-trace/raw/` 中该次请求的 `.resp.txt`：中转站常把上游故障也返回成 400；用 curl 重放 `.req.json` 可以判断是请求问题还是上游问题 |
 | 拉取新代码后启动报迁移错误，或数据表缺列 | 首次发布前 `0001_init.sql` 会被直接修改：删除 `.devdata/` 重建 |
 | 接口返回 501，或 AI 说"…暂时不可用" | 功能尚未实现。501 的错误信息里带任务编号；工具的编号写在 `tools/builtins.go` 的 `notYet` 调用中。到 [progress.md](progress.md) 查状态 |
+| 提交输入返回 409，或操作提示"正在整理上下文" | 同一存档同时只有一个写者：回合进行中、整理中不能再提交或改存档。整理期间提交的输入会排队（至多一个），整理结束后开始 |
 
 ## 4. 测试
 
@@ -113,7 +128,9 @@ task test
 ```
 
 - Go：单元测试与竖切测试（`internal/runtime/runtime_test.go` 用假模型跑完整回合）；测试作品 T3 的原语回归（`runtime/t3_test.go`）；
-  跨回合前缀稳定性（`runtime/prefix_test.go`）；
+  跨回合前缀稳定性（`runtime/prefix_test.go`）；记忆、原文与检索（`runtime/memory_test.go`）；分支操作与分支隔离（`runtime/branch_test.go`）；
+  上下文整理（`runtime/compact_test.go`：阈值触发与排队、separate、超限紧急整理、整理后的前缀）；
+  200 回合不变量与整理中断（`runtime/invariants_test.go`，`-short` 时跳过）；
   杀进程测试（`runtime/crash_test.go`，重新执行测试二进制作为子进程）；协议适配器用真实录制的 SSE 夹具回放（`internal/llm/*/testdata/`）。
   测试使用 `t.TempDir()` 中的独立数据库。
 - 前端：Vitest（叙事标记与共享向量 `testdata/markup/`、事件 reducer、命令解析、导入、供应商设置）。
@@ -124,7 +141,7 @@ task test
   交还选项、状态维护与面板渲染，并以场外提问检查事实召回（答案写进报告，人工核对）：
   `YANYI_EVAL=<live.json 的绝对路径> YANYI_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
   报告在 `.local/eval/<时间>/story.md`（`YANYI_EVAL_OUT` 可指定），`YANYI_EVAL_TRACE=<目录>` 录制原始报文。
-- 尚缺：分支隔离（M3-10）、Playwright 端到端（M5-12）。完整情况见 [progress.md](progress.md) 第 6 节。
+- 尚缺：Playwright 端到端（M5-12）、测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
 
 ## 5. 构建与发布
 

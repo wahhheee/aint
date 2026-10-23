@@ -28,9 +28,9 @@
 | --- | --- | --- |
 | 组合根 | `cmd/yanyi`、`app` | 命令行；数据目录、日志、单实例、**唯一装配所有服务的地方**（`app.wire`） |
 | 接口 | `server` | HTTP 路由、中间件、错误格式、SSE、静态资源。只做协议转换，不含业务规则 |
-| 编排 | `runtime` | 存档会话（单一写者）、回合循环、预算、取消、提交、事件发布 |
-| 引擎 | `contextx` `tools` `panel` `compact` `helper` | 上下文分层构建与按需组装；工具注册与执行；面板渲染；整理（TODO(M3-6)）；后台助手（TODO(M5-8)） |
-| 存档 | `save` | 存档、节点树、进度线、建档、回合提交事务、时间线 |
+| 编排 | `runtime` | 存档会话（单一写者）、回合循环、预算、取消、提交、上下文整理的执行、事件发布 |
+| 引擎 | `contextx` `tools` `panel` `compact` `helper` | 上下文分层构建与按需组装；工具注册与执行；面板渲染；整理的参数与规则；后台助手（TODO(M5-8)） |
+| 存档 | `save` | 存档、节点树、进度线、建档、回合与整理的提交事务、分支操作、玩家编辑、原文、时间线与分支结构 |
 | 领域 | `work` `settings` `provider` `usage` | 作品编译与导入；全局设置；供应商与模型配置、密钥、内置模型预设、连接测试；用量记录 |
 | 基础 | `llm`（含 `wire` 与适配器子包）`event` `store` `prompts` `tmpl` `state` `markup` `vfs` `media` `pkg/*` `buildinfo` | 中立模型层与三协议适配器；事件总线；SQLite 与 blob；平台提示词；作者模板（隔离工作进程）；状态类型；叙事标记；虚拟文件系统；图片 |
 
@@ -56,9 +56,25 @@ POST /saves/{id}/turns
 ```
 
 - 生成过程只在内存草稿（`runtime/draft.go`）中，进程崩溃不会留下半提交（不变量 2）。
+- 记忆写入（write / edit / remove）进回合的覆盖层（`vfs.Overlay`），提交时有改动才生成新清单；`/transcript` 与检索只看进度线（不变量 3）。
 - 写者槽位在发布任何终态事件（`turn.committed` / `turn.failed`）**之前**让出：客户端收到终态事件后立即提交下一回合不会得到 409。
 - 玩家停止时以 `interrupted` 状态提交已生成的内容；什么都没生成则不产生节点，只发 `turn.failed`。
 - 上一回合以 `offer_choices` 结束时，玩家的选择作为该工具调用的结果回填到下一回合的第一条消息（`contextx/envelope.go`）。
+
+**上下文整理**（`runtime/compact.go`、`compact_job.go`，参数与规则在 `compact`）：
+
+```
+回合提交 ── context_tokens ≥ 阈值 ──► 写者槽位交给后台整理（期间的输入排队，至多一个）
+回合进行中 ── 估算 ≥ 硬上限 / 模型报超限 ──► 回合内整理（整理节点成为本回合的父节点，每回合至多一次）
+POST /saves/{id}/compact、/compact ──► 后台整理
+  compactLine：当前上下文 + 整理指令 → 落盘循环（只能读资料、读写记忆）→ 交接摘要 → save.CommitCompaction
+               （阶段块 + keep_from + 落盘后的记忆清单，成为 head）→ compaction.* 事件
+```
+
+之后的请求由 `runtime/history.go` 组装：最近一次整理的阶段块 + 保留的回合（去掉推理与协议原生内容）+ 之后的回合。
+
+**分支与编辑**（`save/branch.go`、`edit.go`、`tree.go`）：重新生成、修改玩家输入经 `runtime.Regenerate` 以原回合的父节点提交新回合；
+移动 head、修改正文、丢弃、删除分支、编辑记忆或状态经 `runtime.Exclusive`（有任务在运行时 409），完成后推送 `timeline.changed`。
 
 ## 4. 上下文工程（`contextx` + `prompts` + `tools`）
 
@@ -70,6 +86,7 @@ user   : [L3 常驻设定] [L4 阶段块（contextx/epoch.go）]  …历史回�
 - **按需组装**：`contextx.Profile` 计算能力画像（作品用到了什么、模型能做什么、存档开了什么）；每个提示词片段、
   每节 L1、每个工具及其参数都声明启用条件，作品没用到的功能不留任何痕迹。节内无片段则整节连同标题省略。
 - **前缀稳定**：组装只依赖稳定输入，按 `(提示词版本, 作品版本, 能力签名, 初始状态)` 缓存（64 条 LRU）；`Built.PrefixHash` 记录在节点 meta。
+- **阶段块（L4）**：第 0 阶段由初始状态与初始记忆即时渲染；整理后的阶段块在整理时渲染、存为整理节点的 blob，阶段内原样复用（`contextx/epoch.go`）。
 - **缓存断点**：`Part.CacheMark` / `SystemBlock.CacheMark` 只标稳定层的边界（L1、L3、L4 末尾）；"最新消息末尾"的滚动断点由适配器按协议放置
   （Anthropic 显式 `cache_control`、OpenAI GPT-5.6 起的隐式断点、Gemini 隐式缓存）。
 - **可观察**：`Built.Fragments` 列出每个片段的启用情况与原因；`yanyi work prompt <目录>` 在终端打印组装结果。
@@ -145,7 +162,8 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 新增数据库表或列 | 首次发布前直接改 `store/migrations/0001_init.sql`（D-43）；发布后追加 `NNNN_说明.sql`（编号递增，已发布的脚本不改）→ 对应包的 `repo.go` |
 | 新增模型协议 | `llm/<协议>/` 实现 `llm.Provider`（HTTP 与 SSE 用 `llm/wire`，导出 `Body()`）→ `provider/service.go` 的 `NewAdapter` 中登记 → 录制夹具与 `live_test.go` 子测试 |
 | 新增内置模型预设 | `provider/presets.go`（窗口、输出上限、能力与推理映射、官方价格；同一模型经不同协议接入时用 `ReasoningBy`） |
-| 新增 VFS 挂载点 | 实现 `vfs.Source`（`Files` / `Open`）→ `runtime/vfs.go` 的 `buildVFS` 中挂载；暂不可用的挂载点 `Source` 留空 |
+| 新增 VFS 挂载点 | 实现 `vfs.Source`（`Files` / `Open`）→ `runtime/vfs.go` 的 `buildVFS` 中挂载；可写的实现 `vfs.Writer`，能自行检索的实现 `vfs.Searcher`；暂不可用的挂载点 `Source` 留空 |
+| 新增一个直接改存档的操作 | `save` 中实现（单事务）→ `server` 处理函数中经 `Runtime.Exclusive` 调用（保证单一写者，完成后推送 `timeline.changed`）→ 前端 `useTurnActions` 或抽屉 |
 | 新增设置项 | `settings/settings.go`（字段 + 默认值）→ `web/src/api/types.ts` → 设置页 |
 | 新增页面文案 | `web/src/i18n/zh-CN.ts`（不在组件里写死中文） |
 
@@ -157,9 +175,9 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | --- | --- | --- |
 | 前缀稳定 | `contextx`（只依赖稳定输入、确定性序列化、历史只读）；适配器只追加、不重写已发送内容 | `contextx/builder_test.go`、`runtime/prefix_test.go`（跨回合：中立请求逐条字节相等，三个适配器的内容块序列只追加） |
 | 原子提交 | `save.CommitTurn`（单事务）、`runtime/draft.go`（生成只在内存） | `runtime/runtime_test.go`、`runtime/crash_test.go`（回合各阶段杀进程：首字前、流式中、工具中、提交事务中、COMMIT 时、提交后） |
-| 分支隔离 | `save.ProgressLine`（递归 CTE 只取祖先链） | TODO(M3-10) |
+| 分支隔离 | `save.ProgressLine`（递归 CTE 只取祖先链）；记忆以 head 的清单为底；`/transcript` 与检索按进度线过滤 | `runtime/branch_test.go`、`runtime/invariants_test.go` |
 | 状态类型正确 | `state.Check` / `state.Set` | `state/schema_test.go` |
-| 单一写者 | `runtime.Manager.Submit`（会话锁）+ `app` 单实例检测 + 写连接池单连接 | `runtime/runtime_test.go` |
+| 单一写者 | `runtime.Manager`（会话锁：回合与整理共用一个写者槽位，整理期间的输入排队；`Exclusive` 包住直接改存档的操作）+ `app` 单实例检测 + 写连接池单连接 | `runtime/runtime_test.go`、`runtime/compact_test.go` |
 | 作品不执行 | `tmpl`（隔离工作进程、超时即杀、render 只读作品 ui/ 模板、输入输出上限）、导入安全限制（`work/archive.go`、`fileset.go`）、前端 DOMPurify 白名单与 style 过滤（`features/reader/panels/PanelHTML.tsx`、`sanitize.ts`）、素材只按媒体类型提供并带 CSP sandbox（`server/api_assets.go`） | `tmpl/tmpl_test.go`、`work/archive_test.go`、`server/api_assets_test.go`、`features/reader/panels/PanelHTML.test.tsx` |
 | 密钥不出后端 | `provider/secrets.go`（0600）、`ProviderView.KeyMasked`、额外请求头不允许放密钥、`logx.Secret`；原始报文追踪中鉴权头脱敏（`llm/wire/trace.go`）；数据目录新建目录 0750、日志与追踪文件 0600（`fsx.DirPerm` / `PrivateFilePerm`）；真实调用测试的密钥只放 `.local/secrets/` | `provider/service_test.go`（掩码、secrets.json） |
-| 存档不膨胀 | 游玩只追加节点；存档条目只在 `save.Create` 产生 | — |
+| 存档不膨胀 | 游玩只追加节点；存档条目只在 `save.Create` 与"复制为新存档"产生 | `runtime/invariants_test.go` |

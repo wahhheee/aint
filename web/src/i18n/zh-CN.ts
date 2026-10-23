@@ -112,6 +112,8 @@ const zhCN = {
     turns: '{{n}} 回合',
     branches: '{{count}} 个分支',
     forkedFrom: '复制自《{{title}}》第 {{turn}} 回合',
+    copySave: '复制为新存档',
+    copied: '已复制为新存档',
     untitled: '未命名存档',
     latest: '当前版本',
     sources: {

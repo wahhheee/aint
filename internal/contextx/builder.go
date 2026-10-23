@@ -57,7 +57,7 @@ type BuildInput struct {
 	InitialStateHash string
 	Tools            []llm.ToolSpec // 已按能力画像裁切（tools.Registry.Specs）
 	History          []llm.Message  // 本阶段已提交的消息（发送形态，只读）
-	Epoch            string         // L4 阶段块；TODO(M3-6)
+	Epoch            string         // L4 阶段块：第 0 阶段即时渲染（RenderEpoch0），整理之后为整理节点存下的阶段块
 	Turn             llm.Message    // 本回合玩家消息（Envelope.Message）
 }
 
