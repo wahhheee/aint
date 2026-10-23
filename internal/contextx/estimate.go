@@ -49,6 +49,55 @@ func EstimateImageTokens(w, h int) int {
 	return int(math.Ceil(float64(w*h) / 750))
 }
 
+// messageOverhead 是每条消息、每个内容块在协议中的额外开销（角色、分隔、工具调用的结构）的粗略估算。
+const messageOverhead = 4
+
+// EstimateMessages 估算一组消息的 token 数：文字、工具调用（名称与参数）、工具结果、图片。
+func EstimateMessages(msgs []llm.Message) int {
+	n := 0
+	for _, m := range msgs {
+		n += messageOverhead + EstimateParts(m.Parts)
+	}
+	return n
+}
+
+// EstimateParts 估算一组内容块的 token 数。
+func EstimateParts(parts []llm.Part) int {
+	n := 0
+	for _, p := range parts {
+		n += messageOverhead
+		switch p.Kind {
+		case llm.PartText, llm.PartReasoning:
+			n += EstimateTokens(p.Text)
+		case llm.PartImage:
+			if p.Image != nil {
+				n += EstimateImageTokens(p.Image.Width, p.Image.Height)
+			}
+		case llm.PartToolCall:
+			if p.ToolCall != nil {
+				n += EstimateTokens(p.ToolCall.Name) + EstimateTokens(string(p.ToolCall.Args))
+			}
+		case llm.PartToolResult:
+			if p.ToolResult != nil {
+				n += EstimateParts(p.ToolResult.Parts)
+			}
+		}
+	}
+	return n
+}
+
+// EstimateRequest 估算一次请求的输入 token 数：系统提示、工具定义与全部消息。
+func EstimateRequest(req *llm.Request) int {
+	n := 0
+	for _, b := range req.System {
+		n += EstimateTokens(b.Text)
+	}
+	if len(req.Tools) > 0 {
+		n += EstimateTokens(string(jsonx.MustMarshal(req.Tools)))
+	}
+	return n + EstimateMessages(req.Messages)
+}
+
 // 常驻部分的建议上限（token，《02-技术方案》5.3）。
 const (
 	maxIndexTokens  = 6000

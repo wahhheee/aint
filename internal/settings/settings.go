@@ -24,6 +24,7 @@ type Settings struct {
 	Audio        Audio      `json:"audio"`
 	Models       ModelRoles `json:"models"`
 	Play         Play       `json:"play"`
+	Context      Context    `json:"context"`
 	Onboarded    bool       `json:"onboarded"` // 是否已看过欢迎页
 	// Developer 是"开发者选项"（SET-07，D-31）：显示检查器、回合检查、完整状态与状态编辑。
 	// 默认关闭；从开发目录链接的作品不论此开关如何都显示（Presentation.DevWork）。
@@ -67,6 +68,13 @@ type Play struct {
 	Helpers     bool   `json:"helpers"`
 }
 
+// Context 是上下文整理的默认参数（《04-交互与界面设计》9.4）；存档设置可以单独覆盖（save.Settings）。
+type Context struct {
+	Budget     int    `json:"budget"`      // 工作上下文预算（token）：上下文达到它（且不超过模型窗口 − 预留）时整理
+	KeepRecent int    `json:"keep_recent"` // 整理后原样保留的最近回合（token）
+	Mode       string `json:"mode"`        // inline（主笔在原上下文中整理，复用缓存）| separate（轻量模型单独整理）
+}
+
 // Defaults 返回默认设置（《04-交互与界面设计》10.2、9.4）。
 func Defaults() Settings {
 	return Settings{
@@ -76,9 +84,10 @@ func Defaults() Settings {
 			FontFamily: "work", FontSize: 18, LineHeight: 1.9, ParagraphSpacing: 0.9, MaxWidth: 40,
 			Indent: "work", Typewriter: "normal", ReduceMotion: "system", StageIntensity: 0.6, ToolHints: true,
 		},
-		Audio:  Audio{Master: 0.6, BGM: 1, SFX: 1},
-		Play:   Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "auto"},
-		Models: ModelRoles{},
+		Audio:   Audio{Master: 0.6, BGM: 1, SFX: 1},
+		Play:    Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "auto"},
+		Context: Context{Budget: 128_000, KeepRecent: 12_000, Mode: "inline"},
+		Models:  ModelRoles{},
 	}
 }
 

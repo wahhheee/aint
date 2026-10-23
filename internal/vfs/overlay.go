@@ -57,6 +57,16 @@ func (o *Overlay) Remove(p string) {
 	}
 }
 
+// Rebase 换一个底（回合内整理后，记忆以整理节点的清单为底），本回合已有的写入与删除保留在上面。
+func (o *Overlay) Rebase(base map[string]FileRef) {
+	o.base = base
+	for p := range o.removed {
+		if _, ok := base[p]; !ok {
+			delete(o.removed, p)
+		}
+	}
+}
+
 // Dirty 表示本回合是否改过记忆（未改时节点直接复用父节点的 memory_hash）。
 func (o *Overlay) Dirty() bool { return len(o.changed) > 0 || len(o.removed) > 0 }
 

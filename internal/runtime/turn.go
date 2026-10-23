@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wahhheee/yanyi/internal/compact"
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/llm"
@@ -23,12 +24,12 @@ import (
 )
 
 // runTurn 是一个回合的完整生命周期（在独立 goroutine 中运行）。
-func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput, release func()) {
+func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput, slot *turnSlot) {
 	d, err := m.prepare(ctx, saveID, turnID, parentID, in)
 	if err != nil {
 		code, msg, recoverable := describeError(err)
 		slog.WarnContext(ctx, "回合准备失败", "err", err)
-		release()
+		slot.release()
 		m.publish(saveID, event.TurnFailed, event.TurnFailedData{TurnID: turnID, Code: code, Message: msg, Recoverable: recoverable})
 		return
 	}
@@ -36,7 +37,7 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, 
 		"prefix_hash", short(d.built.PrefixHash))
 	m.publish(saveID, event.TurnStarted, event.TurnStartedData{TurnID: turnID, ParentID: d.parent.ID, Input: d.input})
 
-	d.release = release
+	d.slot, d.release = slot, slot.release
 	refresh := m.panelRefresher(d)
 	d.onState = func(changes []state.Change) {
 		m.publish(saveID, event.TurnState, event.TurnStateData{TurnID: turnID, Changes: changes})
@@ -72,23 +73,17 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	}
 	features := contextx.Profile(w, sv.Settings, model.Caps, false) // TODO(M5-8)：轻量模型已配置时才允许后台助手
 
-	// 历史消息。TODO(M3-6)：从最近一次整理的 keep_from 开始，前面接阶段块；孤儿消息修复（8.4）。
-	var history []llm.Message
-	turnNo := 0
-	for _, n := range line {
-		if n.Kind != save.KindTurn {
-			continue
-		}
-		msgs, err := m.d.Saves.LoadMessages(ctx, n.MessagesHash)
-		if err != nil {
-			return nil, err
-		}
-		history = append(history, msgs...)
-		turnNo = n.TurnNo
+	// 阶段块与历史消息：最近一次整理的阶段块 + 保留的回合 + 之后的回合（第 0 阶段为开局阶段块 + 全部回合）
+	ec, err := m.loadContext(ctx, w, features, line)
+	if err != nil {
+		return nil, err
 	}
+	// 上一回合（head 可能是其后的编辑或整理节点）：选项从它的显示项中找
+	turnNo := 0
 	var headDisplay []save.DisplayItem
-	if head.Kind == save.KindTurn {
-		if headDisplay, err = m.d.Saves.LoadDisplay(ctx, head.DisplayHash); err != nil {
+	if last := lastTurn(line); last != nil {
+		turnNo = last.TurnNo
+		if headDisplay, err = m.d.Saves.LoadDisplay(ctx, last.DisplayHash); err != nil {
 			return nil, err
 		}
 	}
@@ -137,7 +132,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	default:
 		env.Text = in.Text
 	}
-	env.PendingCall = pendingChoiceCall(history)
+	env.PendingCall = pendingChoiceCall(ec.history)
 	uploads, err := m.uploads(ctx, line, in.Attachments, turnNo+1)
 	if err != nil {
 		return nil, err
@@ -153,17 +148,10 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 		}
 	}
 
-	// 阶段块：目前只有第 0 阶段（开局）。TODO(M3-6)：整理后使用最近一个 compaction 节点的阶段块。
-	memIndex, err := m.d.Saves.MemoryIndex(ctx, root.MemoryHash)
-	if err != nil {
-		return nil, err
-	}
-	epoch := contextx.RenderEpoch0(features, w.State, initState, memIndex)
-
 	built, err := m.d.Builder.Build(ctx, contextx.BuildInput{
 		SaveID: sv.ID, Work: w, Features: features, Model: model, Settings: sv.Settings,
-		InitialState: initState, InitialStateHash: root.StateHash, Epoch: epoch,
-		Tools: m.d.Tools.Specs(features, w), History: history, Turn: env.Message(features),
+		InitialState: initState, InitialStateHash: root.StateHash, Epoch: ec.block,
+		Tools: m.d.Tools.Specs(features, w), History: ec.history, Turn: env.Message(features),
 	})
 	if err != nil {
 		return nil, err
@@ -174,10 +162,12 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 		return nil, err
 	}
 
+	params := m.compactParams(ctx, sv.Settings)
 	d := &draft{
-		id: turnID, started: time.Now(), save: sv, parent: head, turnNo: turnNo + 1, input: env.Input,
+		id: turnID, started: time.Now(), save: sv, parent: head, root: root, initState: initState, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
 		state: headState, images: m.d.Images,
+		threshold: params.Threshold(model.ContextWindow, maxOutput(model)), hardLimit: params.HardLimit(model.ContextWindow, maxOutput(model)),
 		req: built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
 	}
 	if item, ok := inputDisplay(env); ok {
@@ -194,7 +184,21 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			d.addNotice("warn", "本回合已达上限（"+reason+"），可以点“继续”接着写。")
 			return
 		}
+		// 硬上限：下一次调用的上下文估算达到 窗口 − 预留 时，先在回合内整理（每回合至多一次）
+		if !d.compacted && m.estimate(d.model, d.req) >= d.hardLimit {
+			if err := m.compactInTurn(ctx, d, compact.ReasonLimit); err != nil && !errors.Is(err, errNothingToCompact) {
+				slog.WarnContext(ctx, "回合内整理失败，照常继续", "err", err)
+			}
+		}
 		res, err := m.callOnce(ctx, d)
+		// 模型报上下文超限：紧急整理后重试一次（13.2 第 3 点）
+		if err != nil && ctx.Err() == nil && llm.KindOf(err) == llm.ErrContextOverflow && !d.compacted {
+			if cerr := m.compactInTurn(ctx, d, compact.ReasonOverflow); cerr == nil {
+				continue
+			} else {
+				slog.WarnContext(ctx, "紧急整理失败", "err", cerr)
+			}
+		}
 		if res != nil {
 			d.stopRaw = res.raw
 			if len(res.msg.Parts) > 0 {
@@ -241,9 +245,18 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			d.stop = string(llm.StopEnd)
 			return
 		case llm.StopContextOverflow:
-			// TODO(M3-7)：紧急整理后重建请求再试一次（每回合一次）。
+			// 输出写到了窗口上限：紧急整理后接着写（与截断续写相同），每回合一次
+			if !d.compacted {
+				if err := m.compactInTurn(ctx, d, compact.ReasonOverflow); err == nil {
+					d.continuing = true
+					notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ContinueNotice)}}
+					d.req.Messages = append(d.req.Messages, notice)
+					d.turnMsgs = append(d.turnMsgs, notice)
+					continue
+				}
+			}
 			d.stop, d.status = string(res.stop), save.StatusInterrupted
-			d.addNotice("error", "上下文超过了模型上限。")
+			d.addNotice("error", "上下文超过了模型上限，整理也没能腾出空间。可以开启独立整理，或在设置中调低上下文预算。")
 			return
 		default: // refusal / pause / error
 			// TODO(M4)：pause（Anthropic pause_turn）应原样续发请求。
@@ -319,6 +332,7 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	}
 	d.req.Purpose = purpose
 	start := time.Now()
+	raw := contextx.EstimateRequest(d.req)
 
 	stream, err := d.provider.Stream(ctx, d.model, d.req)
 	if err != nil {
@@ -379,6 +393,9 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 		// 已有正文的断流按"截断"处理：交给续写逻辑接着写（计入续写次数）。
 		slog.WarnContext(ctx, "模型流中途断开，按截断续写处理", "err", streamErr, "chars", text.Len())
 	}
+	if in := u.InputTotal(); in > 0 {
+		m.calibrate(d.model.ID, raw, in)
+	}
 	m.recordUsage(d, purpose, u, start, string(res.stop))
 	return res, nil
 }
@@ -390,11 +407,22 @@ func (m *Manager) recordUsage(d *draft, purpose string, u llm.Usage, start time.
 		rec.CostMicros, rec.Currency = &cost, d.model.Price.CurrencyOrDefault()
 	}
 	d.records = append(d.records, rec)
-	// TODO(M3-8)：上下文用量（已用 / 整理阈值）需要 token 估算与校准，目前以本次输入总量近似。
+	if in := u.InputTotal(); in > 0 {
+		d.lastInput, d.lastOutput = in, u.Output
+	}
+	// 上下文用量：这次调用的输入 + 输出就是下一次请求的基础（只差新追加的内容），分母是整理阈值
 	m.publish(d.save.ID, event.TurnUsage, event.TurnUsageData{
 		TurnID: d.id, Usage: d.usage,
-		Context: event.ContextUsage{Used: u.InputTotal() + u.Output, Threshold: min(d.model.ContextWindow, 128_000)},
+		Context: event.ContextUsage{Used: d.contextTokens(m), Threshold: d.threshold},
 	})
+}
+
+// contextTokens 返回本回合当前的上下文规模：最近一次调用的输入 + 输出；没有用量数据时按请求估算。
+func (d *draft) contextTokens(m *Manager) int {
+	if d.lastInput > 0 {
+		return d.lastInput + d.lastOutput
+	}
+	return m.estimate(d.model, d.req)
 }
 
 // commit 提交回合（单事务），然后发布事件。使用不可取消的 ctx：玩家停止后仍要把已生成的内容存下来。
@@ -424,6 +452,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		newState = d.state
 	}
 	memory := memoryWrite(d.memory)
+	contextTokens := d.contextTokens(m)
 	node, err := m.d.Saves.CommitTurn(ctx, save.TurnCommit{
 		SaveID: d.save.ID, Parent: d.parent, TurnNo: d.turnNo, Input: d.input, Messages: d.turnMsgs, Display: d.display,
 		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, Memory: memory, WorkVersionID: d.parent.WorkVersionID,
@@ -431,9 +460,15 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		Meta: save.NodeMeta{
 			Model: d.model.Name, Stop: d.stop, StopRaw: d.stopRaw, Calls: d.calls, ToolCalls: d.toolCalls,
 			Continuations: d.continuations, DurationMS: time.Since(d.started).Milliseconds(), Error: d.errMsg,
-			PrefixHash: d.built.PrefixHash, PromptVersion: prompts.Version,
+			PrefixHash: d.built.PrefixHash, PromptVersion: prompts.Version, ContextTokens: contextTokens,
 		},
 	})
+	// 上下文达到整理阈值：写者槽位直接交给整理任务（玩家阅读期间整理，期间的输入排队）
+	compacting := err == nil && contextTokens >= d.threshold
+	if compacting {
+		slog.InfoContext(ctx, "上下文达到整理阈值", "context_tokens", contextTokens, "threshold", d.threshold)
+		m.handoffCompaction(d.save.ID, d.slot)
+	}
 	d.release() // 已提交（或提交失败）：先让出写者槽位，再发布终态事件
 	if err != nil {
 		slog.ErrorContext(ctx, "回合提交失败", "err", err)
@@ -498,6 +533,16 @@ func memoryWrite(o *vfs.Overlay) *save.MemoryWrite {
 		w.Files[p] = save.MemoryFile{Blob: f.Blob, Size: f.Size, Turn: f.Turn}
 	}
 	return w
+}
+
+// lastTurn 返回进度线上最后一个回合节点（没有回合时返回 nil）。
+func lastTurn(line []*save.Node) *save.Node {
+	for i := len(line) - 1; i >= 0; i-- {
+		if line[i].Kind == save.KindTurn {
+			return line[i]
+		}
+	}
+	return nil
 }
 
 // pendingChoiceCall 返回历史末尾未作答的 offer_choices 调用 ID（上一回合以选项结束）。

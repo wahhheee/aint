@@ -3,6 +3,7 @@ package contextx
 import (
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
@@ -14,14 +15,43 @@ import (
 //
 // 第 0 阶段块只由存档创建时的初始状态与初始记忆决定（二者不可变），因此每次构建时即时渲染即可，
 // 结果字节稳定，不需要像整理产生的阶段块那样存为 blob。
-//
-// TODO(M3-6)：整理产生的阶段块（含交接摘要、from_turn、保留原文说明）在 compact 中渲染并存入 compaction 节点。
+// 整理产生的阶段块由 RenderEpoch 渲染，存为 compaction 节点的 blob，阶段内原样复用。
 func RenderEpoch0(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, memory []save.MemoryEntry) string {
+	parts := epochParts(fs, schema, st, "开局", memory)
+	if len(parts) == 0 {
+		return ""
+	}
+	return "<epoch n=\"0\">\n" + strings.Join(parts, "\n") + "\n</epoch>"
+}
+
+// EpochInput 是整理产生的阶段块的内容（13.4）。
+type EpochInput struct {
+	N        int // 阶段序号（第几次整理）
+	FromTurn int // 新阶段从哪一回合开始（整理时的最后一个回合 + 1）
+	KeptFrom int // 保留原文的起止回合；KeptFrom 为 0 表示没有保留原文
+	KeptTo   int
+	Summary  string
+	State    map[string]any // 阶段开始时的状态
+	Memory   []save.MemoryEntry
+}
+
+// RenderEpoch 渲染整理产生的阶段块：说明首句、交接摘要、阶段开始时的状态（作品定义了状态时）、记忆目录（/memory 非空时）。
+func RenderEpoch(fs prompts.FeatureSet, schema *state.Schema, in EpochInput) string {
+	intro := prompts.EpochIntroNoKept
+	if in.KeptFrom > 0 {
+		intro = fmt.Sprintf(prompts.EpochIntro, in.KeptFrom, in.KeptTo)
+	}
+	parts := []string{intro, "<summary>\n" + strings.TrimSpace(in.Summary) + "\n</summary>"}
+	parts = append(parts, epochParts(fs, schema, in.State, fmt.Sprintf("阶段开始（第 %d 回合）", in.FromTurn), in.Memory)...)
+	return fmt.Sprintf("<epoch n=\"%d\" from_turn=\"%d\">\n%s\n</epoch>", in.N, in.FromTurn, strings.Join(parts, "\n"))
+}
+
+// epochParts 是阶段块中的状态快照与记忆目录（各自只在有内容时出现）。
+func epochParts(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, asOf string, memory []save.MemoryEntry) []string {
 	var parts []string
 	if fs.Has(prompts.FState) && !schema.Empty() {
-		b, err := state.YAML(schema, st)
-		if err == nil {
-			parts = append(parts, fmt.Sprintf("<state as_of=\"开局\">\n%s</state>", b))
+		if b, err := state.YAML(schema, st); err == nil {
+			parts = append(parts, fmt.Sprintf("<state as_of=\"%s\">\n%s</state>", asOf, b))
 		}
 	}
 	if len(memory) > 0 {
@@ -35,8 +65,18 @@ func RenderEpoch0(fs prompts.FeatureSet, schema *state.Schema, st map[string]any
 		}
 		parts = append(parts, "<memory_index>\n"+strings.Join(lines, "\n")+"\n</memory_index>")
 	}
-	if len(parts) == 0 {
-		return ""
+	return parts
+}
+
+// RenderCompactionTask 渲染整理指令（prompts.CompactionTask）。
+func RenderCompactionTask(fs prompts.FeatureSet, summaryChars int, memoryLarge bool, guide string) (string, error) {
+	tpl, err := template.New("compaction").
+		Funcs(template.FuncMap{"has": func(f string) bool { return fs.Has(prompts.Feature(f)) }}).
+		Parse(prompts.CompactionTask)
+	if err != nil {
+		return "", err
 	}
-	return "<epoch n=\"0\">\n" + strings.Join(parts, "\n") + "\n</epoch>"
+	var b strings.Builder
+	err = tpl.Execute(&b, map[string]any{"SummaryChars": summaryChars, "MemoryLarge": memoryLarge, "Guide": strings.TrimSpace(guide)})
+	return b.String(), err
 }

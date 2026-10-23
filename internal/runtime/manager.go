@@ -50,7 +50,9 @@ type Deps struct {
 	Tools   *tools.Registry
 	Tmpl    *tmpl.Engine
 	Images  *media.Store // 发送给模型的图片派生、玩家上传
-	Budget  Budget
+	// Settings 提供整理参数的全局默认值与轻量模型；为空时使用默认参数、没有轻量模型。
+	Settings SettingsSource
+	Budget   Budget
 }
 
 // Manager 管理全部存档会话。
@@ -61,22 +63,38 @@ type Manager struct {
 	cancelAll context.CancelFunc
 	wg        sync.WaitGroup
 
+	cal calibration // token 估算的按模型校准
+
 	mu sync.Mutex
-	// sessions 只保存有回合在运行的存档：回合结束（让出写者槽位）时删除，空闲存档不占内存。
+	// sessions 只保存有任务（回合或整理）在运行的存档：任务结束（让出写者槽位）时删除，空闲存档不占内存。
 	// 加锁顺序固定为 m.mu → session.mu。
 	sessions map[string]*session
 }
 
-// session 是一个存档的运行状态。
+// session 是一个存档的运行状态：同一时刻至多一个写者（回合或整理，不变量 5）；
+// 整理期间玩家提交的输入排队（至多一个），整理结束后开始。
 type session struct {
 	mu      sync.Mutex
-	running *turnHandle
+	running *job
+	queued  *job
 }
 
-type turnHandle struct {
+// job 是会话中的一个任务。
+type job struct {
 	id      string
+	kind    string // turn | compaction
 	cancel  context.CancelFunc
 	started time.Time
+	done    chan struct{} // 任务让出写者槽位时关闭
+}
+
+const (
+	jobTurn       = "turn"
+	jobCompaction = "compaction"
+)
+
+func newJob(id, kind string, cancel context.CancelFunc) *job {
+	return &job{id: id, kind: kind, cancel: cancel, started: time.Now(), done: make(chan struct{})}
 }
 
 // NewManager 创建运行器。
@@ -101,8 +119,8 @@ func (m *Manager) lockSession(saveID string) *session {
 	return s
 }
 
-// runningSession 返回有回合在运行的会话并锁住它；没有时返回 nil。
-func (m *Manager) runningSession(saveID string) *session {
+// existingSession 返回已有的会话并锁住它；没有时返回 nil。
+func (m *Manager) existingSession(saveID string) *session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.sessions[saveID]
@@ -113,8 +131,38 @@ func (m *Manager) runningSession(saveID string) *session {
 	return s
 }
 
+// release 让 j 让出写者槽位（或离开排队），会话空闲时删除它，并关闭 j.done（排队的回合随即开始）。
+// 只能调用一次（由 sync.OnceFunc 包装）。
+func (m *Manager) release(saveID string, s *session, j *job) {
+	m.mu.Lock()
+	s.mu.Lock()
+	if s.running == j {
+		s.running = nil
+	}
+	if s.queued == j {
+		s.queued = nil
+	}
+	if s.running == nil && s.queued == nil && m.sessions[saveID] == s {
+		delete(m.sessions, saveID)
+	}
+	s.mu.Unlock()
+	m.mu.Unlock()
+	close(j.done)
+}
+
+// claim 让排队的回合成为写者；回合已离开排队或槽位被占用时返回 false。
+func (m *Manager) claim(s *session, j *job) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.queued != j || s.running != nil {
+		return false
+	}
+	s.queued, s.running = nil, j
+	return true
+}
+
 // Submit 提交玩家输入并在后台开始一个回合（父节点为当前 head），立即返回回合 ID（也是提交后的节点 ID）。
-// 存档已有回合在运行时返回 Conflict（HTTP 409）。
+// 存档已有回合在运行时返回 Conflict（HTTP 409）；正在整理时排队，整理结束后开始。
 func (m *Manager) Submit(ctx context.Context, saveID string, in save.TurnInput) (string, error) {
 	return m.submit(ctx, saveID, "", in)
 }
@@ -153,8 +201,14 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 	}
 	s := m.lockSession(saveID)
 	defer s.mu.Unlock()
-	if s.running != nil {
+	var wait <-chan struct{}
+	switch {
+	case s.running != nil && s.running.kind == jobTurn:
 		return "", errs.Conflict("上一回合还在进行中").WithDetails(map[string]string{"turn_id": s.running.id})
+	case s.queued != nil:
+		return "", errs.Conflict("已有一个输入在等待整理完成").WithDetails(map[string]string{"turn_id": s.queued.id})
+	case s.running != nil: // 正在整理：排队
+		wait = s.running.done
 	}
 
 	turnID := ids.New()
@@ -163,11 +217,16 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 	turnCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	stop := context.AfterFunc(m.base, cancel)
 	turnCtx = logx.With(turnCtx, "save_id", saveID, "turn_id", turnID)
-	s.running = &turnHandle{id: turnID, cancel: cancel, started: time.Now()}
+	j := newJob(turnID, jobTurn, cancel)
+	if wait != nil {
+		s.queued = j
+	} else {
+		s.running = j
+	}
 
 	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
 	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
-	release := sync.OnceFunc(func() { m.releaseSession(saveID, s) })
+	release := sync.OnceFunc(func() { m.release(saveID, s, j) })
 	m.wg.Go(func() {
 		defer func() {
 			stop()
@@ -183,35 +242,82 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 				})
 			}
 		}()
-		m.runTurn(turnCtx, saveID, turnID, parentID, in, release)
+		if wait != nil {
+			select {
+			case <-wait:
+			case <-turnCtx.Done():
+			}
+			if turnCtx.Err() != nil || !m.claim(s, j) {
+				release()
+				m.publish(saveID, event.TurnFailed, event.TurnFailedData{TurnID: turnID, Code: "canceled", Message: "已停止", Recoverable: true})
+				return
+			}
+		}
+		m.runTurn(turnCtx, saveID, turnID, parentID, in, &turnSlot{session: s, job: j, release: release})
 	})
 	return turnID, nil
 }
 
-// releaseSession 清除会话的运行标记，并在会话空闲时删除它（空闲存档不占内存）。
-func (m *Manager) releaseSession(saveID string, s *session) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.running = nil
-	if m.sessions[saveID] == s {
-		delete(m.sessions, saveID)
-	}
+// turnSlot 是回合持有的写者槽位：提交后需要整理时，槽位直接交给整理任务（handoff），中间不留空档。
+type turnSlot struct {
+	session *session
+	job     *job
+	release func()
 }
 
-// Exclusive 在存档没有回合运行时执行 fn（移动 head、修改正文、编辑记忆或状态等直接改存档的操作），
-// 执行期间不能开始新回合（不变量 5：单一写者）。有回合在运行时返回 Conflict。
+// Cancel 停止正在运行（或排队等待整理完成）的回合。turnID 不匹配时返回 NotFound。
+func (m *Manager) Cancel(saveID, turnID string) error {
+	s := m.existingSession(saveID)
+	if s == nil {
+		return errs.NotFound("没有正在进行的该回合")
+	}
+	defer s.mu.Unlock()
+	for _, j := range []*job{s.running, s.queued} {
+		if j != nil && j.kind == jobTurn && j.id == turnID {
+			j.cancel()
+			return nil
+		}
+	}
+	return errs.NotFound("没有正在进行的该回合")
+}
+
+// Running 返回存档正在运行或排队的回合 ID（没有则返回空）。
+func (m *Manager) Running(saveID string) string {
+	s := m.existingSession(saveID)
+	if s == nil {
+		return ""
+	}
+	defer s.mu.Unlock()
+	for _, j := range []*job{s.running, s.queued} {
+		if j != nil && j.kind == jobTurn {
+			return j.id
+		}
+	}
+	return ""
+}
+
+// Compacting 表示存档是否正在整理上下文。
+func (m *Manager) Compacting(saveID string) bool {
+	s := m.existingSession(saveID)
+	if s == nil {
+		return false
+	}
+	defer s.mu.Unlock()
+	return s.running != nil && s.running.kind == jobCompaction
+}
+
+// Exclusive 在存档没有任务（回合或整理）运行时执行 fn（移动 head、修改正文、编辑记忆或状态等直接改存档的操作），
+// 执行期间不能开始新回合（不变量 5：单一写者）。有任务在运行时返回 Conflict。
 // fn 返回后发布 timeline.changed 与最新的面板，其他标签页据此刷新。
 func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func() error) error {
 	if _, err := m.d.Saves.Get(ctx, saveID); err != nil {
 		return err
 	}
 	s := m.lockSession(saveID)
-	if s.running != nil {
-		id := s.running.id
+	if err := busyError(s); err != nil {
 		s.mu.Unlock()
-		return errs.Conflict("回合还在进行中，请等它结束或先停止").WithDetails(map[string]string{"turn_id": id})
+		m.dropIdle(saveID, s)
+		return err
 	}
 	err := fn()
 	s.mu.Unlock()
@@ -226,42 +332,28 @@ func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func(
 	return nil
 }
 
-// dropIdle 删除没有运行任何任务的会话。
+// busyError 返回会话忙碌时的冲突错误（调用方持有 s.mu）。
+func busyError(s *session) error {
+	switch {
+	case s.running != nil && s.running.kind == jobCompaction:
+		return errs.Conflict("正在整理上下文，请稍候")
+	case s.running != nil:
+		return errs.Conflict("回合还在进行中，请等它结束或先停止").WithDetails(map[string]string{"turn_id": s.running.id})
+	case s.queued != nil:
+		return errs.Conflict("有一个输入在等待整理完成").WithDetails(map[string]string{"turn_id": s.queued.id})
+	}
+	return nil
+}
+
+// dropIdle 删除没有任何任务的会话。
 func (m *Manager) dropIdle(saveID string, s *session) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.running == nil && m.sessions[saveID] == s {
+	if s.running == nil && s.queued == nil && m.sessions[saveID] == s {
 		delete(m.sessions, saveID)
 	}
-}
-
-// Cancel 停止正在运行的回合。turnID 不匹配（已结束或是别的回合）时返回 NotFound。
-func (m *Manager) Cancel(saveID, turnID string) error {
-	s := m.runningSession(saveID)
-	if s == nil {
-		return errs.NotFound("没有正在进行的该回合")
-	}
-	defer s.mu.Unlock()
-	if s.running == nil || s.running.id != turnID {
-		return errs.NotFound("没有正在进行的该回合")
-	}
-	s.running.cancel()
-	return nil
-}
-
-// Running 返回存档正在运行的回合 ID（没有则返回空）。
-func (m *Manager) Running(saveID string) string {
-	s := m.runningSession(saveID)
-	if s == nil {
-		return ""
-	}
-	defer s.mu.Unlock()
-	if s.running == nil {
-		return ""
-	}
-	return s.running.id
 }
 
 // Shutdown 取消全部运行中的回合并等待它们提交完毕（已生成的内容以 interrupted 状态保存）。

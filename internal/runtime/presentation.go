@@ -22,8 +22,12 @@ type Presentation struct {
 	RunningTurnID string     `json:"running_turn_id,omitzero"`
 	NeedsOpening  bool       `json:"needs_opening"` // 还没有任何回合：前端应提交 kind=opening 的输入
 	DevWork       bool       `json:"dev_work"`      // 作品来自开发目录：默认显示开发者工具（D-31）
-	Model         ModelBrief `json:"model"`
-	UI            UI         `json:"ui"`
+	Compacting    bool       `json:"compacting"`    // 正在整理上下文
+	// Context 是当前上下文规模与整理阈值（顶栏用量环）；Compactions 是当前进度线上的整理次数。
+	Context     event.ContextUsage `json:"context"`
+	Compactions int                `json:"compactions"`
+	Model       ModelBrief         `json:"model"`
+	UI          UI                 `json:"ui"`
 }
 
 // ModelBrief 是主笔模型的摘要。
@@ -96,12 +100,20 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 	if err != nil {
 		return nil, err
 	}
-	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: head.Kind == save.KindRoot, DevWork: w.IsDev}
+	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: head.Kind == save.KindRoot, DevWork: w.IsDev,
+		Compacting: m.Compacting(saveID)}
+	for _, n := range line {
+		if n.Kind == save.KindCompaction {
+			p.Compactions++
+		}
+	}
 
 	features := prompts.FeatureSet{}
 	if _, model, err := m.d.Models.Resolve(ctx, sv.Settings.NarratorModel); err == nil {
 		p.Model = ModelBrief{ID: model.ID, Name: model.Name, DisplayName: model.DisplayName, Vision: model.Caps.Vision, Context: model.ContextWindow}
 		features = contextx.Profile(w, sv.Settings, model.Caps, false)
+		p.Context = event.ContextUsage{Used: contextTokensOf(line),
+			Threshold: m.compactParams(ctx, sv.Settings).Threshold(model.ContextWindow, maxOutput(model))}
 	} else {
 		// 模型不可用时仍允许浏览存档；提交回合时会给出明确错误。
 		slog.WarnContext(ctx, "存档的主笔模型不可用", "save_id", saveID, "err", err)

@@ -79,8 +79,8 @@ func openEnv(ctx context.Context, dir string, provider llm.Provider) (*env, erro
 	return openEnvWith(ctx, dir, fakeModels{provider})
 }
 
-// openEnvWith 同 openEnv，模型由 models 解析（评测用真实模型）。
-func openEnvWith(ctx context.Context, dir string, models runtime.ModelResolver) (*env, error) {
+// openEnvWith 同 openEnv，模型由 models 解析（评测用真实模型）；opts 可以调整运行器的依赖（如全局设置）。
+func openEnvWith(ctx context.Context, dir string, models runtime.ModelResolver, opts ...func(*runtime.Deps)) (*env, error) {
 	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
 	if err != nil {
 		return nil, err
@@ -96,10 +96,14 @@ func openEnvWith(ctx context.Context, dir string, models runtime.ModelResolver) 
 	saves := save.NewService(db, blobs, works, tm)
 	images := media.NewStore(db, blobs, "")
 	bus := event.NewBus(0)
-	mgr := runtime.NewManager(runtime.Deps{
+	deps := runtime.Deps{
 		Saves: saves, Works: works, Models: models, Bus: bus,
 		Builder: contextx.NewBuilder(tm, images), Tools: tools.NewRegistry(), Tmpl: tm, Images: images,
-	})
+	}
+	for _, o := range opts {
+		o(&deps)
+	}
+	mgr := runtime.NewManager(deps)
 	return &env{db: db, blobs: blobs, saves: saves, mgr: mgr, bus: bus, images: images}, nil
 }
 

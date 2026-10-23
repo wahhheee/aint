@@ -29,11 +29,12 @@ func (s *Service) MemoryIndex(ctx context.Context, memoryHash string) ([]MemoryE
 	if err != nil {
 		return nil, err
 	}
-	paths := make([]string, 0, len(mf.Files))
-	for p := range mf.Files {
-		paths = append(paths, p)
-	}
-	slices.Sort(paths)
+	return s.MemoryIndexOf(ctx, mf.Files, nil)
+}
+
+// MemoryIndexOf 同 MemoryIndex，作用于尚未提交的清单：data 中有内容的文件直接取内容，其余按 blob 读取。
+func (s *Service) MemoryIndexOf(ctx context.Context, files map[string]MemoryFile, data map[string][]byte) ([]MemoryEntry, error) {
+	paths := slices.Sorted(maps.Keys(files))
 	folded := map[string]int{}
 	var out []MemoryEntry
 	for _, p := range paths {
@@ -46,11 +47,14 @@ func (s *Service) MemoryIndex(ctx context.Context, memoryHash string) ([]MemoryE
 				continue
 			}
 		}
-		data, err := s.Blob(ctx, mf.Files[p].Blob)
-		if err != nil {
-			return nil, err
+		content, ok := data[p]
+		if !ok {
+			var err error
+			if content, err = s.Blob(ctx, files[p].Blob); err != nil {
+				return nil, err
+			}
 		}
-		out = append(out, MemoryEntry{Path: p, Summary: vfs.Summary(string(data))})
+		out = append(out, MemoryEntry{Path: p, Summary: vfs.Summary(string(content))})
 	}
 	for i, e := range out {
 		if n := folded[strings.TrimSuffix(e.Path, "/")]; n > 0 {

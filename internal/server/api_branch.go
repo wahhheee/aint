@@ -202,3 +202,12 @@ func (s *Server) patchState(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, http.StatusOK, map[string]any{"changes": changes})
 	return nil
 }
+
+// compact：POST /saves/{id}/compact——手动整理上下文（后台进行，结果经 compaction.* 事件推送）。
+func (s *Server) compact(w http.ResponseWriter, r *http.Request) error {
+	if err := s.d.Runtime.Compact(r.Context(), r.PathValue("id")); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusAccepted)
+	return nil
+}

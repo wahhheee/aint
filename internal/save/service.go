@@ -401,3 +401,55 @@ func (s *Service) LoadMemory(ctx context.Context, hash string) (MemoryManifest, 
 func (s *Service) Blob(ctx context.Context, hash string) ([]byte, error) {
 	return s.blobs.Get(ctx, s.db.Read(), hash)
 }
+
+// CompactionCommit 是一次上下文整理的提交内容（由 runtime 组装）。
+type CompactionCommit struct {
+	SaveID       string
+	Parent       *Node        // 整理时的 head
+	Epoch        string       // 新阶段块（L4），存为 blob，阶段内原样复用
+	KeepFrom     string       // 保留原文的第一个回合节点 ID
+	Memory       *MemoryWrite // 落盘写入的记忆；nil 表示没有改动
+	Messages     []llm.Message
+	Usage        *llm.Usage
+	Meta         NodeMeta
+	UsageRecords []usage.Record
+}
+
+// CommitCompaction 在单个事务中提交整理节点：阶段块、整理过程的消息（只供排查，不进入之后的上下文）、
+// 新记忆清单、用量，并把 head 移到整理节点。状态不变。
+func (s *Service) CommitCompaction(ctx context.Context, c CompactionCommit) (*Node, error) {
+	n := &Node{
+		ID: ids.New(), SaveID: c.SaveID, ParentID: c.Parent.ID, Depth: c.Parent.Depth + 1, Kind: KindCompaction,
+		Status: StatusCommitted, TurnNo: c.Parent.TurnNo, KeepFrom: c.KeepFrom, StateHash: c.Parent.StateHash,
+		MemoryHash: c.Parent.MemoryHash, WorkVersionID: c.Parent.WorkVersionID, Usage: c.Usage, Meta: c.Meta,
+		CreatedAt: store.NowMillis(),
+	}
+	err := s.db.Tx(ctx, func(tx *sql.Tx) error {
+		var err error
+		if n.EpochHash, err = s.blobs.Put(ctx, tx, []byte(c.Epoch), "text/plain; charset=utf-8"); err != nil {
+			return err
+		}
+		if n.MessagesHash, err = s.blobs.PutJSON(ctx, tx, c.Messages); err != nil {
+			return err
+		}
+		if c.Memory != nil {
+			if n.MemoryHash, err = s.putMemory(ctx, tx, c.Memory); err != nil {
+				return err
+			}
+		}
+		if err := insertNode(ctx, tx, n); err != nil {
+			return fmt.Errorf("写入整理节点失败: %w", err)
+		}
+		for _, r := range c.UsageRecords {
+			r.SaveID, r.NodeID = c.SaveID, n.ID
+			if err := usage.Insert(ctx, tx, r); err != nil {
+				return fmt.Errorf("写入用量失败: %w", err)
+			}
+		}
+		return setHead(ctx, tx, c.SaveID, n.ID, false)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
+}

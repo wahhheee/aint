@@ -40,7 +40,10 @@ type Settings struct {
 	Reasoning     string `json:"reasoning"`          // off | low | medium | high
 	Helpers       bool   `json:"helpers"`            // 后台助手（P1）
 	CacheTTL      string `json:"cache_ttl,omitzero"` // short | long（Anthropic 5 分钟 / 1 小时；OpenAI 30 分钟 / 12 小时）
-	// TODO(M3)：上下文预算、保留原文量、整理方式的存档级覆盖。
+	// 上下文整理的存档级覆盖；零值表示沿用全局设置（settings.Context）。
+	ContextBudget int    `json:"context_budget,omitzero"`
+	KeepRecent    int    `json:"keep_recent,omitzero"`
+	CompactMode   string `json:"compact_mode,omitzero"` // inline | separate
 }
 
 // Save 是一个存档条目。
@@ -97,6 +100,14 @@ type NodeMeta struct {
 	PrefixHash    string `json:"prefix_hash,omitzero"` // L0–L3 + 工具的哈希；变化即缓存重建
 	PromptVersion string `json:"prompt_version,omitzero"`
 	EditedFrom    string `json:"edited_from,omitzero"`
+	// ContextTokens 是这个节点之后的上下文规模（token）：回合为最后一次调用的输入 + 输出（实测），
+	// 整理节点为新阶段的估算。下一次请求在此基础上追加新输入；整理阈值与界面的用量环都以它为准。
+	ContextTokens int `json:"context_tokens,omitzero"`
+	// 整理节点：本次整理摘要掉的回合区间与保留原文的起点回合
+	CompactReason string `json:"compact_reason,omitzero"`
+	SummaryFrom   int    `json:"summary_from,omitzero"`
+	SummaryTo     int    `json:"summary_to,omitzero"`
+	KeepFromTurn  int    `json:"keep_from_turn,omitzero"`
 }
 
 // TurnInput 是玩家一回合的输入（《02-技术方案》9.1）。

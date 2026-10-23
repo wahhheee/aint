@@ -23,21 +23,24 @@ import (
 type draft struct {
 	id      string
 	started time.Time
-	release func() // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
+	slot    *turnSlot // 写者槽位：提交后需要整理时交给整理任务
+	release func()    // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
 
 	// 只读上下文（prepare 阶段确定）
-	save     *save.Save
-	parent   *save.Node // 本回合的父节点（= 提交前的 head）
-	turnNo   int
-	input    save.TurnInput
-	work     *work.Model
-	features prompts.FeatureSet
-	provider llm.Provider
-	model    *llm.Model
-	built    *contextx.Built
-	vfs      *vfs.Table   // 本回合的挂载表（buildVFS）
-	images   *media.Store // 发送给模型的图片（read 看图）
-	memory   *vfs.Overlay // 记忆覆盖层：write / edit / remove 写在这里，提交时 Dirty 才生成新清单
+	save      *save.Save
+	parent    *save.Node // 本回合的父节点（= 提交前的 head；回合内整理后为整理节点）
+	root      *save.Node
+	initState map[string]any // 存档的初始状态（执笔指令中的 Liquid 以它渲染）
+	turnNo    int
+	input     save.TurnInput
+	work      *work.Model
+	features  prompts.FeatureSet
+	provider  llm.Provider
+	model     *llm.Model
+	built     *contextx.Built
+	vfs       *vfs.Table   // 本回合的挂载表（buildVFS）
+	images    *media.Store // 发送给模型的图片（read 看图）
+	memory    *vfs.Overlay // 记忆覆盖层：write / edit / remove 写在这里，提交时 Dirty 才生成新清单
 
 	// 状态：以父节点快照为起点，update_state 成功后整体替换（state.Apply 不修改原映射，读取方拿到的快照不会再变）
 	state        map[string]any
@@ -54,6 +57,12 @@ type draft struct {
 	seq      int // turn.text 事件序号
 	records  []usage.Record
 	toolLog  []tools.CallRecord
+
+	// 上下文规模（token）：threshold 是整理阈值（用量环的分母），hardLimit 是回合内必须先整理的硬上限；
+	// lastInput / lastOutput 是最近一次调用的实际用量，提交时记为节点的上下文规模。
+	threshold, hardLimit  int
+	lastInput, lastOutput int
+	compacted             bool // 本回合已经在回合内整理过一次（每回合至多一次）
 
 	// 计数与结果
 	calls, toolCalls, continuations int

@@ -204,7 +204,7 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 
 	rt := runtime.NewManager(runtime.Deps{
 		Saves: saves, Works: works, Models: providers, Bus: bus,
-		Builder: contextx.NewBuilder(tm, images), Tools: registry, Tmpl: tm, Images: images,
+		Builder: contextx.NewBuilder(tm, images), Tools: registry, Tmpl: tm, Images: images, Settings: settingsSvc,
 	})
 
 	srv := server.New(server.Deps{
