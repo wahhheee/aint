@@ -56,6 +56,8 @@ func TestForceChoices(t *testing.T) {
 		{name: "默认关闭", responses: []fake.Response{story}, calls: 1, stop: "end"},
 		{name: "禁用自由输入不隐式开启", features: "features:\n  free_input: false\n  force_choices: false\n", responses: []fake.Response{story}, calls: 1, stop: "end"},
 		{name: "正文之后补选项", features: enabled, responses: []fake.Response{story, choiceResponse()}, calls: 2, nudgeAt: 1, stop: "choices", choices: true},
+		{name: "文字选项仍需工具调用", features: enabled, responses: []fake.Response{{Text: "门后传来了脚步声。\n（可选行动：A 开门；B 等候）"}, choiceResponse()}, calls: 2, nudgeAt: 1, stop: "choices", choices: true},
+		{name: "HTML选项仍需工具调用", features: enabled, responses: []fake.Response{{Text: "门后传来了脚步声。\n<button>开门</button><button>等候</button>"}, choiceResponse()}, calls: 2, nudgeAt: 1, stop: "choices", choices: true},
 		{name: "已有选项直接结束", features: enabled, responses: []fake.Response{{Text: story.Text, ToolCalls: choiceResponse().ToolCalls}}, calls: 1, stop: "choices", choices: true},
 		{name: "补调用保留工具往返", features: enabled, responses: []fake.Response{read, story, read, choiceResponse()}, calls: 4, nudgeAt: 2, stop: "choices", choices: true},
 		{name: "选项参数错误后重试", features: enabled, responses: []fake.Response{story, invalid, choiceResponse()}, calls: 3, nudgeAt: 1, stop: "choices", choices: true},

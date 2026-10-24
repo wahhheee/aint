@@ -251,7 +251,8 @@ func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Mo
 	tail.WriteString("\n" + task)
 
 	// 原文：从最近的回合往前放，直到预算用完（为输出与工具往返留出余量）
-	budget := model.ContextWindow - maxOutput(model) - contextx.EstimateTokens(prompts.CompactionSeparateSystem+head.String()+tail.String()) -
+	system := prompts.CompactionSeparateSystem + "\n\n" + contextx.RenderToolGuide(specs)
+	budget := model.ContextWindow - maxOutput(model) - contextx.EstimateTokens(system+head.String()+tail.String()) -
 		contextx.EstimateTokens(string(jsonxMarshal(specs))) - 16_000
 	var turns []string
 	omitted := 0
@@ -277,7 +278,7 @@ func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Mo
 	body.WriteString("</transcript>\n")
 	body.WriteString(tail.String())
 	return &llm.Request{
-		System:    []llm.SystemBlock{{Text: prompts.CompactionSeparateSystem}},
+		System:    []llm.SystemBlock{{Text: system}},
 		Tools:     specs,
 		Messages:  []llm.Message{{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(body.String())}}},
 		MaxOutput: maxOutput(model),

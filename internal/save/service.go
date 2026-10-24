@@ -11,6 +11,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
+	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/store"
@@ -139,19 +140,20 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 		if openingChoices != nil {
 			display = append(display, *openingChoices)
 		}
-		// 合成的助手消息：开场正文 + 可选行动（《02-技术方案》9.8）
-		text := opening.Markup
+		// 合成的助手消息：正文与选项工具调用分开记录，首轮玩家输入回填为工具结果。
+		parts := []llm.Part{llm.Text(opening.Markup)}
 		if openingChoices != nil {
-			var parts []string
-			for _, c := range openingChoices.Items {
-				parts = append(parts, strings.ToUpper(c.ID)+" "+c.Label)
-			}
-			text += "\n\n（可选行动：" + strings.Join(parts, "；") + "）"
+			parts = append(parts, llm.Part{Kind: llm.PartToolCall, ToolCall: &llm.ToolCall{
+				ID: "static_opening_choices", Name: "offer_choices",
+				Args: jsonx.MustMarshal(struct {
+					Choices []ChoiceItem `json:"choices"`
+				}{Choices: openingChoices.Items}),
+			}})
 		}
 		// 先放一条合成的 user 消息：历史始终以 user 开头，与生成式开场的结构一致（D-33）
 		messages := []llm.Message{
 			{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.StaticOpeningInput)}},
-			{Role: llm.RoleAssistant, Parts: []llm.Part{llm.Text(text)}},
+			{Role: llm.RoleAssistant, Parts: parts},
 		}
 		node, err := s.commitTx(ctx, tx, TurnCommit{
 			SaveID: sv.ID, Parent: root, TurnNo: 1, Input: TurnInput{Kind: InputOpening},

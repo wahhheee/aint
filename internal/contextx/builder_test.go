@@ -175,6 +175,11 @@ func TestAssemblyConsistency(t *testing.T) {
 			built, _ := build(t, name, caps)
 			sys := systemText(built.Request)
 			registered := toolNames(built.Request)
+			for _, spec := range built.Request.Tools {
+				if !strings.Contains(sys, "- `"+spec.Name+"`："+spec.Description) {
+					t.Errorf("%s：系统提示词缺少 %s 的自然语言用法", name, spec.Name)
+				}
+			}
 			for _, tool := range allTools {
 				if regexp.MustCompile(`\b`+tool+`\b`).MatchString(sys) && !slices.Contains(registered, tool) {
 					t.Errorf("%s：提示词提到了未注册的工具 %s", name, tool)
@@ -197,6 +202,49 @@ func TestPrefixHashStable(t *testing.T) {
 	c, _ := build(t, "misty-harbor", llm.Caps{Vision: true})
 	if a.PrefixHash == c.PrefixHash {
 		t.Fatal("换成支持看图的模型后前缀应变化（提示词裁切不同）")
+	}
+}
+
+func TestToolGuideCacheTracksDefinitions(t *testing.T) {
+	sub, _ := fs.Sub(examples.Works(), "first-story")
+	set, err := work.FromFS(sub, work.DefaultLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, rep := work.Compile(set)
+	if rep.HasErrors() {
+		t.Fatalf("作品校验失败：%+v", rep.Issues)
+	}
+	fs := contextx.Profile(w, save.Settings{}, llm.Caps{}, false)
+	b := contextx.NewBuilder(tmpl.New(), nil)
+	in := contextx.BuildInput{Work: w, Features: fs, Model: fake.Model(), InitialState: w.State.Defaults(),
+		InitialStateHash: "h", Tools: tools.NewRegistry().Specs(fs, w)}
+	first, err := b.Build(t.Context(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Tools = slices.Clone(in.Tools)
+	in.Tools[0].Description = "读取指定路径的测试内容。"
+	second, err := b.Build(t.Context(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(systemText(second.Request), "- `read`："+in.Tools[0].Description) ||
+		strings.Contains(systemText(first.Request), in.Tools[0].Description) || first.PrefixHash == second.PrefixHash {
+		t.Fatal("工具描述变化应重建提示词与前缀哈希，不应污染之前的请求")
+	}
+	in.Tools = nil
+	empty, err := b.Build(t.Context(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(systemText(empty.Request), "## 工具用法") {
+		t.Fatal("没有工具定义时不应残留缓存中的工具用法")
+	}
+	for _, report := range empty.Fragments {
+		if report.ID == "tools.guide" && (report.Enabled || report.Reason == "") {
+			t.Fatalf("工具用法片段应标记为未启用：%+v", report)
+		}
 	}
 }
 

@@ -117,7 +117,7 @@ func (b *Builder) Build(ctx context.Context, in BuildInput) (*Built, error) {
 
 func (b *Builder) prefix(ctx context.Context, in BuildInput) (*prefix, error) {
 	key := strings.Join([]string{prompts.Version, in.Work.VersionID, in.Features.Signature(), in.InitialStateHash,
-		strconv.Itoa(in.Model.Caps.ImageMaxEdge)}, "|")
+		strconv.Itoa(in.Model.Caps.ImageMaxEdge), store.HashBytes(jsonx.MustMarshal(in.Tools))}, "|")
 	if p, ok := b.cache.Get(key); ok {
 		return p, nil
 	}
@@ -126,6 +126,14 @@ func (b *Builder) prefix(ctx context.Context, in BuildInput) (*prefix, error) {
 	if err != nil {
 		return nil, err
 	}
+	guide := RenderToolGuide(in.Tools)
+	guideReport := FragmentReport{ID: "tools.guide", Layer: "L0", Section: "工具用法", Enabled: guide != "", Chars: len([]rune(guide))}
+	if guide != "" {
+		l0 += "\n\n" + guide
+	} else {
+		guideReport.Reason = "没有可用工具"
+	}
+	reports = append(reports, guideReport)
 	narrator, err := b.tmpl.RenderWith("prompts/narrator.md", in.Work.Narrator, map[string]any{"state": in.InitialState}, in.Work.Partials)
 	if err != nil {
 		return nil, fmt.Errorf("执笔指令模板渲染失败: %w", err)

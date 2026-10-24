@@ -449,8 +449,12 @@ func TestAttachments(t *testing.T) {
 	if len(images) != 1 || images[0].Width != 1568 || images[0].Height != 784 {
 		t.Fatalf("附件应以派生图随输入发送：%+v", images)
 	}
-	if !strings.Contains(first.Parts[0].Text, "/uploads/0002-1.jpg") {
-		t.Fatalf("输入应说明附件在 /uploads 中的路径：%s", first.Parts[0].Text)
+	if !strings.Contains(first.TextOf(), "/uploads/0002-1.jpg") {
+		t.Fatalf("输入应说明附件在 /uploads 中的路径：%s", first.TextOf())
+	}
+	answers := toolResults(first)
+	if len(answers) != 1 || answers[0].Parts[0].Text != "玩家自由输入：看看这张照片" {
+		t.Fatalf("附带图片时仍应回填开场选项的作答：%+v", answers)
 	}
 	last := reqs[1].Messages[len(reqs[1].Messages)-1]
 	res := last.Parts[0].ToolResult

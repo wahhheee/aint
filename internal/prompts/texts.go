@@ -5,7 +5,7 @@ const (
 	// ContinueNotice 截断续写时追加的 user 消息（9.4）。
 	ContinueNotice = "<notes>上一段输出到达了单次长度上限，已写的内容都保留着。请从断点处接着写下去。</notes>"
 	// ForceChoicesNotice 正文自然结束但尚未交还选项时追加的 user 消息。
-	ForceChoicesNotice = "<notes>本回合的正文已写完，内容都保留着。请直接调用 offer_choices，给出 2–4 个贴合当前情境的选项，把决定权交还给玩家。正文无需重复或续写。</notes>"
+	ForceChoicesNotice = "<notes>本回合的正文已写完，内容都保留着。请通过工具调用功能实际调用 offer_choices，将 2–4 个贴合当前情境的选项放入 choices 参数，平台会生成选项按钮。此步骤无需输出正文、选项列表、代码块或 HTML。</notes>"
 	// CompactionPendingChoice 整理时为尚未作答的 offer_choices 补齐的工具结果（13.3）。
 	CompactionPendingChoice = "（玩家还没有作答，系统先整理上下文）"
 	// CompactionToolUnavailable 整理阶段调用了不使用的工具（13.3）。
@@ -65,6 +65,7 @@ const (
 // CompactionSeparateSystem 是 separate 模式（轻量模型单独整理）的系统提示。
 const CompactionSeparateSystem = `你在为一部互动小说的执笔者整理上下文。执笔者与玩家已经写了很长一段故事，接下来要用一份交接摘要接替较早的对话。
 你会看到作品标题、上一份交接摘要（如有）、本阶段的故事原文、当前状态与记忆目录；/work 是作品资料，/memory 是执笔者的记忆笔记，/transcript 是全部原文，可以用 read、list、search 查阅，用 write、edit、remove 整理记忆。
+这些操作通过本次请求提供的工具调用功能执行，具体用法见下方；普通回复中的工具名、JSON 或代码块不会执行工具。
 请按消息末尾 <system_task> 的要求完成：先把要紧的事写进 /memory，再直接输出交接摘要本身。`
 
 // EpochIntro 是整理后阶段块的首句（13.4）：%d、%d 为保留原文的起止回合。

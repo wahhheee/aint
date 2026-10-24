@@ -216,7 +216,7 @@ func TestCompactionSeparateAndPrefix(t *testing.T) {
 			sep = r
 		}
 	}
-	if sep.System[0].Text != prompts.CompactionSeparateSystem || !strings.Contains(sep.Messages[0].TextOf(), "<transcript>") ||
+	if !strings.HasPrefix(sep.System[0].Text, prompts.CompactionSeparateSystem) || !strings.Contains(sep.Messages[0].TextOf(), "<transcript>") ||
 		!strings.Contains(sep.Messages[0].TextOf(), "<previous_summary>\n## 故事至今") {
 		t.Fatalf("separate 整理的请求：%s", sep.Messages[0].TextOf())
 	}
@@ -224,6 +224,12 @@ func TestCompactionSeparateAndPrefix(t *testing.T) {
 		if s.Name == "offer_choices" {
 			t.Fatal("separate 整理只提供记忆与资料工具")
 		}
+		if !strings.Contains(sep.System[0].Text, "- `"+s.Name+"`："+s.Description) {
+			t.Fatalf("separate 提示词缺少 %s 的自然语言用法", s.Name)
+		}
+	}
+	if strings.Contains(sep.System[0].Text, "offer_choices") || strings.Contains(sep.System[0].Text, "update_state") {
+		t.Fatal("separate 工具用法不应包含未提供的工具")
 	}
 	// 第二次整理之后再玩两个回合：两次请求的消息逐条字节相等（只追加）
 	for range 2 {
