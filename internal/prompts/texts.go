@@ -4,6 +4,8 @@ package prompts
 const (
 	// ContinueNotice 截断续写时追加的 user 消息（9.4）。
 	ContinueNotice = "<notes>上一段输出到达了单次长度上限，已写的内容都保留着。请从断点处接着写下去。</notes>"
+	// ForceChoicesNotice 正文自然结束但尚未交还选项时追加的 user 消息。
+	ForceChoicesNotice = "<notes>本回合的正文已写完，内容都保留着。请直接调用 offer_choices，给出 2–4 个贴合当前情境的选项，把决定权交还给玩家。正文无需重复或续写。</notes>"
 	// CompactionPendingChoice 整理时为尚未作答的 offer_choices 补齐的工具结果（13.3）。
 	CompactionPendingChoice = "（玩家还没有作答，系统先整理上下文）"
 	// CompactionToolUnavailable 整理阶段调用了不使用的工具（13.3）。

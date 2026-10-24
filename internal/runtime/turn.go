@@ -189,6 +189,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 
 // loop 是回合主循环（《02-技术方案》9.2–9.3）。
 func (m *Manager) loop(ctx context.Context, d *draft) {
+	choicesNudged := false
 	for {
 		if reason := m.d.Budget.exceeded(d); reason != "" {
 			d.stop = "budget"
@@ -233,14 +234,29 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 		switch res.stop {
 		case llm.StopToolUse:
 			calls := res.msg.ToolCalls()
-			if len(calls) == 0 {
-				d.stop = string(llm.StopEnd)
+			if len(calls) > 0 {
+				if m.runTools(ctx, d, calls) {
+					d.stop = "choices"
+					return
+				}
+				continue
+			}
+			fallthrough
+		case llm.StopEnd:
+			if d.features.Has(prompts.FForceChoices) && d.choices == nil && d.hasNarrative() {
+				if !choicesNudged {
+					choicesNudged = true
+					notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ForceChoicesNotice)}}
+					d.req.Messages = append(d.req.Messages, notice)
+					d.turnMsgs = append(d.turnMsgs, notice)
+					continue
+				}
+				d.stop, d.status = "choices_missing", save.StatusInterrupted
+				d.addNotice("warn", "模型仍未给出选项，已保留正文，可以点“继续”再试。")
 				return
 			}
-			if m.runTools(ctx, d, calls) {
-				d.stop = "choices"
-				return
-			}
+			d.stop = string(llm.StopEnd)
+			return
 		case llm.StopMaxTokens:
 			if d.continuations >= m.d.Budget.MaxContinuations {
 				d.stop = "length"
@@ -252,9 +268,6 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ContinueNotice)}}
 			d.req.Messages = append(d.req.Messages, notice)
 			d.turnMsgs = append(d.turnMsgs, notice)
-		case llm.StopEnd:
-			d.stop = string(llm.StopEnd)
-			return
 		case llm.StopContextOverflow:
 			// 输出写到了窗口上限：紧急整理后接着写（与截断续写相同），每回合一次
 			if !d.compacted {

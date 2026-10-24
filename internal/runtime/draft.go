@@ -8,6 +8,7 @@ import (
 
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/yanyi/internal/markup"
 	"github.com/wahhheee/yanyi/internal/media"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
@@ -154,4 +155,16 @@ func (d *draft) hasContent() bool {
 		}
 	}
 	return d.choices != nil
+}
+
+// hasNarrative 判断本回合是否有故事正文；场外回应与玩家输入不计入。
+func (d *draft) hasNarrative() bool {
+	var text strings.Builder
+	for _, it := range d.display {
+		if it.T == "text" {
+			text.WriteString(it.Markup)
+			text.WriteString("\n\n")
+		}
+	}
+	return strings.TrimSpace(markup.PlainText(text.String())) != ""
 }

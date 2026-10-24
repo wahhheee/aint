@@ -34,10 +34,12 @@ var L0 = []Fragment{
 	// 平台默认的目录约定（D-24）；作品的补充约定在 L1"记忆约定"节
 	{ID: "memory.layout", Section: "记忆", Text: `- 可以这样组织：/memory/index.md 是总索引（每个文件一行说明）；chronicle/ 放章节纪要（关键事件与回合号）；characters/ 放人物的现状、关系与认知；threads/ 放伏笔、承诺与悬念（写明埋设回合与打算如何回收）；world/ 放游玩中新确立的设定；player.md 记玩家的偏好与选择倾向。{{if has "memory.guide"}}作品在"记忆约定"中另有安排时，以作品为准。{{end}}`},
 
-	{ID: "handoff.free", Section: "交还决定权", When: Requires(FFreeInput),
+	{ID: "handoff.free", Section: "交还决定权", When: Cond{All: []Feature{FFreeInput}, None: []Feature{FForceChoices}},
 		Text: `- 一段叙事告一段落、需要玩家决定时，可以调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，随后结束本回合。选项会以按钮显示给玩家，正文里不需要再列出；玩家也可以自由输入。暂时没有合适的选项时，写完直接结束即可。`},
-	{ID: "handoff.forced", Section: "交还决定权", When: Cond{None: []Feature{FFreeInput}},
+	{ID: "handoff.forced", Section: "交还决定权", When: Cond{None: []Feature{FFreeInput, FForceChoices}},
 		Text: `- 每个回合的结尾，请调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，玩家通过选项{{if has "commands"}}和命令{{end}}行动。选项会以按钮显示给玩家，正文里不需要再列出。`},
+	{ID: "handoff.required", Section: "交还决定权", When: Requires(FForceChoices),
+		Text: `- 每个回合的正文写完后，请调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，再结束本回合。选项会以按钮显示给玩家，正文里不需要再列出。{{if has "free_input"}}玩家也可以自由输入。{{end}}只有场外回应、没有正文时不需要给选项。`},
 	{ID: "handoff.command", Section: "交还决定权", When: Requires(FCommands), Text: `- 选项可以附带命令（command），玩家选中时会执行该命令。`},
 	{ID: "handoff.timed", Section: "交还决定权", When: Requires(FTimed), Text: `- 情势紧迫时，可以给选项设置时限（timeout_seconds）和超时默认项（default_choice）。`},
 

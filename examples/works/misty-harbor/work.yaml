@@ -32,6 +32,7 @@ new_game:
       options: [观察, 话术, 记忆]
       default: 观察
 features:
+  force_choices: false  # 开启后，正文结束时未给选项会追加提示并继续工具循环
   dice: true
 presentation:
   dialogue: tagged

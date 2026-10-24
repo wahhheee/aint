@@ -69,6 +69,7 @@ type FormField struct {
 
 type Features struct {
 	FreeInput    bool `yaml:"free_input" json:"free_input"`
+	ForceChoices bool `yaml:"force_choices" json:"force_choices"` // 正文结束时未给选项则追加提示，继续工具循环
 	Dice         bool `yaml:"dice" json:"dice"`
 	TimedChoices bool `yaml:"timed_choices" json:"timed_choices"`
 	OOC          bool `yaml:"ooc" json:"ooc"`

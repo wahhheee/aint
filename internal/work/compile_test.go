@@ -35,6 +35,32 @@ func TestCompileExamples(t *testing.T) {
 	}
 }
 
+func TestForceChoicesManifest(t *testing.T) {
+	for _, tc := range []struct {
+		name, feature string
+		want, invalid bool
+	}{
+		{name: "默认关闭"},
+		{name: "显式关闭", feature: "features:\n  force_choices: false\n"},
+		{name: "作品开启", feature: "features:\n  force_choices: true\n", want: true},
+		{name: "拒绝非布尔值", feature: "features:\n  force_choices: invalid\n", invalid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			set := NewFileSet()
+			if err := set.Add("work.yaml", []byte("format: 1\nid: test.choices\nversion: 0.1.0\ntitle: 选项\n"+tc.feature)); err != nil {
+				t.Fatal(err)
+			}
+			m, rep := Compile(set)
+			if rep.HasErrors() != tc.invalid {
+				t.Fatalf("校验结果不符：%+v", rep.Issues)
+			}
+			if !tc.invalid && m.Manifest.Features.ForceChoices != tc.want {
+				t.Fatalf("force_choices = %v，应为 %v", m.Manifest.Features.ForceChoices, tc.want)
+			}
+		})
+	}
+}
+
 func TestCompileMistyHarbor(t *testing.T) {
 	m, _ := compileExample(t, "misty-harbor")
 	if m.Opening == nil || m.Opening.Mode != "static" || len(m.Opening.Choices) != 3 {

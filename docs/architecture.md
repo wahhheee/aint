@@ -60,6 +60,7 @@ POST /saves/{id}/turns
 - 写者槽位在发布任何终态事件（`turn.committed` / `turn.failed`）**之前**让出：客户端收到终态事件后立即提交下一回合不会得到 409。
 - 玩家停止时以 `interrupted` 状态提交已生成的内容；什么都没生成则不产生节点，只发 `turn.failed`。
 - 上一回合以 `offer_choices` 结束时，玩家的选择作为该工具调用的结果回填到下一回合的第一条消息（`contextx/envelope.go`）。
+- 作品可开启 `features.force_choices`：正文自然结束而没有选项时，追加一次提示并继续当前工具循环；补调用沿用回合预算、取消与用量记录。纯场外回应不触发，再次自然结束仍缺少选项时以中断状态保留正文。配置与边界见 [正文结束后交还选项](force-choices.md)。
 
 **上下文整理**（`runtime/compact.go`、`compact_job.go`，参数与规则在 `compact`）：
 

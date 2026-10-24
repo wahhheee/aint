@@ -66,6 +66,7 @@ func Profile(m *work.Model, st save.Settings, caps llm.Caps, helpersAvailable bo
 
 	set(prompts.FDice, mf.Features.Dice)
 	set(prompts.FFreeInput, mf.Features.FreeInput)
+	set(prompts.FForceChoices, mf.Features.ForceChoices)
 	set(prompts.FTimed, mf.Features.TimedChoices)
 	set(prompts.FOOC, mf.Features.OOC)
 	set(prompts.FMemoryGuide, m.MemoryGuide != "")

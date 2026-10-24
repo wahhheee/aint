@@ -18,7 +18,7 @@ import (
 )
 
 // Version 是平台提示词版本，记录在节点 meta 中，便于把模型行为与提示词版本对应起来。
-const Version = "2026.10.23-3"
+const Version = "2026.10.24-1"
 
 // Feature 是能力画像中的一个特征（《02-技术方案》8.6）。
 type Feature string
@@ -44,6 +44,7 @@ const (
 	FPins         Feature = "pins" // 存在常驻图片
 	FDice         Feature = "dice"
 	FFreeInput    Feature = "free_input"
+	FForceChoices Feature = "force_choices"
 	FTimed        Feature = "timed_choices"
 	FOOC          Feature = "ooc"
 	FMemoryGuide  Feature = "memory.guide"
