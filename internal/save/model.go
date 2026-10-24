@@ -114,8 +114,8 @@ type NodeMeta struct {
 type TurnInput struct {
 	Kind        string       `json:"kind"` // free | choice | command | continue | opening | ooc
 	Text        string       `json:"text,omitzero"`
-	Mode        string       `json:"mode,omitzero"` // 输入模式（present: mode 的命令名）
-	ChoiceID    string       `json:"choice_id,omitzero"`
+	Mode        string       `json:"mode,omitzero"`         // 输入模式（present: mode 的命令名）
+	ChoiceID    string       `json:"choice_id,omitzero"`    // 所选选项的 ID，选项附带命令时也保留
 	ChoiceLabel string       `json:"choice_label,omitzero"` // 服务端根据上一回合的选项补全，用于显示与工具结果
 	Command     *CommandCall `json:"command,omitzero"`
 	Attachments []string     `json:"attachments,omitzero"` // 上传图片 blob 哈希

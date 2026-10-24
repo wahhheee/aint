@@ -11,7 +11,7 @@
 | D-26 | 叙事标记每个非空行为一个段落 | `web/src/markup/parse.ts` |
 | D-27 | 选项 `style` 只取作品样式标签，不内置 `danger`/`subtle`；作品有样式标签时才有该参数 | `internal/tools/builtins.go` |
 | D-28 | `<cg>` 只在有非背景图片素材时启用；背景图只用于 `<scene bg>` | `internal/contextx/profile.go` |
-| D-29 | 选项待答时玩家另有输入（命令 / 场外 / 继续）：工具结果如实写"没有从选项中作答"，输入照常跟在后面 | `internal/contextx/envelope.go` |
+| D-29 | 选项待答时玩家独立输入命令 / 场外 / 继续：工具结果如实写"没有从选项中作答"，输入照常跟在后面；选项附带命令时仍算选项作答，工具结果写所选项，随后附上命令输入 | `internal/contextx/envelope.go` |
 | D-30 | 内置标签 `<ooc>`（随 `features.ooc`）：AI 的场外回应写在其中，浅色块显示，不进入原文检索 | `prompts/l0.go`、`markup/`、`web/src/markup/` |
 | D-31 | **开发目录**用于作品链接本地目录；**开发者选项**是设置开关，默认关，开启后显示完整状态与状态编辑，开发目录作品默认显示。游玩调试使用阅读页独立开关（D-63），状态编辑仍属于开发者工具 | `internal/settings`、阅读页 |
 | D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.0`），与程序发布版本解耦 | `internal/work/engine.go` |

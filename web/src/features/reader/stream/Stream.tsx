@@ -104,8 +104,8 @@ export function Stream({ timeline, onRetry, onContinue }: Props) {
                 <TurnView
                   items={n.display}
                   // 已选择、等待新回合开始期间：选项仍显示，所选项高亮、其余变淡
-                  interactive={n === latestTurn && (!busy || (pending?.kind === 'choice' && !draft))}
-                  selected={n === latestTurn && pending?.kind === 'choice' ? pending.choice_id : undefined}
+                  interactive={n === latestTurn && (!busy || (!!pending?.choice_id && !draft))}
+                  selected={n === latestTurn ? pending?.choice_id : undefined}
                   noticeActions={
                     n === latestTurn && !busy && n.status === 'interrupted' ? (
                       <>

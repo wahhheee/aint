@@ -303,6 +303,7 @@ export interface TurnInput {
   kind: InputKind
   text?: string
   mode?: string
+  /** 所选选项的 ID；选项附带命令时也保留，由服务端校验并补全 choice_label */
   choice_id?: string
   choice_label?: string
   command?: { name: string; args?: Record<string, string> }

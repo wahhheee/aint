@@ -99,6 +99,13 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 
 	// 封装玩家消息
 	env := contextx.Envelope{Input: in, Notes: save.PendingNotes(line), Pace: firstNonEmpty(in.Pace, sv.Settings.Pace, w.Manifest.Narrator.Length)}
+	if in.ChoiceID != "" {
+		label, ok := findChoice(headDisplay, in.ChoiceID)
+		if !ok {
+			return nil, errs.Invalid("当前没有可选的选项 %q", in.ChoiceID)
+		}
+		env.Input.ChoiceLabel = label
+	}
 	switch in.Kind {
 	case save.InputOpening:
 		if head.Kind != save.KindRoot {
@@ -113,11 +120,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 			env.Text += "\n\n" + body
 		}
 	case save.InputChoice:
-		label, ok := findChoice(headDisplay, in.ChoiceID)
-		if !ok {
-			return nil, errs.Invalid("当前没有可选的选项 %q", in.ChoiceID)
-		}
-		env.Input.ChoiceLabel, env.Text = label, label
+		env.Text = env.Input.ChoiceLabel
 	case save.InputCommand:
 		env.Text, env.ModeLabel, err = m.expandCommand(w, in.Command.Name, in.Command.Args, in.Text, headState, turnNo+1)
 		if err != nil {

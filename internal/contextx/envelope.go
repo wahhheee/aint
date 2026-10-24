@@ -31,10 +31,10 @@ type Envelope struct {
 // Message 生成本回合的 user 消息。
 func (e Envelope) Message(fs prompts.FeatureSet) llm.Message {
 	var parts []llm.Part
-	answered := false
+	inputInResult := false
 	if e.PendingCall != "" {
 		result, ok := e.answer()
-		answered = ok
+		inputInResult = ok
 		parts = append(parts, llm.Part{Kind: llm.PartToolResult, ToolResult: &llm.ToolResult{
 			CallID: e.PendingCall, Parts: []llm.Part{llm.Text(result)},
 		}})
@@ -51,7 +51,7 @@ func (e Envelope) Message(fs prompts.FeatureSet) llm.Message {
 	switch {
 	case e.Input.Kind == save.InputOOC && fs.Has(prompts.FOOC):
 		fmt.Fprintf(&b, "<ooc>\n%s\n</ooc>\n", e.Text)
-	case !answered:
+	case !inputInResult:
 		attrs := fmt.Sprintf(` kind="%s"`, e.Input.Kind)
 		if e.ModeLabel != "" && fs.Has(prompts.FInputModes) {
 			attrs += fmt.Sprintf(` mode="%s"`, e.ModeLabel)
@@ -73,12 +73,13 @@ func (e Envelope) Message(fs prompts.FeatureSet) llm.Message {
 	return llm.Message{Role: llm.RoleUser, Parts: parts}
 }
 
-// answer 把选项或自由输入写成 offer_choices 的工具结果；其他输入（命令、场外等）不算作答。
+// answer 返回 offer_choices 的工具结果，以及结果是否已包含本回合输入。
+// 选项附带命令时回填选择，命令展开后的输入另行发送；独立命令、场外等不算作答。
 func (e Envelope) answer() (string, bool) {
-	switch e.Input.Kind {
-	case save.InputChoice:
-		return e.choiceText(), true
-	case save.InputFree:
+	if e.Input.ChoiceID != "" {
+		return e.choiceText(), e.Input.Kind == save.InputChoice
+	}
+	if e.Input.Kind == save.InputFree {
 		return "玩家自由输入：" + e.Text, true
 	}
 	return prompts.ChoiceNotAnswered, false // D-29

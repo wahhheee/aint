@@ -95,7 +95,7 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         const r = parseInput(item.command, commands)
         if (r.ok && 'input' in r) {
           if (!(await confirmCommand(r.input, commands))) return false
-          return submit(r.input)
+          return submit({ ...r.input, choice_id: item.id })
         }
       }
       return submit({ kind: 'choice', choice_id: item.id })

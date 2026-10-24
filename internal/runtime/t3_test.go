@@ -98,11 +98,33 @@ func TestT3Primitives(t *testing.T) {
 		t.Fatalf("选项的样式与命令：%+v", choices)
 	}
 
-	// 带参数的命令（选项附带的命令由前端解析为命令输入）
-	run(save.TurnInput{Kind: save.InputCommand, Command: &save.CommandCall{Name: "follow", Args: map[string]string{"who": "林舟"}}})
+	// 命令输入附带的选项 ID 同样必须存在于当前选项中。
+	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputCommand, ChoiceID: "missing",
+		Command: &save.CommandCall{Name: "follow", Args: map[string]string{"who": "林舟"}}}); err != nil {
+		t.Fatal(err)
+	}
+	failed := waitFor(t, sub, event.TurnFailed).Data.(event.TurnFailedData)
+	if !strings.Contains(failed.Message, "当前没有可选的选项") || len(reqs) != 2 {
+		t.Fatalf("无效选项应在调用模型前拒绝：%+v，调用次数 %d", failed, len(reqs))
+	}
+
+	// 选项附带的命令保留选项 ID；选项文字由服务端补全，命令参数由前端解析。
+	run(save.TurnInput{Kind: save.InputCommand, ChoiceID: "b", ChoiceLabel: "客户端文字", Command: &save.CommandCall{Name: "follow", Args: map[string]string{"who": "林舟"}}})
 	cmdMsg := reqs[2].Messages[len(reqs[2].Messages)-1]
+	answers := toolResults(cmdMsg)
+	if len(answers) != 1 || answers[0].CallID != "call_1_4" || answers[0].Parts[0].Text != "玩家选择：B「跟着林舟」" {
+		t.Fatalf("命令选项应回填实际选择：%+v", answers)
+	}
 	if !strings.Contains(lastText(cmdMsg), "叙述此后跟随 林舟") || !strings.Contains(lastText(cmdMsg), `<input kind="command">`) {
 		t.Fatalf("命令应展开为模板文字：%s", lastText(cmdMsg))
+	}
+	_, line, err := e.saves.ProgressLine(ctx, sv.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := line[len(line)-1].Input
+	if input == nil || input.ChoiceID != "b" || input.ChoiceLabel != "跟着林舟" || input.Command == nil || input.Command.Name != "follow" {
+		t.Fatalf("存档应保留选择与命令，供重新生成使用：%+v", input)
 	}
 
 	// 输入模式（推论）
