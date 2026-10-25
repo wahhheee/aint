@@ -1,70 +1,78 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { SlidersHorizontal } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 
-import { api } from '@/api/endpoints'
-import { errorMessage } from '@/api/errors'
-import { qk, useModels, useSettings } from '@/api/queries'
+import { useModels, useProviders } from '@/api/queries'
 import type { Save, SaveSettings } from '@/api/types'
-import { confirmAction } from '@/components/common/confirm'
+import { confirmAction, useConfirmStore } from '@/components/common/confirm'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
-import { AdvancedPlaySettings } from '@/features/save/AdvancedPlaySettings'
-import { selectBusy, useReader } from '@/stores/reader'
+import { useSaveSettings } from '@/features/save/useSaveSettings'
+import { modelLabel } from '@/lib/modelLabel'
 
 const LEVELS = ['off', 'low', 'medium', 'high'] as const
 const selectClass = 'h-9 w-full rounded-lg border border-rule bg-paper px-2 text-sm text-ink'
 
 /** 存档运行参数：空闲时保存，从下一回合生效。 */
-export function PlaySettings({ save }: { save: Save }) {
+export function ModelSettings({ save }: { save: Save }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const models = useModels()
+  const providers = useProviders()
+  const model = models.data?.find((m) => m.id === save.settings.narrator_model)
+  const label = model ? modelLabel(model, providers.data) : save.settings.narrator_model
+  const provider = providers.data?.find((p) => p.id === model?.provider_id)
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={t('playSettings.title')}>
-          <SlidersHorizontal />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="min-w-0 flex-1 justify-start gap-1 px-2 font-normal text-ink-muted"
+          aria-label={t('playSettings.model')}
+          title={label}
+        >
+          <span className="min-w-0 text-left leading-tight">
+            <span className="block truncate">{model?.display_name || model?.name || save.settings.narrator_model}</span>
+            <span className="block truncate text-[10px] text-ink-faint">
+              {provider?.name || model?.provider_id} · {t('newGame.reasoning')} {t(`reasoning.${save.settings.reasoning}`)}
+            </span>
+          </span>
+          <ChevronDown className="size-3 shrink-0" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="max-h-[80dvh] w-80 max-w-[calc(100vw-1rem)] overflow-y-auto">
-        {open && <PlaySettingsForm save={save} onDone={() => setOpen(false)} />}
+      <PopoverContent
+        onInteractOutside={(e) => {
+          if (useConfirmStore.getState().req) e.preventDefault()
+        }}
+        align="start"
+        side="top"
+        className="max-h-[80dvh] w-80 max-w-[calc(100vw-1rem)] overflow-y-auto"
+      >
+        {open && <ModelSettingsForm save={save} onDone={() => setOpen(false)} />}
       </PopoverContent>
     </Popover>
   )
 }
 
-function PlaySettingsForm({ save, onDone }: { save: Save; onDone: () => void }) {
+function ModelSettingsForm({ save, onDone }: { save: Save; onDone: () => void }) {
   const { t } = useTranslation()
   const models = useModels()
-  const global = useSettings()
-  const qc = useQueryClient()
-  const busy = useReader(selectBusy)
-  const compacting = useReader((s) => s.compacting)
+  const providers = useProviders()
+  const { update, disabled } = useSaveSettings(save.id, onDone)
   const [value, setValue] = useState(save.settings)
   const model = models.data?.find((m) => m.id === value.narrator_model)
-  const update = useMutation({
-    mutationFn: () => api.saves.settings(save.id, value),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.save(save.id) })
-      onDone()
-    },
-    onError: (err) => toast.error(errorMessage(err)),
-  })
   const patch = (v: Partial<SaveSettings>) => setValue((s) => ({ ...s, ...v }))
   const submit = async () => {
     if (value.narrator_model !== save.settings.narrator_model && !(await confirmAction(t('playSettings.switchWarning')))) return
-    if (value.helpers && !save.settings.helpers && !(await confirmAction(t('background.helperCost')))) return
-    update.mutate()
+    update.mutate({ narrator_model: value.narrator_model, reasoning: value.reasoning })
   }
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="font-serif text-base">{t('playSettings.title')}</h3>
+        <h3 className="font-serif text-base">{t('playSettings.model')}</h3>
         <p className="mt-1 text-xs leading-5 text-ink-muted">{t('playSettings.hint')}</p>
       </div>
       <div className="space-y-2">
@@ -78,7 +86,7 @@ function PlaySettingsForm({ save, onDone }: { save: Save; onDone: () => void }) 
           {!models.data?.some((m) => m.id === value.narrator_model) && <option value={value.narrator_model}>{value.narrator_model}</option>}
           {models.data?.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.display_name || m.name}
+              {modelLabel(m, providers.data)}
             </option>
           ))}
         </select>
@@ -105,12 +113,7 @@ function PlaySettingsForm({ save, onDone }: { save: Save; onDone: () => void }) 
         </div>
         {model?.caps.reasoning === 'none' && <p className="text-xs text-ink-muted">{t('playSettings.noReasoning')}</p>}
       </div>
-      <label className="flex items-center justify-between gap-3 text-sm">
-        <span>{t('background.helpers')}</span>
-        <Switch checked={value.helpers} disabled={!global.data?.models.light} onCheckedChange={(v) => patch({ helpers: v })} />
-      </label>
-      <AdvancedPlaySettings value={value} onChange={patch} />
-      <Button className="w-full" onClick={() => void submit()} disabled={busy || compacting || update.isPending}>
+      <Button className="w-full" onClick={() => void submit()} disabled={disabled}>
         {t('common.save')}
       </Button>
     </div>

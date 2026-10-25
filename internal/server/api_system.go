@@ -8,7 +8,10 @@ import (
 )
 
 func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) error {
-	writeJSON(w, http.StatusOK, s.d.Info)
+	info := s.d.Info
+	b := s.d.Runtime.BudgetDefaults()
+	info.TurnDefaults = TurnDefaults{MaxCalls: b.MaxCalls, MaxToolCalls: b.MaxToolCalls, MaxOutput: b.MaxOutputCap}
+	writeJSON(w, http.StatusOK, info)
 	return nil
 }
 

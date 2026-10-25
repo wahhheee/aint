@@ -6,8 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 
 import { errorMessage, isApiError } from '@/api/errors'
-import { useCreateSave, useModels, useSettings } from '@/api/queries'
+import { useCreateSave, useModels, useProviders, useSettings } from '@/api/queries'
 import type { FormField, Pace, Reasoning, SaveSettings, WorkDetail } from '@/api/types'
+import { modelLabel } from '@/lib/modelLabel'
 import { AdvancedPlaySettings } from './AdvancedPlaySettings'
 import { confirmAction } from '@/components/common/confirm'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
   const navigate = useNavigate()
   const settings = useSettings()
   const models = useModels()
+  const providers = useProviders()
   const create = useCreateSave()
 
   const fields = work.new_game.fields ?? []
@@ -114,7 +116,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
                 >
                   {models.data?.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.display_name || m.name}
+                      {modelLabel(m, providers.data)}
                     </option>
                   ))}
                 </select>
@@ -168,9 +170,8 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
               />
             </label>
             <AdvancedPlaySettings
-              value={{ ...advanced, pace }}
+              value={advanced}
               onChange={(v) => {
-                if (v.pace) setPace(v.pace)
                 setAdvanced((s) => ({ ...s, ...v }))
               }}
             />

@@ -1,10 +1,7 @@
 /**
  * 输入栏（《04-交互与界面设计》13）
  *
- *   [命令栏：作品的 command_bar 按钮]
- *   ┌────────────────────────────────────────────────────────┐
- *   │ [行动 ▾]  写下你的行动……                       中 ▾  📎  ➤ │
- *   └────────────────────────────────────────────────────────┘
+ *   命令栏、行动输入框与底部工具栏（模型 / 推理、预算、篇幅、附件、发送）。
  *
  *   - Enter 发送、Shift+Enter 换行；输入 / 弹出命令面板；发送中按钮变为停止；
  *   - 📎 或粘贴附加图片（上传完成后才能发送；模型不能看图时提示）；
@@ -16,13 +13,17 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, 
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import type { Command, Pace } from '@/api/types'
+import type { Command, Save } from '@/api/types'
 import { WorkIcon } from '@/components/common/WorkIcon'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { useSaveSettings } from '@/features/save/useSaveSettings'
+
+import { ModelSettings } from './ModelSettings'
+import { BudgetSettings } from './BudgetSettings'
 import { useReaderContext } from '../ReaderContext'
 import { CommandPalette } from './CommandPalette'
 import { paletteEntries, type PaletteEntry } from './paletteEntries'
@@ -43,7 +44,7 @@ export interface SubmitOptions {
 
 interface Props {
   busy: boolean
-  defaultPace: Pace
+  save: Save
   onSubmit: (text: string, opts?: SubmitOptions) => Promise<boolean | 'help'>
   onStop: () => void
   onHelp: () => void
@@ -51,7 +52,7 @@ interface Props {
 
 const PACES = ['short', 'medium', 'long'] as const
 
-export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({ busy, defaultPace, onSubmit, onStop, onHelp }, ref) {
+export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({ busy, save, onSubmit, onStop, onHelp }, ref) {
   const { t } = useTranslation()
   const { saveId, ui, vision } = useReaderContext()
   const attachments = useAttachments()
@@ -59,7 +60,8 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
   const storageKey = `yanyi.draft.${saveId}`
   const [text, setText] = useState(() => localStorage.getItem(storageKey) ?? '')
   const [mode, setMode] = useState<Command | null>(null)
-  const [pace, setPace] = useState<Pace>(defaultPace)
+  const pace = save.settings.pace || ui.pace
+  const { update: updateSettings, disabled: settingsDisabled } = useSaveSettings(save.id)
   const [active, setActive] = useState(0)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -110,14 +112,13 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
 
   const send = async () => {
     const value = text.trim()
-    if (!canSend || busy) return
+    if (!canSend || busy || updateSettings.isPending) return
     if (!ui.features.free_input && !value.startsWith('/')) {
       toast(t('reader.placeholderChoicesOnly'))
       return
     }
     const res = await onSubmit(value, {
       mode: mode?.name,
-      pace: pace !== defaultPace ? pace : undefined,
       attachments: attachments.hashes.length > 0 ? attachments.hashes : undefined,
     })
     if (res === 'help') onHelp()
@@ -221,57 +222,66 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
 
       <div
         className={cn(
-          'flex items-end gap-1 rounded-2xl border border-rule-strong bg-paper-overlay/92 p-2 text-sm shadow-overlay backdrop-blur-xl transition-[border-color]',
+          'rounded-2xl border border-rule-strong bg-paper-overlay/92 p-2 text-sm shadow-overlay backdrop-blur-xl transition-[border-color]',
           'focus-within:border-ring/60',
         )}
       >
-        {modes.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className={cn('shrink-0 gap-1 text-ink', mode?.mode_style && `mk-${mode.mode_style}`)}>
-                {mode ? mode.mode_label || mode.title : t('reader.modeAction')}
-                <ChevronDown className="size-3.5 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top">
-              <DropdownMenuItem onSelect={() => setMode(null)}>{t('reader.modeAction')}</DropdownMenuItem>
-              {modes.map((m) => (
-                <DropdownMenuItem key={m.name} onSelect={() => setMode(m)} className="flex-col items-start gap-0.5">
-                  <span className={cn(m.mode_style && `mk-${m.mode_style}`)}>{m.mode_label || m.title}</span>
-                  <span className="max-w-64 text-xs text-ink-faint">{m.description}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <div className="flex items-end gap-1">
+          {modes.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className={cn('shrink-0 gap-1 text-ink', mode?.mode_style && `mk-${mode.mode_style}`)}>
+                  {mode ? mode.mode_label || mode.title : t('reader.modeAction')}
+                  <ChevronDown className="size-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top">
+                <DropdownMenuItem onSelect={() => setMode(null)}>{t('reader.modeAction')}</DropdownMenuItem>
+                {modes.map((m) => (
+                  <DropdownMenuItem key={m.name} onSelect={() => setMode(m)} className="flex-col items-start gap-0.5">
+                    <span className={cn(m.mode_style && `mk-${m.mode_style}`)}>{m.mode_label || m.title}</span>
+                    <span className="max-w-64 text-xs text-ink-faint">{m.description}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-        <textarea
-          ref={taRef}
-          rows={1}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={onKeyDown}
-          onPaste={onPaste}
-          placeholder={placeholder}
-          aria-label={placeholder}
-          className="min-h-8 flex-1 resize-none bg-transparent px-2 py-[3px] font-serif text-[15px] leading-[26px] text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
-        />
-
-        <div className="flex shrink-0 items-center gap-0.5">
+          <textarea
+            ref={taRef}
+            rows={1}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onKeyDown}
+            onPaste={onPaste}
+            placeholder={placeholder}
+            aria-label={placeholder}
+            className="min-h-8 min-w-0 flex-1 resize-none bg-transparent px-2 py-[3px] font-serif text-[15px] leading-[26px] text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
+          />
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-0.5" role="group" aria-label={t('playSettings.toolbar')}>
+          <ModelSettings save={save} />
+          <BudgetSettings save={save} />
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="text-[13px] font-normal" aria-label="本回合篇幅">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-[13px] font-normal"
+                    aria-label={t('playSettings.pace')}
+                    disabled={settingsDisabled}
+                  >
                     {t(`pace.${(PACES as readonly string[]).includes(pace) ? (pace as 'short') : 'medium'}`)}
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent>本回合篇幅</TooltipContent>
+              <TooltipContent>{t('playSettings.pace')}</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" side="top">
               {PACES.map((p) => (
-                <DropdownMenuItem key={p} onSelect={() => setPace(p)} className="justify-between gap-6">
+                <DropdownMenuItem key={p} onSelect={() => updateSettings.mutate({ pace: p })} className="justify-between gap-6">
                   <span>{t(`pace.${p}`)}</span>
                   <span className="text-xs text-ink-faint">{t(`paceHint.${p}`)}</span>
                 </DropdownMenuItem>
@@ -304,7 +314,12 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
               <Square className="size-3 fill-current" />
             </Button>
           ) : (
-            <Button size="icon-sm" onClick={() => void send()} disabled={!canSend} aria-label={t('reader.send')}>
+            <Button
+              size="icon-sm"
+              onClick={() => void send()}
+              disabled={!canSend || updateSettings.isPending}
+              aria-label={t('reader.send')}
+            >
               <ArrowUp />
             </Button>
           )}

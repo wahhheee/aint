@@ -11,7 +11,6 @@ import { saveTitle } from '@/lib/format'
 import { selectBusy, useReader } from '@/stores/reader'
 
 import { ContextRing } from './ContextRing'
-import { PlaySettings } from './PlaySettings'
 import { ReadingSettingsPopover } from './ReadingSettingsPopover'
 
 /** 阅读页顶栏：返回、作品与存档名、上下文用量、工具按钮。安静、细，不抢正文。 */
@@ -93,7 +92,6 @@ export function ReaderTopBar({
             </IconButton>
           )}
         </div>
-        {save && <PlaySettings save={save} />}
         <ReadingSettingsPopover />
         {debugControl}
         {onOpenDrawer && (

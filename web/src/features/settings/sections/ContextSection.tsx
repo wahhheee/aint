@@ -3,7 +3,7 @@
  */
 import { useTranslation } from 'react-i18next'
 
-import { useModels, useSettings, useUpdateSettings } from '@/api/queries'
+import { useModels, useSettings, useSystemInfo, useUpdateSettings } from '@/api/queries'
 import type { ContextSettings } from '@/api/types'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -19,6 +19,7 @@ export function ContextSection() {
   const { t } = useTranslation()
   const { data } = useSettings()
   const models = useModels()
+  const system = useSystemInfo()
   const update = useUpdateSettings()
   if (!data) return null
   const ctx = data.context
@@ -75,7 +76,8 @@ export function ContextSection() {
               min={0}
               max={k === 'max_calls' ? 50 : k === 'max_tool_calls' ? 200 : 128000}
               className="w-28"
-              defaultValue={ctx[k]}
+              defaultValue={ctx[k] || ''}
+              placeholder={system.data?.turn_defaults[k].toString()}
               onBlur={(e) => {
                 if (e.currentTarget.validity.valid && Number(e.target.value) !== ctx[k]) patch({ [k]: Number(e.target.value) })
               }}

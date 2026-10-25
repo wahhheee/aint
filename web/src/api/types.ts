@@ -26,6 +26,7 @@ export interface SystemInfo {
   trace_llm: boolean
   prompt_version: string
   started_at: number
+  turn_defaults: Pick<ContextSettings, 'max_calls' | 'max_tool_calls' | 'max_output'>
 }
 
 // ---------------------------------------------------------------- 设置

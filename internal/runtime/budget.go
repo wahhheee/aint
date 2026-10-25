@@ -22,6 +22,9 @@ var DefaultBudget = Budget{
 	MaxCalls: 12, MaxToolCalls: 40, MaxContinuations: 3, MaxOutputCap: 32_000, WallClock: 10 * time.Minute,
 }
 
+// BudgetDefaults 返回未被全局或存档设置覆盖的运行时预算。
+func (m *Manager) BudgetDefaults() Budget { return m.d.Budget }
+
 // exceeded 判断是否超预算，返回原因（空表示未超）。
 func (b Budget) exceeded(d *draft) string {
 	switch {

@@ -143,11 +143,11 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
   // 还没有任何回合（生成式开场或作品没有开场）：自动开始故事
   const openedRef = useRef(false)
   useEffect(() => {
-    if (presentation.needs_opening && !presentation.running_turn_id && !openedRef.current) {
+    if (connection === 'open' && presentation.needs_opening && !presentation.running_turn_id && !openedRef.current) {
       openedRef.current = true
       void actions.submit({ kind: 'opening' })
     }
-  }, [presentation.needs_opening, presentation.running_turn_id, actions])
+  }, [connection, presentation.needs_opening, presentation.running_turn_id, actions])
 
   // 快捷键：Esc 停止；/ 聚焦输入栏并打开命令面板
   useEffect(() => {
@@ -280,7 +280,7 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
               <InputDock
                 ref={dockRef}
                 busy={busy}
-                defaultPace={save.settings.pace || ui.pace}
+                save={save}
                 onSubmit={actions.submitText}
                 onStop={() => void actions.stop()}
                 onHelp={() => setHelpOpen(true)}

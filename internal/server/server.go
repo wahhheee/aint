@@ -39,6 +39,14 @@ type SystemInfo struct {
 	TraceLLM      bool           `json:"trace_llm"`
 	PromptVersion string         `json:"prompt_version"`
 	StartedAt     int64          `json:"started_at"`
+	TurnDefaults  TurnDefaults   `json:"turn_defaults"`
+}
+
+// TurnDefaults 是界面展示继承值时使用的运行时调用上限。
+type TurnDefaults struct {
+	MaxCalls     int `json:"max_calls"`
+	MaxToolCalls int `json:"max_tool_calls"`
+	MaxOutput    int `json:"max_output"`
 }
 
 // Deps 是 HTTP 层依赖的服务。
