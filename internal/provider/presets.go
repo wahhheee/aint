@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"maps"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 // 能力与推理映射的依据见 docs/notes/api-verification.md；中转站的价格因站点而异，预设只给官方价格，
 // 中转站请在模型设置中填写站点标价，并在供应商上设置分组倍率（D-48）。
 type Preset struct {
+	Protocol llm.Protocol
 	// Match 是模型名前缀（如 "claude-sonnet-5-5"）；按最长前缀匹配。
 	Match         string
 	DisplayName   string
@@ -21,6 +23,35 @@ type Preset struct {
 	// ReasoningBy 按接入协议覆盖 Caps.ReasoningMap（同一模型经不同兼容接口接入时推理参数写法不同）。
 	ReasoningBy map[llm.Protocol]map[string]string
 	Price       *llm.Price
+}
+
+// PresetRevision 随内置预设的能力或价格变动递增，供设置页显示核对日期。
+const PresetRevision = "2026-10-25"
+
+// ModelPreset 是当前接入协议下可应用的模型参数；价格为官方单价，不含供应商倍率。
+type ModelPreset struct {
+	Revision      string     `json:"revision"`
+	ContextWindow int        `json:"context_window"`
+	MaxOutput     int        `json:"max_output"`
+	Caps          llm.Caps   `json:"caps"`
+	Price         *llm.Price `json:"price,omitzero"`
+}
+
+// ModelPreset 返回已配置模型匹配的内置预设；没有匹配时返回 nil，不修改模型。
+func (s *Service) ModelPreset(ctx context.Context, id string) (*ModelPreset, error) {
+	m, err := s.loadModel(ctx, s.db.Read(), id)
+	if err != nil {
+		return nil, err
+	}
+	p, err := s.Get(ctx, m.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+	pre, ok := PresetFor(p.Protocol, m.Name)
+	if !ok {
+		return nil, nil
+	}
+	return &ModelPreset{Revision: PresetRevision, ContextWindow: pre.ContextWindow, MaxOutput: pre.MaxOutput, Caps: pre.Caps, Price: pre.Price}, nil
 }
 
 func usd(v float64) *float64 { return &v }
@@ -48,28 +79,28 @@ func claudeCaps(off string) llm.Caps {
 // Presets 是内置模型预设（2026-10 核对）。
 var Presets = []Preset{
 	// Anthropic：Sonnet 5.5 不能 disabled，关闭思考用 between_tools；Opus 5.5 / Fable 5.1 思考不能关闭，退到 low。
-	{Match: "claude-sonnet-5-5", DisplayName: "Claude Sonnet 5.5", ContextWindow: 1_000_000, MaxOutput: 128_000,
+	{Protocol: llm.ProtocolAnthropic, Match: "claude-sonnet-5-5", DisplayName: "Claude Sonnet 5.5", ContextWindow: 1_000_000, MaxOutput: 128_000,
 		Caps: claudeCaps("between_tools"), Price: price("USD", 2, 0.2, 2.5, 4, 10)},
-	{Match: "claude-opus-5-5", DisplayName: "Claude Opus 5.5", ContextWindow: 1_000_000, MaxOutput: 128_000,
+	{Protocol: llm.ProtocolAnthropic, Match: "claude-opus-5-5", DisplayName: "Claude Opus 5.5", ContextWindow: 1_000_000, MaxOutput: 128_000,
 		Caps: claudeCaps("adaptive:low"), Price: price("USD", 4, 0.2, 5, 8, 20)},
-	{Match: "claude-haiku-5-5", DisplayName: "Claude Haiku 5.5", ContextWindow: 1_000_000, MaxOutput: 128_000,
+	{Protocol: llm.ProtocolAnthropic, Match: "claude-haiku-5-5", DisplayName: "Claude Haiku 5.5", ContextWindow: 1_000_000, MaxOutput: 128_000,
 		Caps: claudeCaps("disabled"), Price: price("USD", 0.1, 0.01, 0.125, 0.2, 0.5)},
-	{Match: "claude-fable-5-1", DisplayName: "Claude Fable 5.1", ContextWindow: 1_000_000, MaxOutput: 128_000,
+	{Protocol: llm.ProtocolAnthropic, Match: "claude-fable-5-1", DisplayName: "Claude Fable 5.1", ContextWindow: 1_000_000, MaxOutput: 128_000,
 		Caps: claudeCaps("adaptive:low"), Price: price("USD", 10, 0.25, 12.5, 20, 50)},
 
 	// OpenAI：GPT-5.6 起支持显式缓存断点与 30m / 12h 缓存保留；推理 effort 支持 none。
-	{Match: "gpt-6", DisplayName: "", ContextWindow: 400_000, MaxOutput: 128_000,
+	{Protocol: llm.ProtocolOpenAIResponses, Match: "gpt-6", DisplayName: "", ContextWindow: 400_000, MaxOutput: 128_000,
 		Caps: llm.Caps{Vision: true, Tools: true, ParallelTools: true, ImageInToolResult: true, Reasoning: "effort", Cache: "breakpoints",
 			ImageMaxEdge: 2048, ReasoningMap: map[string]string{"off": "none", "low": "low", "medium": "medium", "high": "high"}}},
-	{Match: "gpt-5.6", DisplayName: "", ContextWindow: 400_000, MaxOutput: 128_000,
+	{Protocol: llm.ProtocolOpenAIResponses, Match: "gpt-5.6", DisplayName: "", ContextWindow: 400_000, MaxOutput: 128_000,
 		Caps: llm.Caps{Vision: true, Tools: true, ParallelTools: true, ImageInToolResult: true, Reasoning: "effort", Cache: "breakpoints",
 			ImageMaxEdge: 2048, ReasoningMap: map[string]string{"off": "none", "low": "low", "medium": "medium", "high": "high"}}},
 
 	// Gemini：3.8 / 4 系列思考档位只有 low / medium / high，关闭时退到 low；只有隐式缓存。
-	{Match: "gemini-3.8-flash", DisplayName: "Gemini 3.8 Flash", ContextWindow: 1_048_576, MaxOutput: 65_536,
+	{Protocol: llm.ProtocolGemini, Match: "gemini-3.8-flash", DisplayName: "Gemini 3.8 Flash", ContextWindow: 1_048_576, MaxOutput: 65_536,
 		Caps: llm.Caps{Vision: true, Tools: true, ParallelTools: true, ImageInToolResult: true, Reasoning: "level", Cache: "implicit",
 			ImageMaxEdge: 1568, ReasoningMap: map[string]string{"off": "low", "low": "low", "medium": "medium", "high": "high"}}},
-	{Match: "gemini-4-argon", DisplayName: "Gemini 4 Argon", ContextWindow: 1_048_576, MaxOutput: 65_536,
+	{Protocol: llm.ProtocolGemini, Match: "gemini-4-argon", DisplayName: "Gemini 4 Argon", ContextWindow: 1_048_576, MaxOutput: 65_536,
 		Caps: llm.Caps{Vision: true, Tools: true, ParallelTools: true, ImageInToolResult: true, Reasoning: "level", Cache: "implicit",
 			ImageMaxEdge: 1568, ReasoningMap: map[string]string{"off": "low", "low": "low", "medium": "medium", "high": "high"}}},
 
@@ -93,6 +124,9 @@ var deepseekReasoning = map[llm.Protocol]map[string]string{
 func PresetFor(protocol llm.Protocol, model string) (Preset, bool) {
 	best, found := Preset{}, false
 	for _, p := range Presets {
+		if p.Protocol != protocol && p.ReasoningBy[protocol] == nil {
+			continue
+		}
 		if strings.HasPrefix(model, p.Match) && len(p.Match) > len(best.Match) {
 			best, found = p, true
 		}
@@ -105,6 +139,18 @@ func PresetFor(protocol llm.Protocol, model string) (Preset, bool) {
 		src = m
 	}
 	best.Caps.ReasoningMap = maps.Clone(src)
+	if best.Price != nil {
+		clone := func(v *float64) *float64 {
+			if v == nil {
+				return nil
+			}
+			return usd(*v)
+		}
+		p := *best.Price
+		p.Input, p.Output, p.CacheRead = clone(p.Input), clone(p.Output), clone(p.CacheRead)
+		p.CacheWrite, p.CacheWriteLong = clone(p.CacheWrite), clone(p.CacheWriteLong)
+		best.Price = &p
+	}
 	best.ReasoningBy = nil
 	return best, true
 }

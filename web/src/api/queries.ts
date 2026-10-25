@@ -199,6 +199,7 @@ export const useNodeUsage = (id: string, nodeId: string | undefined, enabled = t
 
 export const useProviders = () => useQuery({ queryKey: qk.providers, queryFn: api.providers.list })
 export const useModels = () => useQuery({ queryKey: qk.models, queryFn: api.models.list })
+export const useModelPreset = (id: string) => useQuery({ queryKey: [...qk.models, id, 'preset'], queryFn: () => api.models.preset(id) })
 
 /** 供应商与模型的增删改：成功后刷新两个列表（删除供应商会级联删除模型）。 */
 export function useProviderMutations() {

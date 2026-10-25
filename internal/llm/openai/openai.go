@@ -205,7 +205,7 @@ func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]
 		out.Instructions = strings.Join(parts, "\n\n")
 	}
 
-	for _, msg := range req.Messages {
+	for _, msg := range llm.RepairToolHistory(req.Messages) {
 		items, err := p.items(ctx, key, msg, breakpoints)
 		if err != nil {
 			return nil, err

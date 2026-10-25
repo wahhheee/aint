@@ -91,7 +91,8 @@ user   : [L3 常驻设定] [L4 阶段块（contextx/epoch.go）]  …历史回�
 - **前缀稳定**：组装只依赖稳定输入，按 `(提示词版本, 作品版本, 能力签名, 初始状态, 图片尺寸上限, 工具定义哈希)` 缓存（64 条 LRU）；`Built.PrefixHash` 记录在节点 meta。
 - **阶段块（L4）**：第 0 阶段由初始状态与初始记忆即时渲染；整理后的阶段块在整理时渲染、存为整理节点的 blob，阶段内原样复用（`contextx/epoch.go`）。
 - **缓存断点**：`Part.CacheMark` / `SystemBlock.CacheMark` 只标稳定层的边界（L1、L3、L4 末尾）；"最新消息末尾"的滚动断点由适配器按协议放置
-  （Anthropic 显式 `cache_control`、OpenAI GPT-5.6 起的隐式断点、Gemini 隐式缓存）。
+  （Anthropic 显式 `cache_control`、OpenAI GPT-5.6 起的隐式断点、Gemini 隐式缓存）。Anthropic 新增内容达到 20 个回溯位置时，
+  增加前一次 user 消息末尾的历史锚点；四个断点优先保留系统、历史锚点与最新末尾。thinking 块不能显式加断点。
 - **可观察**：`Built.Fragments` 列出每个片段的启用情况与原因；`yanyi work prompt <目录>` 在终端打印组装结果。
 - 测试：`contextx/builder_test.go`（最小作品的裁切、文本提到的工具都已注册、没有空标题、前缀哈希稳定）。
 
@@ -110,6 +111,13 @@ runtime ──► llm.Provider（中立类型）
 - 上层只认识中立类型（`Request`、`Message`、`Part`、`Event`、`StopReason`、`Usage`）；协议 JSON 只出现在 `llm/<协议>` 包内。
 - **Native**：助手消息的协议原生内容（Anthropic 内容块含 thinking 签名、Responses 输出项含加密推理、Gemini 部件含 thoughtSignature）
   按 `"<协议>/<模型>"` 存在 `Message.Native`；同协议同模型时原样回传，否则按中立内容重建（推理丢弃）。
+- **工具历史**：适配器构建请求前通过 `llm.RepairToolHistory` 修复发送副本：没有结果的调用丢弃，孤儿结果展开为文本与图片；
+  修改位置及其后的原生内容与推理丢弃。完整历史保持不变，存储消息不被修改。Gemini 缺少调用 ID 与响应 ID 时为本次响应分配独立命名空间。
+- **暂停**：Anthropic `pause_turn` 把原生响应随历史再次发送，不追加续写提示，仍受回合调用次数与时长预算限制。
+- **断流用量**：Anthropic / Gemini 流式错误可携带供应商已报告的累计用量，正文续写的回合会记录这部分用量，检查器也显示已知值。
+  没有最终用量时不估算缺失 token；费用只能反映已报告的部分，不能当作完整账单。
+- **模型预设**：`provider/presets.go` 随应用维护，按模型前缀与接入协议匹配；`GET /models/{id}/preset` 返回预设版本、能力参数与官方价格，
+  无匹配时返回 `null`。模型设置分别将能力或价格填入表单，经现有 `PATCH /models/{id}` 保存。已配置模型不会自动被覆盖。
 - **能力矩阵**（`llm.Caps`）决定请求怎么写：`Reasoning` + `ReasoningMap`（推理档位 → 协议参数，如 Claude Sonnet 5.5 的 off 写作
   `between_tools`）、`Cache`（breakpoints / implicit / none）、看图与工具结果含图。内置预设在 `provider/presets.go`，添加模型时按名字预填。
 - 请求体由 `jsonx` 确定性序列化，每个适配器导出 `Body()` 便于测试与前缀比对。

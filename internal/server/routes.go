@@ -77,6 +77,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/v1/models", s.h(s.listModels))
 	m.HandleFunc("POST /api/v1/models", s.h(s.createModel))
 	m.HandleFunc("PATCH /api/v1/models/{id}", s.h(s.updateModel))
+	m.HandleFunc("GET /api/v1/models/{id}/preset", s.h(s.modelPreset))
 	m.HandleFunc("DELETE /api/v1/models/{id}", s.h(s.deleteModel))
 
 	// 用量与访问控制

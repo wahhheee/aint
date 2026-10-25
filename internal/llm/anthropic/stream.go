@@ -27,13 +27,14 @@ type stream struct {
 }
 
 type blockState struct {
-	typ       string // text | thinking | redacted_thinking | tool_use | 其他（忽略）
+	typ       string // text | thinking | redacted_thinking | tool_use | 其他原生块
 	text      strings.Builder
 	signature strings.Builder
 	data      string // redacted_thinking
 	id, name  string
 	args      strings.Builder
 	closed    bool
+	raw       jsonx.Value // 原始块的完整字段；服务端工具等非中立内容随 Native 回传
 }
 
 type usageState struct {
@@ -46,7 +47,12 @@ func newStream(ctx context.Context, body io.ReadCloser, key string) *stream {
 
 func (s *stream) Close() error { return s.body.Close() }
 
-func (s *stream) Next() (llm.Event, error) {
+func (s *stream) Next() (event llm.Event, err error) {
+	defer func() {
+		if err != nil && !errors.Is(err, io.EOF) {
+			err = llm.WithPartialUsage(err, s.usage.normalize())
+		}
+	}()
 	for {
 		if ev, ok := s.queue.Pop(); ok {
 			return ev, nil
@@ -75,11 +81,13 @@ type event struct {
 		Usage *usage `json:"usage"`
 	} `json:"message"`
 	ContentBlock *struct {
-		Type string `json:"type"`
-		ID   string `json:"id"`
-		Name string `json:"name"`
-		Data string `json:"data"`
-		Text string `json:"text"`
+		Type      string `json:"type"`
+		ID        string `json:"id"`
+		Name      string `json:"name"`
+		Data      string `json:"data"`
+		Text      string `json:"text"`
+		Thinking  string `json:"thinking"`
+		Signature string `json:"signature"`
 	} `json:"content_block"`
 	Delta *struct {
 		Type        string `json:"type"`
@@ -129,10 +137,21 @@ func (s *stream) handle(raw wire.Event) error {
 		}
 		b := s.block(ev.Index)
 		b.typ = ev.ContentBlock.Type
+		var fields map[string]jsonx.Value
+		if err := jsonx.Unmarshal(raw.Data, &fields); err != nil {
+			return err
+		}
+		b.raw = fields["content_block"]
 		switch b.typ {
 		case "tool_use":
 			b.id, b.name = ev.ContentBlock.ID, ev.ContentBlock.Name
 			s.queue.Push(llm.ToolCallStart{ID: b.id, Name: b.name})
+		case "thinking":
+			b.text.WriteString(ev.ContentBlock.Thinking)
+			b.signature.WriteString(ev.ContentBlock.Signature)
+			if b.text.Len() > 0 {
+				s.queue.Push(llm.ReasoningSummaryDelta{Text: ev.ContentBlock.Thinking})
+			}
 		case "redacted_thinking":
 			b.data = ev.ContentBlock.Data
 		case "text":
@@ -162,7 +181,9 @@ func (s *stream) handle(raw wire.Event) error {
 		case "input_json_delta":
 			if ev.Delta.PartialJSON != "" {
 				b.args.WriteString(ev.Delta.PartialJSON)
-				s.queue.Push(llm.ToolCallArgsDelta{ID: b.id, Delta: ev.Delta.PartialJSON})
+				if b.typ == "tool_use" {
+					s.queue.Push(llm.ToolCallArgsDelta{ID: b.id, Delta: ev.Delta.PartialJSON})
+				}
 			}
 		}
 	case "content_block_stop":
@@ -215,9 +236,19 @@ func (s *stream) block(i int) *blockState {
 func (b *blockState) argsJSON() jsonx.Value {
 	a := strings.TrimSpace(b.args.String())
 	if a == "" {
+		var initial struct {
+			Input jsonx.Value `json:"input"`
+		}
+		if jsonx.Unmarshal(b.raw, &initial) == nil && len(initial.Input) > 0 {
+			return initial.Input
+		}
 		return jsonx.Value(`{}`)
 	}
-	return jsonx.Value(a)
+	v := jsonx.Value(a)
+	if !v.IsValid() {
+		return jsonx.MustMarshal(a)
+	}
+	return v
 }
 
 func (u *usageState) merge(x *usage) {
@@ -276,10 +307,24 @@ func (s *stream) finish() llm.Done {
 				Data string `json:"data"`
 			}{"redacted_thinking", b.data}))
 		case "tool_use":
+			if !b.closed || s.stop == "max_tokens" {
+				continue // 截断时的工具调用尚未执行，不进入下一次请求
+			}
 			hasTool = true
 			args := b.argsJSON()
 			msg.Parts = append(msg.Parts, llm.Part{Kind: llm.PartToolCall, ToolCall: &llm.ToolCall{ID: b.id, Name: b.name, Args: args}})
 			native = append(native, jsonx.MustMarshal(toolUseBlock{Type: "tool_use", ID: b.id, Name: b.name, Input: args}))
+		default:
+			if len(b.raw) > 0 {
+				if b.args.Len() > 0 {
+					var fields map[string]jsonx.Value
+					if jsonx.Unmarshal(b.raw, &fields) == nil {
+						fields["input"] = b.argsJSON()
+						b.raw = jsonx.MustMarshal(fields)
+					}
+				}
+				native = append(native, b.raw)
+			}
 		}
 	}
 	if len(native) > 0 {

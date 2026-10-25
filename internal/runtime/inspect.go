@@ -406,6 +406,9 @@ func (r *debugRecorder) Finish(err error) {
 		r.data.Status = "complete"
 		if err != nil {
 			r.data.Status, r.data.Error = "error", r.text(err.Error())
+			if u := llm.UsageOf(err); u != (llm.Usage{}) {
+				r.data.Usage = u
+			}
 		}
 	})
 }

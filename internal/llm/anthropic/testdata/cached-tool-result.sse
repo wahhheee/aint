@@ -1,0 +1,44 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5-5","id":"msg_011Cg4WPWMNU97LfaSxATAey","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":129,"cache_read_input_tokens":512,"cache_creation":{"ephemeral_5m_input_tokens":129,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard","inference_geo":"not_available"}}               }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}      }
+
+
+event: ping
+data: {"type": "ping"}
+
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":null,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"CAQStgQKEAgRGAI4AUIIdGhpbmtpbmcSDKtWuRoxd+OCpsR59RoMc/sUwNuQYFe+UCT9IjB2hGrevZQnBZ5sl12Wwh9xxX331LQ09pRAGwVfGrJ9uttP5DoDGruHT9qfFDTA/ZUq0wPwUuVNujbwuCtWuiF8hNAPjBbEMwia0GmhpumbNrfJKoeQIB8xFCD4u/Gawu7z3+Ku9h+YiacdBX7aS51llavcmT16bqxk5lxffTE/NkQfxYCGvJpFlpIWmPTA+Y1q87mjxnWw2m6g83HM7/Tq/yryAO+rU0i91r8+H6qixXsLExfDEnioZuORAyXGTrYFQZuODHwTxpLhAGQT6e1ipCk1nHkH7V6qP2KAcry36W5ooa57jFLI4eZyHYlmPQ9EtIFBVrgyolRJtkx+D1ElT0Qcp1fKwFCXo6jsLtvld6m8/5eR+dIOudncgkptSqfWPqIE9eZSLA4APrjOLrHcteRKJPtLFzERwzhvLfxgm+x+3UA/puMlnOo2g4UsRL5RsRT7KceTrfUzZ6HxT7Q2U5CzRKtXs6+qM/bx7e5zX1bPoM9j+riZ6yjZxpLKQXoNmdAslJaBWefYGraS7lGzBKLgZ50ISS8zA+dTB256ALQ9Si12lQi+/V+Jo3gwhSt5IFCZ2HCm+CQDVzqqOyjivsJP9g3iOIhBfVForb4rfnWQ8RWy9EmJP3Di4COjPh62uUuAt5IkVy7oDH8LhbsrV+MeIEjWI6rT/hSEV5qTVEGkPW1kqRgB"}              }
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0      }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}    }
+
+
+event: content_block_delta
+data: {"delta":{"text":"杭州更暖和。杭州 23℃ 晴，北京 15℃ 多云，杭州比北京高 8℃。","type":"text_delta"},"index":1,"type":"content_block_delta"}
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1    }
+
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":129,"cache_read_input_tokens":512,"output_tokens":195,"output_tokens_details":{"thinking_tokens":142},"cache_creation":{"ephemeral_5m_input_tokens":129}}       }
+
+
+event: message_stop
+data: {"type":"message_stop"}
+
+

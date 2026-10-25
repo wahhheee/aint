@@ -620,6 +620,14 @@ export interface Model {
 }
 
 /** provider.ModelInput：添加时缺省字段按内置预设填充 */
+export interface ModelPreset {
+  revision: string
+  context_window: number
+  max_output: number
+  caps: Caps
+  price?: Price
+}
+
 export interface ModelInput {
   provider_id?: string
   name?: string

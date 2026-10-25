@@ -104,6 +104,15 @@ func (s *Server) createModel(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (s *Server) modelPreset(w http.ResponseWriter, r *http.Request) error {
+	preset, err := s.d.Providers.ModelPreset(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, preset)
+	return nil
+}
+
 func (s *Server) updateModel(w http.ResponseWriter, r *http.Request) error {
 	var in provider.ModelInput
 	if err := decode(r, &in); err != nil {

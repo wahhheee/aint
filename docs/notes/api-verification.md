@@ -4,6 +4,44 @@
 > 适配器为标准库手写（D-44），测试代码：`internal/llm/*/*_test.go`（录制夹具回放）、`internal/provider/live_test.go`（真实调用，默认跳过）。
 > 中转站只写代号，地址与密钥不入库（`.local/secrets/`）。
 
+## M4 验收（2026-10-25）
+
+按 D-65 使用 T1《第一个故事》与 T3《雾港来信》的短流程：每个场景两回合，第二回合切换协议；
+每回合最多四次模型调用、单次输出上限 2048 token，目标正文 100–180 字，不自动重试。
+
+| 协议切换 | T1 | T3 | 调用数 |
+| --- | --- | --- | ---: |
+| Claude Sonnet 5.5（Anthropic）→ DeepSeek Flash（Responses） | 2 回合通过 | 2 回合通过 | 6 + 5 |
+| DeepSeek Flash（Responses）→ Gemini 3.8 Flash | 2 回合通过 | 2 回合通过 | 5 + 5 |
+| Gemini 3.8 Flash → Claude Sonnet 5.5（Anthropic） | 2 回合通过 | 2 回合通过 | 3 + 6 |
+
+T3 三组都完成资料读取、状态更新与面板渲染，工具执行没有错误。Gemini 的 T1 首回合自然结束未给选项，第二回合以“继续”输入接续。
+其中一次 Claude 流在正文已输出后断开，运行器保存正文并自动续写，最终交还选项。
+
+原始响应逐次与 SQLite `usage_log` 核对，五项互斥用量全部一致；费用以当前预设单价独立计算，与入库微单位一致：
+
+| 协议 / 模型 | 调用数 | 未缓存输入 | 缓存读取 | 缓存写入 | 正文输出 | 推理 | 已报告用量按预设计费 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Anthropic / Claude | 12 | 24 | 64683 | 49581 | 1773 | 0 | USD 0.154670 |
+| Responses / DeepSeek | 10 | 11756 | 33536 | 0 | 2152 | 310 | CNY 0.044550 |
+| Gemini | 8 | 42019 | 0 | 0 | 1551 | 0 | 未配置价格 |
+
+**核对边界**：29 次有完整用量，1 次断流只有起始用量。后者已报告的输入与初始输出计入记录，最终输出 token 未收到，不能视为完整账单。
+中转站实际倍率、Gemini 报价与供应商控制台账单未核对；上表是预设估算，不能代表实际扣款总额。
+
+GPT-6.1-sol 接入在一次切换时返回 403 `Insufficient account balance`，独立 Python 最小请求得到相同结果；游戏流程的 Responses 验收使用 DeepSeek 官方兼容接口。
+GPT 接入的补充检查中，`GET /models` 返回 200，包含 `gpt-6.1-sol` 与 `gpt-6-luna`；四次独立 Python 流式 Responses 最小请求均以 `response.failed / upstream_error` 结束：
+`gpt-6.1-sol + none` 两次（输出上限 32），`gpt-6.1-sol + low` 与 `gpt-6-luna + low` 各一次（输出上限 128）。
+HTTP 均为 200，但只收到空白文本增量，没有最终 usage；未进入 GPT 游戏流程，不据此认定模型可用，也不能确认实际扣款。
+这些探针不计入上表的 30 次游戏调用，本地原始响应与摘要在 `.local/eval/m4-gpt/`。
+已成功回合的响应通过本地 HTTP 回放恢复后继续评测，避免重复付费；最终全部 30 份响应再次离线回放，六个场景与用量核对均通过。
+本地报告：`.local/eval/m4-final/`、`.local/eval/m4-resume/`、`.local/eval/m4-all-replay/`；核对汇总：`.local/eval/m4-summary.json`。
+
+离线回归包含 14 份历史真实 SSE（新增九份无需调用模型），来源见 [回放说明](../../internal/provider/testdata/README.md)。
+手工边界夹具覆盖截断工具参数、隐藏推理、暂停、拒答、错误、重试、签名与缺失 ID；三协议 HTTP 竖切验证续写显示去重。
+Anthropic 长响应缓存锚点依据 [缓存回溯窗口与四断点限制](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)，
+Gemini 跨模型工具历史依据 [thought signatures](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures)。
+
 ## 测试对象
 
 | 代号 | 协议 | 接入 | 模型 |

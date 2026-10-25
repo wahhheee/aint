@@ -1,0 +1,332 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5-5","id":"msg_011Cg4WXMDz0h7gPFXaMkT5P","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard","inference_geo":"not_available"}}       }
+
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}       }
+
+
+event: content_block_delta
+data: {"delta":{"text":"雾港小镇","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"坐落在一","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"片","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"灰","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"蓝色的海","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"湾深","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"处，三","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"面","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: ping
+data: {"type": "ping"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"环山","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"，一","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"面","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"朝海，终","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"年被","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"湿","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"润的","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"雾","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"气笼罩。清","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"晨，","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"雾从","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"海面","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"升起，像一","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"匹巨大的白","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"布","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"缓缓","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"铺展","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"，将","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"渔","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"船","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"的","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"桅杆、","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"码","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"头的","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"铁","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"锚、","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"石","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"板","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"路两","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"侧的","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"矮","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"墙一","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"一","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"吞","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"没，","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"只剩","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"轮","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"廓","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"漂浮在白","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"茫茫的空","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"气","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"里","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"。此","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"时若","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"站","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"在山","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"坡上往","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"下","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"望，整","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"座","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"小镇便","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"如","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"同","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"沉在","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"云","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"底","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"，","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"偶尔露","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"出一两","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"个红","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"色","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"屋顶，","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"像","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"是被","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"遗忘的","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"浮标。\n\n小","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"镇的街","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: content_block_delta
+data: {"delta":{"text":"道","type":"text_delta"},"index":0,"type":"content_block_delta"}
+
+
+event: ping
+data: {"type": "ping"}
+
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0         }
+
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"max_tokens","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":150,"output_tokens_details":{"thinking_tokens":0}}  }
+
+
+event: message_stop
+data: {"type":"message_stop"      }
+
+

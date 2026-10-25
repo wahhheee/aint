@@ -216,7 +216,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 		}
 		if res != nil {
 			d.stopRaw = res.raw
-			if len(res.msg.Parts) > 0 {
+			if len(res.msg.Parts) > 0 || len(res.msg.Native) > 0 {
 				d.req.Messages = append(d.req.Messages, res.msg)
 				d.turnMsgs = append(d.turnMsgs, res.msg)
 			}
@@ -285,8 +285,16 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			d.stop, d.status = string(res.stop), save.StatusInterrupted
 			d.addNotice("error", "上下文超过了模型上限，整理也没能腾出空间。可以开启独立整理，或在设置中调低上下文预算。")
 			return
-		default: // refusal / pause / error
-			// TODO(M4)：pause（Anthropic pause_turn）应原样续发请求。
+		case llm.StopPause:
+			// 原生响应随历史回传，不追加续写指令；调用次数与时长仍受回合预算约束。
+			continue
+		case llm.StopError:
+			d.stop, d.status = "error", save.StatusInterrupted
+			d.err = &llm.APIError{Kind: llm.ErrUnknown, Message: "模型未正常完成响应：" + res.raw}
+			d.errMsg = d.err.Error()
+			d.addNotice("error", d.errMsg)
+			return
+		default: // refusal
 			d.stop = string(res.stop)
 			if res.stop == llm.StopRefusal {
 				d.addNotice("warn", "模型拒绝继续这段内容，可以换一种写法再试。")
@@ -392,6 +400,9 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 		}
 		if err != nil {
 			streamErr = err
+			if reported := llm.UsageOf(err); reported != (llm.Usage{}) {
+				u = reported
+			}
 			break
 		}
 		switch ev := ev.(type) {

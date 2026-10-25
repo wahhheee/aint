@@ -6,7 +6,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { errorMessage } from '@/api/errors'
-import { useProviderMutations } from '@/api/queries'
+import { useModelPreset, useProviderMutations } from '@/api/queries'
 import type { Caps, Model, Price, Reasoning } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -32,6 +32,7 @@ const PRICE_LABEL: Record<PriceField, 'input' | 'cacheRead' | 'cacheWrite' | 'ca
 export function ModelDialog({ model, onOpenChange }: { model: Model; onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation()
   const { updateModel } = useProviderMutations()
+  const preset = useModelPreset(model.id)
   const [displayName, setDisplayName] = useState(model.display_name ?? '')
   const [contextWindow, setContextWindow] = useState(String(model.context_window))
   const [maxOutput, setMaxOutput] = useState(String(model.max_output))
@@ -75,6 +76,45 @@ export function ModelDialog({ model, onOpenChange }: { model: Model; onOpenChang
           <DialogDescription className="font-mono text-[13px]">{model.name}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-7">
+          {preset.data && (
+            <div className="space-y-2 rounded-xl border border-rule p-3">
+              <p className="text-[13px] text-ink-muted">{t('settings.providers.model.presetHint', { revision: preset.data.revision })}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const p = preset.data!
+                    setContextWindow(String(p.context_window))
+                    setMaxOutput(String(p.max_output))
+                    setCaps({ ...p.caps, reasoning_map: { ...p.caps.reasoning_map } })
+                  }}
+                >
+                  {t('settings.providers.model.applyPresetCaps')}
+                </Button>
+                {preset.data.price && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const price = preset.data!.price!
+                      setCurrency(price.currency || 'USD')
+                      setPrices(Object.fromEntries(PRICE_FIELDS.map((f) => [f, price[f]?.toString() ?? ''])) as Record<PriceField, string>)
+                    }}
+                  >
+                    {t('settings.providers.model.applyPresetPrice')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          {preset.isError && (
+            <p role="alert" className="text-[13px] text-danger">
+              {errorMessage(preset.error)}
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="model-name">{t('settings.providers.model.displayName')}</Label>
             <Input id="model-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={model.name} />

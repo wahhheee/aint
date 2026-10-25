@@ -38,6 +38,8 @@ task dev:server:real
 - 中转站：Base URL 按站点文档填写（OpenAI 协议一般以 `/v1` 结尾）；有分组倍率时填在供应商的"价格倍率"里，模型单价照抄站点标价。
 - DeepSeek 建议用 Responses 协议接入（Anthropic 兼容接口在多轮工具调用上不可靠，见 [api-verification.md](notes/api-verification.md)）。
 - 轻量模型（可选）：模型列表中某个模型的"⋯" → 设为轻量模型；之后可以在设置 → 上下文中改用轻量模型独立整理（不复用主笔的缓存）。
+- 模型预设随应用版本维护，模型设置中显示预设版本。“应用预设能力参数”填写窗口、输出上限与能力；“填入官方价格”单独填写价格。
+  两项操作都先填入表单，保存后生效；更新应用不会覆盖已配置模型，中转站报价也不会随能力参数更新。
 - `--trace-llm` 除中立追踪外，还会把**协议原始请求与响应**写到 `<数据目录>/logs/llm-trace/raw/`（鉴权头脱敏），
   排查"适配器发出去的到底是什么"、制作回放夹具都用它。
 
@@ -153,6 +155,25 @@ task test
   `YANYI_EVAL=<live.json 的绝对路径> YANYI_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
   报告在 `.local/eval/<时间>/story.md`（`YANYI_EVAL_OUT` 可指定），`YANYI_EVAL_TRACE=<目录>` 录制原始报文。
 - 尚缺：Playwright 端到端（M5-12）、测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
+
+### 4.1 M4 协议验收
+
+日常回归使用离线夹具：`go test ./internal/llm/... ./internal/provider ./internal/runtime`。
+真实录制与手工边界场景的来源见 [回放说明](../internal/provider/testdata/README.md)。
+
+精简真实评测仅在设置 `YANYI_M4_LIVE=<配置绝对路径>` 后运行：
+
+```bash
+go test ./internal/runtime -run TestM4Live -count=1 -v -timeout 15m
+```
+
+配置与 `live.json` 格式相同，但恰好包含三个供应商，每协议一个。按配置顺序循环切换到下一协议，在 T1、T3 各运行两回合：
+有选项就作答，无选项则继续。每回合最多四次调用、每次最多 2048 输出 token，正文目标 100–180 字，不自动重试；一个场景失败即停止。
+`YANYI_M4_ONLY=anthropic|openai-responses|gemini` 选择起始协议；`YANYI_M4_OUT` 指定报告目录，默认 `.local/eval/m4/`。
+输出包括正文、工具执行、协议报文与逐次 `usage.json`，可将原始 API usage 与入库统计逐项对照。
+
+供应商出错时先用 curl 或 Python 对同一地址发送最小请求，判断是否为鉴权、余额或上游故障。
+已成功的回合可由录制响应在本地回放恢复，再从失败步骤继续，避免重复消费。不得把密钥或中转站地址写入仓库。
 
 ## 5. 构建与发布
 

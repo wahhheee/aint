@@ -14,6 +14,7 @@ import type {
   MemoryView,
   Model,
   ModelInput,
+  ModelPreset,
   PanelRender,
   Presentation,
   ProviderInput,
@@ -135,6 +136,7 @@ export const api = {
     },
   },
   models: {
+    preset: (id: string) => http.get<ModelPreset | null>(`/models/${id}/preset`),
     list: () => http.get<Model[]>('/models'),
     create: (input: ModelInput) => http.post<Model>('/models', input),
     update: (id: string, input: ModelInput) => http.patch<Model>(`/models/${id}`, input),

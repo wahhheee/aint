@@ -14,7 +14,8 @@
 // 推理档位映射（Caps.ReasoningMap 的值）：omit = 不发 thinkingConfig；minimal / low / medium / high = thinkingLevel；
 // budget:N = thinkingBudget（Gemini 2.5，0 表示关闭）。缺省：off→low（3.8 / 4 系列最低档为 low），其余同名。
 //
-// 函数调用 ID：响应带 ID 时原样使用；缺少时在中立层生成 gsyn_ 前缀的确定性 ID，回传时不写入 ID（原生回传不凭空添加 ID）。
+// 函数调用 ID：响应带 ID 时原样使用；缺少时按响应 ID 与部件位置生成 gsyn_ 前缀的 ID，
+// 响应 ID 也缺失时使用本次调用的独立命名空间。合成 ID 随消息存储，原生回传时不添加 ID。
 package gemini
 
 import (
@@ -199,7 +200,7 @@ func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]
 	}
 
 	names := map[string]string{} // 调用 ID → 工具名（functionResponse 需要）
-	for _, msg := range req.Messages {
+	for _, msg := range llm.RepairToolHistory(req.Messages) {
 		for _, c := range msg.ToolCalls() {
 			names[c.ID] = c.Name
 		}

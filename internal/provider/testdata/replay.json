@@ -1,0 +1,101 @@
+[
+  {
+    "protocol": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "file": "../llm/anthropic/testdata/cached-tool-result.sse",
+    "stop": "end",
+    "usage": {
+      "input_uncached": 2,
+      "cache_write": 129,
+      "cache_read": 512,
+      "output": 53,
+      "reasoning": 142
+    }
+  },
+  {
+    "protocol": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "file": "../llm/anthropic/testdata/truncated.sse",
+    "stop": "max_tokens",
+    "usage": {
+      "input_uncached": 42,
+      "output": 150
+    }
+  },
+  {
+    "protocol": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "file": "../llm/anthropic/testdata/cache-hit.sse",
+    "stop": "end",
+    "usage": {
+      "input_uncached": 2,
+      "cache_write": 30,
+      "cache_read": 6254,
+      "output": 1
+    }
+  },
+  {
+    "protocol": "openai-responses",
+    "model": "gpt-6.1-sol",
+    "file": "../llm/openai/testdata/tool-result.sse",
+    "stop": "end",
+    "usage": {
+      "input_uncached": 198,
+      "output": 30
+    }
+  },
+  {
+    "protocol": "openai-responses",
+    "model": "gpt-6.1-sol",
+    "file": "../llm/openai/testdata/truncated.sse",
+    "stop": "max_tokens",
+    "usage": {
+      "input_uncached": 38,
+      "output": 109,
+      "reasoning": 41
+    }
+  },
+  {
+    "protocol": "openai-responses",
+    "model": "gpt-6.1-sol",
+    "file": "../llm/openai/testdata/cache-hit.sse",
+    "stop": "end",
+    "usage": {
+      "input_uncached": 3,
+      "cache_write": 23,
+      "cache_read": 3820,
+      "output": 5
+    }
+  },
+  {
+    "protocol": "gemini",
+    "model": "gemini-3.8-flash",
+    "file": "../llm/gemini/testdata/tool-result.sse",
+    "stop": "end",
+    "usage": {
+      "input_uncached": 176,
+      "output": 35
+    }
+  },
+  {
+    "protocol": "gemini",
+    "model": "gemini-3.8-flash",
+    "file": "../llm/gemini/testdata/truncated.sse",
+    "stop": "max_tokens",
+    "usage": {
+      "input_uncached": 26,
+      "output": 146
+    }
+  },
+  {
+    "protocol": "gemini",
+    "model": "gemini-3.8-flash",
+    "file": "../llm/gemini/testdata/reasoning.sse",
+    "stop": "end",
+    "usage": {
+      "input_uncached": 13,
+      "output": 1,
+      "reasoning": 124
+    }
+  }
+]

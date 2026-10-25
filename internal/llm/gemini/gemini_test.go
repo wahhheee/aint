@@ -165,3 +165,43 @@ func TestBody(t *testing.T) {
 		t.Fatalf("跨模型重建不对：%s", b2)
 	}
 }
+
+func TestMissingResponseID(t *testing.T) {
+	const data = `data: {"candidates":[{"content":{"parts":[{"functionCall":{"name":"read","args":{}}}]},"finishReason":"STOP"}]}` + "\n\n"
+	ids := map[string]bool{}
+	for range 2 {
+		s := newStream(t.Context(), io.NopCloser(strings.NewReader(data)), "gemini/m")
+		_, done := drain(t, s)
+		id := done.Message.ToolCalls()[0].ID
+		if ids[id] {
+			t.Fatal("缺少 responseId 的不同调用复用了工具 ID")
+		}
+		ids[id] = true
+		if strings.Contains(string(done.Message.Native["gemini/m"]), id) {
+			t.Fatal("合成 ID 不应写入原生内容")
+		}
+	}
+}
+
+func TestThinkingMapping(t *testing.T) {
+	for _, tc := range []struct {
+		level   llm.ReasoningLevel
+		mapping string
+		want    string
+	}{
+		{llm.ReasoningOff, "", "low"}, {llm.ReasoningLow, "", "low"}, {llm.ReasoningMedium, "", "medium"}, {llm.ReasoningHigh, "", "high"},
+		{llm.ReasoningOff, "budget:0", `"thinkingBudget":0`}, {llm.ReasoningHigh, "budget:8192", `"thinkingBudget":8192`},
+	} {
+		caps := llm.Caps{Reasoning: "level"}
+		if tc.mapping != "" {
+			caps.ReasoningMap = map[string]string{string(tc.level): tc.mapping}
+		}
+		got := string(jsonx.MustMarshal(thinking(caps, tc.level)))
+		if !strings.Contains(got, tc.want) {
+			t.Fatalf("%s/%s: %s", tc.level, tc.mapping, got)
+		}
+	}
+	if thinking(llm.Caps{Reasoning: "none"}, llm.ReasoningHigh) != nil || thinking(llm.Caps{Reasoning: "level", ReasoningMap: map[string]string{"high": "omit"}}, llm.ReasoningHigh) != nil {
+		t.Fatal("禁用或 omit 时不应发送推理参数")
+	}
+}

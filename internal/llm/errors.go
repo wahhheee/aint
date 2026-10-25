@@ -29,6 +29,31 @@ type APIError struct {
 	Message    string        // 供应商返回的错误信息
 	RetryAfter time.Duration // 供应商要求的等待时间（若有）
 	Err        error
+	// PartialUsage 是断流前供应商已报告的累计用量，缺失的最终输出用量不估算。
+	PartialUsage Usage
+}
+
+// WithPartialUsage 给流式错误附上已收到的累计用量，保留原有错误分类与原因。
+func WithPartialUsage(err error, u Usage) error {
+	if err == nil || u == (Usage{}) {
+		return err
+	}
+	var api *APIError
+	if errors.As(err, &api) {
+		withUsage := *api
+		withUsage.PartialUsage = u
+		return &withUsage
+	}
+	return &APIError{Kind: ErrUnknown, Err: err, PartialUsage: u}
+}
+
+// UsageOf 返回错误携带的已知用量，没有报告时为零。
+func UsageOf(err error) Usage {
+	var api *APIError
+	if errors.As(err, &api) {
+		return api.PartialUsage
+	}
+	return Usage{}
 }
 
 func (e *APIError) Error() string {

@@ -1,0 +1,16 @@
+data: {"candidates": [{"content": {"parts": [{"text": "清晨的海雾总是来得悄无声息，像一块被海水"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 16,"totalTokenCount": 42,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "浸透的巨大粗亚麻布，自外海缓缓平铺过来，将依山而建的红"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 40,"totalTokenCount": 66,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "顶小镇整个吞没。这里的雾气是活的，带着咸涩的潮气、柴油的"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 64,"totalTokenCount": 90,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "微腥和经年累月的海藻腐味，在逼狭的石板路间游走穿梭"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 88,"totalTokenCount": 114,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "。远处礁石上的灯塔只剩下一圈晕开的昏黄光斑，宛如巨兽在混沌"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 113,"totalTokenCount": 139,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "中半睁的独眼，每隔数十秒便发出一声低沉悠长、近乎叹息的汽"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 139,"totalTokenCount": 165,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "笛，震得临海木"}],"role": "model"},"index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 146,"totalTokenCount": 172,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+
+data: {"candidates": [{"content": {"parts": [{"text": "","thoughtSignature": "EmkKZwFpFH0TfjNYYwWimLmNZvPYvOLyS40B692q9MblZIsafBBgmsS3F5WEHzE5vHBBHHS+dLFWiJFi65cz0FC/I4UogJcGXE6EgVYYB5zwilur7j6epF0P1BnRv0p15Q79T3nFV/8Zw/Y="}],"role": "model"},"finishReason": "MAX_TOKENS","index": 0}],"usageMetadata": {"promptTokenCount": 26,"candidatesTokenCount": 146,"totalTokenCount": 172,"promptTokensDetails": [{"modality": "TEXT","tokenCount": 26}],"serviceTier": "standard"},"modelVersion": "gemini-3.8-flash","responseId": "oojZapqGKPuLytMPpPCg8Ao"}
+

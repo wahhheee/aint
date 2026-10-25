@@ -3,7 +3,8 @@
 // 请求（《02-技术方案》7.4）：
 //   - 顺序 tools → system → messages；L0、L1 为两个 system 文本块；
 //   - 缓存断点（Caps.Cache = "breakpoints" 时）：中立请求中带 CacheMark 的块（L1 末尾、L3 末尾、L4 末尾）
-//     加最后一条消息的最后一块（滚动断点），合计最多 4 个；TTL 取 Request.CacheTTL（short 5m / long 1h）；
+//     加最后一个可缓存块（滚动断点）；新增内容达到 20 个位置时保留前一次 user 末尾的历史锚点，
+//     必要时让较晚的静态断点让位，合计最多 4 个；TTL 取 Request.CacheTTL（short 5m / long 1h）；
 //   - 同协议同模型的助手消息原样回传 Native 中的内容块（thinking 块的签名不能改动）；否则用中立内容重建，推理丢弃；
 //   - 相邻同角色消息合并为一条；空文本块省略（API 不接受空 text）。
 //
@@ -193,16 +194,14 @@ func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]
 		out.System = append(out.System, b)
 	}
 
-	msgs, err := p.messages(ctx, key, req.Messages, caching, cc, &marks)
+	msgs, err := p.messages(ctx, key, llm.RepairToolHistory(req.Messages), caching, cc, &marks)
 	if err != nil {
 		return nil, err
 	}
 	out.Messages = msgs
-	if caching && len(msgs) > 0 { // 滚动断点：最后一条消息的最后一块
-		last := &msgs[len(msgs)-1]
-		if n := len(last.Content); n > 0 && !hasCache(last.Content[n-1]) {
-			last.Content[n-1] = withCache(last.Content[n-1], cc)
-		}
+	if caching && len(msgs) > 0 {
+		markRolling(msgs, cc)
+		anchorCache(&out, cc)
 	}
 	out.Thinking, out.OutputConfig = reasoning(m.Caps, req.Reasoning, out.MaxTokens)
 	return jsonx.Marshal(out)

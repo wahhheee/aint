@@ -12,6 +12,7 @@ import (
 
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/llm/wire"
+	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 )
 
@@ -44,12 +45,18 @@ type partAcc struct {
 }
 
 func newStream(ctx context.Context, body io.ReadCloser, key string) *stream {
-	return &stream{ctx: ctx, body: body, sse: wire.NewSSE(body), key: key}
+	// 部分网关不返回 responseId；每次调用仍需独立命名空间，避免跨回合的工具 ID 冲突。
+	return &stream{ctx: ctx, body: body, sse: wire.NewSSE(body), key: key, responseID: ids.New()}
 }
 
 func (s *stream) Close() error { return s.body.Close() }
 
-func (s *stream) Next() (llm.Event, error) {
+func (s *stream) Next() (event llm.Event, err error) {
+	defer func() {
+		if err != nil && !errors.Is(err, io.EOF) {
+			err = llm.WithPartialUsage(err, s.normalizedUsage())
+		}
+	}()
 	for {
 		if ev, ok := s.queue.Pop(); ok {
 			return ev, nil
@@ -263,16 +270,21 @@ func (s *stream) result() llm.Done {
 	if s.block != "" {
 		done.Raw = "blocked:" + s.block
 	}
+	done.Usage = s.normalizedUsage()
+	done.Stop = stopReason(s.finish, s.block, hasCall)
+	return done
+}
+
+func (s *stream) normalizedUsage() llm.Usage {
 	if u := s.usage; u != nil {
-		done.Usage = llm.Usage{
+		return llm.Usage{
 			InputUncached: max(u.PromptTokenCount-u.CachedContentTokenCount, 0) + u.ToolUsePromptTokenCount,
 			CacheRead:     u.CachedContentTokenCount,
 			Output:        u.CandidatesTokenCount,
 			Reasoning:     u.ThoughtsTokenCount,
 		}
 	}
-	done.Stop = stopReason(s.finish, s.block, hasCall)
-	return done
+	return llm.Usage{}
 }
 
 func stopReason(finish, block string, hasCall bool) llm.StopReason {
