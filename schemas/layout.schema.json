@@ -1,0 +1,60 @@
+{
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/layout.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "properties": {
+    "command_bar": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "panels": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "collapsed": {
+            "type": "boolean"
+          },
+          "format": {
+            "enum": [
+              "markdown",
+              "html"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "place": {
+            "enum": [
+              "sidebar",
+              "topbar",
+              "drawer",
+              "float"
+            ],
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "template"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "title": "演义作品：layout",
+  "type": "object"
+}

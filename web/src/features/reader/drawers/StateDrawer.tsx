@@ -88,6 +88,13 @@ export function StateDrawer({ saveId, open, onOpenChange }: { saveId: string; op
               {t('common.save')}
             </Button>
           </div>
+          {!!view.data?.migration?.length && (
+            <details className="max-h-60 overflow-auto text-sm">
+              <summary className="cursor-pointer">{t('distribution.migration')}</summary>
+              <p className="my-2 text-xs text-ink-muted">{t('distribution.migrationHint')}</p>
+              <pre className="whitespace-pre-wrap break-all text-xs">{JSON.stringify(view.data.migration, null, 2)}</pre>
+            </details>
+          )}
         </div>
       </SheetContent>
     </Sheet>

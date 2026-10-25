@@ -5,7 +5,7 @@
  *   → 导入（有 error 时不能导入）→ 完成：查看作品
  *
  * 流程状态在 useWorkImport（书架页持有，拖入书架页的内容也从那里开始）；这里只负责呈现。
- * GitHub、链接（TODO(M6-1)）与开发目录（TODO(M6-2)）尚未实现，标签页保留并说明替代做法。
+ * 链接与开发目录同样先预览校验结果，再确认导入。
  */
 import { Check, Copy, FolderOpen, GitBranch, Link2, LoaderCircle, PackageOpen, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
@@ -112,7 +112,7 @@ function SourceTabs({ tab, onTab, imp }: { tab: Tab; onTab: (t: Tab) => void; im
       </TabsContent>
       {(['github', 'url', 'dev'] as const).map((s) => (
         <TabsContent key={s} value={s}>
-          <NotYet source={s} />
+          <RemoteSource source={s} imp={imp} />
         </TabsContent>
       ))}
     </Tabs>
@@ -172,9 +172,14 @@ function FilePicker({
   )
 }
 
-/** GitHub、链接、开发目录：尚未实现，保留输入框的样子并说明现在的替代做法。 */
-function NotYet({ source }: { source: 'github' | 'url' | 'dev' }) {
+/** 链接从服务端下载；目录路径相对于运行服务的电脑。 */
+function RemoteSource({ source, imp }: { source: 'github' | 'url' | 'dev'; imp: WorkImport }) {
   const { t } = useTranslation()
+  const [value, setValue] = useState('')
+  const [ref, setRef] = useState('')
+  const [subdir, setSubdir] = useState('')
+  const [timeout, setTimeoutValue] = useState('120')
+  const [limit, setLimit] = useState('528')
   const label = source === 'github' ? t('import.githubLabel') : source === 'url' ? t('import.urlLabel') : t('import.devLabel')
   const placeholder =
     source === 'github'
@@ -183,17 +188,57 @@ function NotYet({ source }: { source: 'github' | 'url' | 'dev' }) {
         ? 'https://example.com/work.zip'
         : 'D:\\works\\misty-harbor'
   return (
-    <div className="space-y-2.5 pt-4">
+    <form
+      className="space-y-2.5 pt-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        imp.startRemote(
+          source === 'dev'
+            ? { source, path: value.trim() }
+            : { source, url: value.trim(), ref, subdir, timeout_seconds: Number(timeout), max_download_mib: Number(limit) },
+        )
+      }}
+    >
       <Label htmlFor={`import-${source}`}>{label}</Label>
       <div className="flex gap-2">
-        <Input id={`import-${source}`} placeholder={placeholder} disabled />
-        <Button disabled>{t('import.parse')}</Button>
+        <Input id={`import-${source}`} placeholder={placeholder} value={value} onChange={(e) => setValue(e.target.value)} required />
+        <Button type="submit" disabled={!value.trim() || imp.busy}>
+          {t('import.parse')}
+        </Button>
       </div>
       <p className="text-xs leading-5 text-ink-faint">
         {source === 'github' ? t('import.githubHint') : source === 'dev' ? t('import.devHint') : ''}
       </p>
-      <Notice>{t(`import.notYet.${source}`)}</Notice>
-    </div>
+      {source === 'dev' ? (
+        <Notice>{t('distribution.devHint')}</Notice>
+      ) : (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-ink-muted">{t('distribution.advanced')}</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {source === 'github' && (
+              <>
+                <Label className="grid gap-2">
+                  {t('distribution.ref')}
+                  <Input value={ref} onChange={(e) => setRef(e.target.value)} />
+                </Label>
+                <Label className="grid gap-2">
+                  {t('distribution.subdir')}
+                  <Input value={subdir} onChange={(e) => setSubdir(e.target.value)} />
+                </Label>
+              </>
+            )}
+            <Label className="grid gap-2">
+              {t('distribution.timeout')}
+              <Input type="number" min="5" max="300" value={timeout} onChange={(e) => setTimeoutValue(e.target.value)} />
+            </Label>
+            <Label className="grid gap-2">
+              {t('distribution.downloadLimit')}
+              <Input type="number" min="1" max="528" value={limit} onChange={(e) => setLimit(e.target.value)} />
+            </Label>
+          </div>
+        </details>
+      )}
+    </form>
   )
 }
 

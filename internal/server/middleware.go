@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -17,7 +18,7 @@ import (
 
 // middleware 组装中间件链（外层先执行）：
 //
-//	recover → 请求 ID 与访问日志 → Host 校验 → 跨站校验 → 访问密码（TODO(M6-9)）→ 路由
+//	recover → 请求 ID 与访问日志 → Host 校验 → 跨站校验 → 访问密码 → 路由
 func (s *Server) middleware(next http.Handler) http.Handler {
 	h := next
 	h = s.auth(h)
@@ -114,8 +115,39 @@ func crossOrigin(next http.Handler) http.Handler {
 
 // auth 是可选访问密码（默认无鉴权，决策 D-17）。
 //
-// TODO(M6-9)：设置了访问密码时，除登录接口与登录页外的请求都需要有效的 HttpOnly Cookie；
-// 登录失败节流（同一来源每分钟 5 次）；监听非回环地址且未设密码时在界面顶部警告。
+// 业务 API 需要有效会话；静态应用、登录状态和单实例健康检查公开。
+// 已打开的事件流在会话撤销、密码改变或会话到期时关闭。
 func (s *Server) auth(next http.Handler) http.Handler {
-	return next
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		public := !strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api/v1/auth/status" || r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/system/health"
+		if !public && s.d.Access != nil && !s.d.Access.Valid(sessionToken(r)) {
+			writeError(w, r, errs.New(errs.CodeUnauthorized, "请先输入访问密码登录"))
+			return
+		}
+		if !public && s.d.Access != nil && strings.HasSuffix(r.URL.Path, "/events") {
+			ctx, cancel := context.WithCancel(r.Context())
+			defer cancel()
+			token := sessionToken(r)
+			go func() {
+				tick := time.NewTicker(time.Second)
+				defer tick.Stop()
+				for {
+					changed := s.d.Access.Changed()
+					if !s.d.Access.Valid(token) {
+						cancel()
+						return
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case <-changed:
+					case <-tick.C:
+					}
+				}
+			}()
+			r = r.WithContext(ctx)
+		}
+		next.ServeHTTP(w, r)
+	})
 }

@@ -8,6 +8,7 @@ yanyi-data/
 # Go 构建产物
 /bin/
 /dist/
+/.release/
 *.exe
 *.test
 *.out

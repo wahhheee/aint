@@ -1,0 +1,40 @@
+{
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/assets.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "items": {
+    "additionalProperties": true,
+    "properties": {
+      "description": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "path": {
+        "type": "string"
+      },
+      "pin": {
+        "type": "boolean"
+      },
+      "role": {
+        "enum": [
+          "background",
+          "cg",
+          "avatar",
+          "bgm",
+          "sfx",
+          "font",
+          "reference"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "type": "object"
+  },
+  "title": "演义作品：assets",
+  "type": "array"
+}

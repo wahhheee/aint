@@ -38,6 +38,9 @@ func NewStore(db *store.DB, blobs *store.Blobs, cacheDir string) *Store {
 	return &Store{db: db, blobs: blobs, cacheDir: cacheDir, derived: lru.New[string, llm.ImageRef](derivedCacheSize)}
 }
 
+// ClearDerived 在存储回收后丢弃内存中的派生图引用，下次使用时重新生成。
+func (s *Store) ClearDerived() { s.derived.Clear() }
+
 // ForModel 返回发送给模型的图片引用：长边不超过 maxEdge 的派生图（尺寸合适时就是原图）。
 func (s *Store) ForModel(ctx context.Context, hash string, maxEdge int) (llm.ImageRef, error) {
 	if maxEdge <= 0 {

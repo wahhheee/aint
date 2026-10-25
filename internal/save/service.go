@@ -406,19 +406,22 @@ func (s *Service) Blob(ctx context.Context, hash string) ([]byte, error) {
 
 // CompactionCommit 是一次上下文整理的提交内容（由 runtime 组装）。
 type CompactionCommit struct {
-	SaveID       string
-	Parent       *Node        // 整理时的 head
-	Epoch        string       // 新阶段块（L4），存为 blob，阶段内原样复用
-	KeepFrom     string       // 保留原文的第一个回合节点 ID
-	Memory       *MemoryWrite // 落盘写入的记忆；nil 表示没有改动
-	Messages     []llm.Message
-	Usage        *llm.Usage
-	Meta         NodeMeta
-	UsageRecords []usage.Record
+	WorkVersionID string
+	State         map[string]any
+	Notes         []string
+	SaveID        string
+	Parent        *Node        // 整理时的 head
+	Epoch         string       // 新阶段块（L4），存为 blob，阶段内原样复用
+	KeepFrom      string       // 保留原文的第一个回合节点 ID
+	Memory        *MemoryWrite // 落盘写入的记忆；nil 表示没有改动
+	Messages      []llm.Message
+	Usage         *llm.Usage
+	Meta          NodeMeta
+	UsageRecords  []usage.Record
 }
 
 // CommitCompaction 在单个事务中提交整理节点：阶段块、整理过程的消息（只供排查，不进入之后的上下文）、
-// 新记忆清单、用量，并把 head 移到整理节点。状态不变。
+// 新记忆清单、用量，并把 head 移到整理节点；升级时同时提交状态迁移与作品版本。
 func (s *Service) CommitCompaction(ctx context.Context, c CompactionCommit) (*Node, error) {
 	n := &Node{
 		ID: ids.New(), SaveID: c.SaveID, ParentID: c.Parent.ID, Depth: c.Parent.Depth + 1, Kind: KindCompaction,
@@ -426,8 +429,17 @@ func (s *Service) CommitCompaction(ctx context.Context, c CompactionCommit) (*No
 		MemoryHash: c.Parent.MemoryHash, WorkVersionID: c.Parent.WorkVersionID, Usage: c.Usage, Meta: c.Meta,
 		CreatedAt: store.NowMillis(),
 	}
+	if c.WorkVersionID != "" {
+		n.WorkVersionID = c.WorkVersionID
+	}
+	n.Notes = c.Notes
 	err := s.db.Tx(ctx, func(tx *sql.Tx) error {
 		var err error
+		if c.State != nil {
+			if n.StateHash, err = s.blobs.PutJSON(ctx, tx, c.State); err != nil {
+				return err
+			}
+		}
 		if n.EpochHash, err = s.blobs.Put(ctx, tx, []byte(c.Epoch), "text/plain; charset=utf-8"); err != nil {
 			return err
 		}

@@ -14,7 +14,7 @@ func runServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	var o app.Options
 	fs.StringVar(&o.DataDir, "data", "", "数据目录（默认：程序所在目录下的 yanyi-data/）")
-	fs.StringVar(&o.Listen, "listen", "127.0.0.1", "监听地址；0.0.0.0 表示允许局域网访问（请注意安全）")
+	fs.StringVar(&o.Listen, "listen", "", "监听地址（默认沿用设置，首次为 127.0.0.1）；0.0.0.0 允许局域网访问")
 	fs.IntVar(&o.Port, "port", 0, "端口（默认从 7860 起自动选择）")
 	fs.BoolVar(&o.NoBrowser, "no-browser", false, "启动后不自动打开浏览器")
 	fs.StringVar(&o.FakeLLM, "fake-llm", "", `使用假模型："demo" 为内置演示脚本，或假模型脚本文件路径（开发、测试、复现问题用）`)

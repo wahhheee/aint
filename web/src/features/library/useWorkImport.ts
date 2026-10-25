@@ -13,6 +13,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, errorMessage } from '@/api/errors'
+import type { RemoteImportParams } from '@/api/endpoints'
 import { useImportWork } from '@/api/queries'
 import type { ImportPreview, ImportResult } from '@/api/types'
 import { formatBytes } from '@/lib/format'
@@ -28,6 +29,8 @@ export type ImportStage =
   | { step: 'failed'; message: string; requestId?: string }
 
 export interface WorkImport {
+  startRemote: (params: RemoteImportParams) => void
+  showPreview: (preview: ImportPreview) => void
   stage: ImportStage
   /** 正在读取、上传或确认：此时不接受新的内容 */
   busy: boolean
@@ -45,7 +48,7 @@ export interface WorkImport {
 
 export function useWorkImport(): WorkImport {
   const { t } = useTranslation()
-  const { preview, confirm, cancel } = useImportWork()
+  const { preview, remote, confirm, cancel } = useImportWork()
   const [stage, setStage] = useState<ImportStage>({ step: 'select' })
 
   // 每次开始导入递增；异步结果回来时已不是当前这一次（玩家放弃或重新选择了），就丢弃它
@@ -139,12 +142,48 @@ export function useWorkImport(): WorkImport {
     setStage({ step: 'select' })
   }
 
+  const showPreview = (p: ImportPreview) => {
+    discard()
+    staged.current = p.task
+    setStage({ step: 'preview', preview: p })
+  }
+
+  const startRemote = (params: RemoteImportParams) => {
+    discard()
+    const id = run.current
+    const ctl = new AbortController()
+    abort.current = ctl
+    setStage({ step: 'reading' })
+    remote.mutate(
+      { params, signal: ctl.signal },
+      {
+        onSuccess: (p) => {
+          if (run.current !== id) {
+            if (p.task) cancel.mutate(p.task)
+            return
+          }
+          staged.current = p.task
+          setStage({ step: 'preview', preview: p })
+        },
+        onError: (err) => {
+          if (run.current !== id || ctl.signal.aborted) return
+          setStage({ step: 'failed', message: errorMessage(err), requestId: err instanceof ApiError ? err.requestId : undefined })
+        },
+        onSettled: () => {
+          if (abort.current === ctl) abort.current = null
+        },
+      },
+    )
+  }
+
   return {
     stage,
     busy: stage.step === 'reading' || stage.step === 'uploading' || confirm.isPending,
     confirming: confirm.isPending,
     confirmError: confirm.error,
     start,
+    startRemote,
+    showPreview,
     startFrom,
     confirm: doConfirm,
     reset,

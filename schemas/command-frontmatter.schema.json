@@ -1,0 +1,66 @@
+{
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/command-frontmatter.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "properties": {
+    "ai_visible": {
+      "type": "boolean"
+    },
+    "args": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "hint": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "confirm": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "mode_label": {
+      "type": "string"
+    },
+    "mode_style": {
+      "type": "string"
+    },
+    "present": {
+      "items": {
+        "enum": [
+          "slash",
+          "mode",
+          "button"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "演义作品：command-frontmatter",
+  "type": "object"
+}

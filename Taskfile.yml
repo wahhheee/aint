@@ -140,7 +140,7 @@ tasks:
       - go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/yanyi{{exeExt}} ./cmd/yanyi
 
   build:cross:
-    desc: 交叉编译六个目标平台（发布前检查；正式发布流程 TODO(M6-8)：GoReleaser）
+    desc: 交叉编译六个目标平台（发布前检查；发布打包见 docs/release.md）
     deps: [build:web]
     env:
       CGO_ENABLED: "0"

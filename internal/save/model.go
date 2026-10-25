@@ -13,7 +13,10 @@
 // 本包只做存储与查询，不调用模型；回合怎么跑由 runtime 负责，跑完通过 CommitTurn 一次性提交。
 package save
 
-import "github.com/wahhheee/yanyi/internal/llm"
+import (
+	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/yanyi/internal/state"
+)
 
 // NodeKind 是节点类型。
 type NodeKind string
@@ -92,17 +95,19 @@ type Node struct {
 
 // NodeMeta 是随节点保存的排查信息，记录停止原因、调用次数、耗时与上下文规模。
 type NodeMeta struct {
-	Model         string `json:"model,omitzero"`
-	Stop          string `json:"stop,omitzero"`     // 归一停止原因（或 budget / canceled / choices）
-	StopRaw       string `json:"stop_raw,omitzero"` // 协议原始停止原因
-	Calls         int    `json:"calls,omitzero"`
-	ToolCalls     int    `json:"tool_calls,omitzero"`
-	Continuations int    `json:"continuations,omitzero"`
-	DurationMS    int64  `json:"duration_ms,omitzero"`
-	Error         string `json:"error,omitzero"`
-	PrefixHash    string `json:"prefix_hash,omitzero"` // L0–L3 + 工具的哈希；变化即缓存重建
-	PromptVersion string `json:"prompt_version,omitzero"`
-	EditedFrom    string `json:"edited_from,omitzero"`
+	Migration     []state.MigrationValue `json:"migration,omitzero"`
+	WorkHash      string                 `json:"work_hash,omitzero"`
+	Model         string                 `json:"model,omitzero"`
+	Stop          string                 `json:"stop,omitzero"`     // 归一停止原因（或 budget / canceled / choices）
+	StopRaw       string                 `json:"stop_raw,omitzero"` // 协议原始停止原因
+	Calls         int                    `json:"calls,omitzero"`
+	ToolCalls     int                    `json:"tool_calls,omitzero"`
+	Continuations int                    `json:"continuations,omitzero"`
+	DurationMS    int64                  `json:"duration_ms,omitzero"`
+	Error         string                 `json:"error,omitzero"`
+	PrefixHash    string                 `json:"prefix_hash,omitzero"` // L0–L3 + 工具的哈希；变化即缓存重建
+	PromptVersion string                 `json:"prompt_version,omitzero"`
+	EditedFrom    string                 `json:"edited_from,omitzero"`
 	// ContextTokens 是这个节点之后的上下文规模（token）：回合为最后一次调用的输入 + 输出（实测），
 	// 整理节点为新阶段的估算。下一次请求在此基础上追加新输入；整理阈值与界面的用量环都以它为准。
 	ContextTokens int `json:"context_tokens,omitzero"`

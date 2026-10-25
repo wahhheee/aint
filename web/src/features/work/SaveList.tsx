@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/endpoints'
 import { confirmAction } from '@/components/common/confirm'
 import { errorMessage } from '@/api/errors'
-import { useCopySave, useDeleteSave, useRenameSave } from '@/api/queries'
+import { useCopySave, useDeleteSave, useRenameSave, useSaveState, useWork } from '@/api/queries'
 import type { Save } from '@/api/types'
 import {
   AlertDialog,
@@ -20,16 +20,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { formatRelative, saveTitle } from '@/lib/format'
+import { UpgradeDialog } from './UpgradeDialog'
 
 /** 作品的存档列表。存档每回合自动保存；游玩与分支都在存档内部进行，只有"开始新故事"会新增存档。 */
 export function SaveList({ workId, saves, onStart }: { workId: string; saves?: Save[]; onStart: () => void }) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState<Save | null>(null)
   const [deleting, setDeleting] = useState<Save | null>(null)
+  const [upgrading, setUpgrading] = useState<Save | null>(null)
+  const [migration, setMigration] = useState<Save | null>(null)
+  const work = useWork(workId)
   const rename = useRenameSave()
   const remove = useDeleteSave()
   const copyMutation = useCopySave()
@@ -58,7 +62,8 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
           <li key={s.id} className="relative flex min-h-16 items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-hover">
             <Link to={`/play/${s.id}`} className="min-w-0 flex-1 rounded-md outline-offset-4 after:absolute after:inset-0">
               <p className="truncate font-serif text-[15px] leading-6 font-semibold text-ink">{saveTitle(s)}</p>
-              <p className="flex gap-4 text-xs leading-5 text-ink-faint">
+              <p className="flex flex-wrap gap-x-4 text-xs leading-5 text-ink-faint">
+                <span>{work.data?.versions.find((v) => v.id === s.work_version_id)?.version}</span>
                 <span className="tabular">{t('work.turns', { n: s.turn_count })}</span>
                 {s.branch_count > 1 && <span className="tabular">{t('work.branches', { count: s.branch_count })}</span>}
                 {s.forked_from && (
@@ -76,7 +81,7 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="更多操作" className="relative">
+                <Button variant="ghost" size="icon-sm" aria-label={t('common.more')} className="relative">
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -99,7 +104,8 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
                 >
                   {t('background.generateTitle')}
                 </DropdownMenuItem>
-                {/* TODO(M6-6)：升级到新版本 */}
+                <DropdownMenuItem onSelect={() => setUpgrading(s)}>{t('distribution.upgrade')}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setMigration(s)}>{t('distribution.migration')}</DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(s)}>
                   {t('common.delete')}
                 </DropdownMenuItem>
@@ -116,6 +122,8 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
           rename.mutate({ id: renaming!.id, title }, { onSuccess: () => setRenaming(null), onError: (e) => toast.error(errorMessage(e)) })
         }
       />
+      {upgrading && <UpgradeDialog save={upgrading} onClose={() => setUpgrading(null)} />}
+      {migration && <MigrationDialog save={migration} onClose={() => setMigration(null)} />}
 
       <AlertDialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
@@ -135,6 +143,30 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
         </AlertDialogContent>
       </AlertDialog>
     </>
+  )
+}
+
+function MigrationDialog({ save, onClose }: { save: Save; onClose: () => void }) {
+  const { t } = useTranslation()
+  const view = useSaveState(save.id, true)
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('distribution.migration')}</DialogTitle>
+          <DialogDescription>{t('distribution.migrationHint')}</DialogDescription>
+        </DialogHeader>
+        {view.isPending ? (
+          <p>{t('common.loading')}</p>
+        ) : view.error ? (
+          <p role="alert">{errorMessage(view.error)}</p>
+        ) : (
+          <pre className="max-h-[60dvh] overflow-auto whitespace-pre-wrap break-all text-xs">
+            {JSON.stringify(view.data?.migration ?? [], null, 2)}
+          </pre>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 

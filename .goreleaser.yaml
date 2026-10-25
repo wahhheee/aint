@@ -1,0 +1,52 @@
+version: 2
+project_name: yanyi
+
+before:
+  hooks:
+    - go run ./cmd/release-assets
+
+builds:
+  - main: ./cmd/yanyi
+    binary: yanyi
+    env: [CGO_ENABLED=0]
+    goos: [windows, darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - >-
+        -s -w
+        -X github.com/wahhheee/yanyi/internal/buildinfo.Version={{.Version}}
+        -X github.com/wahhheee/yanyi/internal/buildinfo.Commit={{.Commit}}
+        -X github.com/wahhheee/yanyi/internal/buildinfo.Date={{.Date}}
+
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - src: .release/使用说明.md
+        dst: .
+        strip_parent: true
+      - schemas/**
+      - src: .release/examples/*.zip
+        dst: examples
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude: ['^docs:', '^test:', '^chore:']
+
+release:
+  draft: true
+  prerelease: auto
+  header: |
+    下载匹配系统与处理器的压缩包，解压后查看「使用说明.md」。
+    更新前停止程序并备份数据目录；升级只替换可执行文件。

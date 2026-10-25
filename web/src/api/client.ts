@@ -71,6 +71,7 @@ function parseResponse<T>(method: Method, path: string, status: number, text: st
   const data: unknown = text ? safeParse(text) : undefined
 
   if (status < 200 || status >= 300) {
+    if (status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event('yanyi:unauthorized'))
     const e = (data as { error?: { code?: ErrorCode; message?: string; details?: unknown; request_id?: string } })?.error
     const err = new ApiError(
       e?.code ?? 'internal',
@@ -97,7 +98,7 @@ function safeParse(text: string): unknown {
 
 export const http = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>('GET', path, undefined, signal),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  post: <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>('POST', path, body ?? {}, signal),
   patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
   del: <T = void>(path: string) => request<T>('DELETE', path),

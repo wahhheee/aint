@@ -8,6 +8,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -45,6 +46,21 @@ func (m *Manager) loadContext(ctx context.Context, w *work.Model, fs prompts.Fea
 			return nil, fmt.Errorf("读取阶段块失败: %w", err)
 		}
 		ec.block = string(data)
+		if w.IsDev && ec.compaction.Meta.WorkHash != w.TreeHash {
+			st, err := m.d.Saves.LoadState(ctx, ec.compaction.StateHash)
+			if err != nil {
+				return nil, err
+			}
+			st, _ = state.Migrate(w.State, st)
+			memory, err := m.d.Saves.MemoryIndex(ctx, ec.compaction.MemoryHash)
+			if err != nil {
+				return nil, err
+			}
+			ec.block = contextx.RenderEpoch(fs, w.State, contextx.EpochInput{
+				N: ec.n, FromTurn: ec.compaction.TurnNo + 1, KeptFrom: ec.compaction.Meta.KeepFromTurn,
+				KeptTo: ec.compaction.TurnNo, Summary: between(ec.block, "<summary>\n", "\n</summary>"), State: st, Memory: memory,
+			})
+		}
 	} else {
 		root := line[0]
 		memIndex, err := m.d.Saves.MemoryIndex(ctx, root.MemoryHash)
@@ -55,6 +71,7 @@ func (m *Manager) loadContext(ctx context.Context, w *work.Model, fs prompts.Fea
 		if err != nil {
 			return nil, err
 		}
+		initState, _ = state.Migrate(w.State, initState)
 		ec.block = contextx.RenderEpoch0(fs, w.State, initState, memIndex)
 	}
 

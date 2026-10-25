@@ -68,10 +68,11 @@ type ImportExisting struct {
 // 暂存文件按内容哈希命名（不使用作品中的文件名：大小写不敏感的文件系统、Windows 保留名都不会出问题），
 // 任务只登记在内存中：过期（ImportTTL）、取消或确认后删除；程序启动时清空整个暂存目录。
 type Importer struct {
-	works *Service
-	dir   string
-	lim   Limits
-	ttl   time.Duration
+	remote *remoteSource
+	works  *Service
+	dir    string
+	lim    Limits
+	ttl    time.Duration
 
 	mu    sync.Mutex
 	tasks map[string]*importTask
@@ -102,7 +103,7 @@ func NewImporter(works *Service, dir string, lim Limits) (*Importer, error) {
 	if err := os.MkdirAll(dir, fsx.DirPerm); err != nil {
 		return nil, fmt.Errorf("创建导入暂存目录失败: %w", err)
 	}
-	return &Importer{works: works, dir: dir, lim: lim, ttl: ImportTTL, tasks: map[string]*importTask{}}, nil
+	return &Importer{works: works, dir: dir, lim: lim, ttl: ImportTTL, tasks: map[string]*importTask{}, remote: newRemoteSource()}, nil
 }
 
 // Limits 返回导入的安全限制。

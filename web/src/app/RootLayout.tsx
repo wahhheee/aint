@@ -20,6 +20,7 @@ export function RootLayout() {
             case 'work.reloaded':
               void qc.invalidateQueries({ queryKey: qk.work(ev.data.work_id) })
               void qc.invalidateQueries({ queryKey: qk.works })
+              void qc.invalidateQueries({ queryKey: ['saves'] })
               break
             case 'save.title_failed':
               toast.error(t('background.titleFailed'))

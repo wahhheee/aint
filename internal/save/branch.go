@@ -338,7 +338,7 @@ func (s *Service) CopyAsNew(ctx context.Context, saveID, nodeID string) (*Save, 
 		}
 	}
 	nsv := &Save{
-		ID: ids.New(), WorkID: sv.WorkID, WorkVersionID: sv.WorkVersionID, WorkTitle: sv.WorkTitle,
+		ID: ids.New(), WorkID: sv.WorkID, WorkVersionID: last.WorkVersionID, WorkTitle: sv.WorkTitle,
 		Settings: sv.Settings, CreatedAt: now, UpdatedAt: now, LastPlayedAt: now, TurnCount: turnNo,
 		ForkedFrom: &ForkInfo{SaveID: sv.ID, NodeID: last.ID, TurnNo: turnNo, Title: sv.Title},
 	}

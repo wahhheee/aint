@@ -36,6 +36,8 @@ function fakeImport(stage: ImportStage, over: Partial<WorkImport> = {}): WorkImp
     confirming: false,
     confirmError: null,
     start: vi.fn(),
+    startRemote: vi.fn(),
+    showPreview: vi.fn(),
     startFrom: vi.fn(),
     confirm: vi.fn(),
     reset: vi.fn(),
@@ -52,7 +54,7 @@ function show(imp: WorkImport) {
 }
 
 describe('ImportDialog', () => {
-  it('选择：五个标签页，文件与文件夹可选择，其余说明尚未实现', () => {
+  it('选择：提供五种导入来源', () => {
     show(fakeImport({ step: 'select' }))
     for (const name of ['文件', '文件夹', 'GitHub', '链接', '开发目录']) expect(screen.getByRole('tab', { name })).toBeTruthy()
     expect(screen.getByRole('button', { name: '选择 zip 包' })).toBeTruthy()

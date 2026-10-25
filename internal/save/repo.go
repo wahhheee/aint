@@ -26,6 +26,9 @@ func insertSave(ctx context.Context, q store.Querier, s *Save) error {
 }
 
 func setHead(ctx context.Context, q store.Querier, saveID, headID string, played bool) error {
+	if _, err := q.ExecContext(ctx, `UPDATE saves SET work_version_id = (SELECT work_version_id FROM nodes WHERE id = ? AND save_id = ?) WHERE id = ?`, headID, saveID, saveID); err != nil {
+		return err
+	}
 	now := store.NowMillis()
 	if played {
 		_, err := q.ExecContext(ctx, `UPDATE saves SET head_node_id = ?, updated_at = ?, last_played_at = ? WHERE id = ?`,

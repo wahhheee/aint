@@ -58,16 +58,32 @@ func (s *Secrets) Resolve(ref string) (string, error) {
 func (s *Secrets) Set(key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	previous, existed := s.data[key]
 	s.data[key] = value
-	return s.flush()
+	if err := s.flush(); err != nil {
+		if existed {
+			s.data[key] = previous
+		} else {
+			delete(s.data, key)
+		}
+		return err
+	}
+	return nil
 }
 
 // Delete 删除密钥。
 func (s *Secrets) Delete(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	previous, existed := s.data[key]
 	delete(s.data, key)
-	return s.flush()
+	if err := s.flush(); err != nil {
+		if existed {
+			s.data[key] = previous
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *Secrets) flush() error {

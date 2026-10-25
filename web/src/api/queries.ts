@@ -5,11 +5,12 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useEffect, useMemo } from 'react'
 
 import type { UploadOptions } from './client'
-import { api, type CreateSaveParams } from './endpoints'
+import { api, type CreateSaveParams, type RemoteImportParams } from './endpoints'
 import type { DeepPartial, ModelInput, ProviderInput, Settings } from './types'
 
 /** 查询键工厂。 */
 export const qk = {
+  access: ['access'] as const,
   system: ['system'] as const,
   settings: ['settings'] as const,
   works: ['works'] as const,
@@ -29,6 +30,29 @@ export const qk = {
   usage: (id: string, nodeId?: string) => (nodeId ? (['saves', id, 'usage', nodeId] as const) : (['saves', id, 'usage'] as const)),
   providers: ['providers'] as const,
   models: ['models'] as const,
+}
+
+export const useAccessStatus = () => useQuery({ queryKey: qk.access, queryFn: api.access.status, retry: false, refetchInterval: 15000 })
+export function useAccessActions() {
+  const qc = useQueryClient()
+  const refresh = () => {
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'access' })
+    void qc.invalidateQueries({ queryKey: qk.access })
+  }
+  return {
+    login: useMutation({ mutationFn: api.access.login, onSuccess: refresh }),
+    logout: useMutation({ mutationFn: api.access.logout, onSuccess: refresh }),
+    password: useMutation({
+      mutationFn: ({ current, password }: { current: string; password: string }) => api.access.password(current, password),
+      onSuccess: refresh,
+    }),
+    revoke: useMutation({ mutationFn: api.access.revoke, onSuccess: refresh }),
+  }
+}
+export const useGitHubToken = () => useQuery({ queryKey: ['github-token'], queryFn: api.access.github })
+export function useSetGitHubToken() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: api.access.setGitHub, onSuccess: (data) => qc.setQueryData(['github-token'], data) })
 }
 
 export function useDebugStatus(id: string) {
@@ -106,6 +130,9 @@ export const useRecentSaves = () => useQuery({ queryKey: qk.recentSaves, queryFn
 export function useImportWork() {
   const qc = useQueryClient()
   return {
+    remote: useMutation({
+      mutationFn: ({ params, signal }: { params: RemoteImportParams; signal?: AbortSignal }) => api.works.remotePreview(params, signal),
+    }),
     preview: useMutation({
       mutationFn: ({ form, ...opts }: { form: FormData } & UploadOptions) => api.works.importPreview(form, opts),
     }),
@@ -117,6 +144,18 @@ export function useImportWork() {
     cancel: useMutation({ mutationFn: (task: string) => api.works.importCancel(task) }),
   }
 }
+
+export function useVersionActions(workId: string) {
+  return {
+    check: useMutation({ mutationFn: (id: string) => api.works.checkUpdate(workId, id) }),
+    remove: useMutation({
+      mutationFn: (id?: string) => api.works.remove(workId, id),
+    }),
+    upgrade: useMutation({ mutationFn: ({ id, versionId }: { id: string; versionId: string }) => api.saves.upgrade(id, versionId) }),
+  }
+}
+
+export const useCollectStorage = () => useMutation({ mutationFn: api.system.collect })
 
 export function useCreateSave() {
   const qc = useQueryClient()

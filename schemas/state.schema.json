@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "field": {
+      "anyOf": [
+        {
+          "enum": [
+            "boolean",
+            "number",
+            "string",
+            "list",
+            "map",
+            "object"
+          ]
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "default": {},
+            "desc": {
+              "type": "string"
+            },
+            "fields": {
+              "additionalProperties": {
+                "$ref": "#/$defs/field"
+              },
+              "type": "object"
+            },
+            "items": {
+              "$ref": "#/$defs/field"
+            },
+            "type": {
+              "enum": [
+                "boolean",
+                "number",
+                "string",
+                "list",
+                "map",
+                "object"
+              ]
+            },
+            "values": {
+              "$ref": "#/$defs/field"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/state.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "properties": {
+    "fields": {
+      "additionalProperties": {
+        "$ref": "#/$defs/field"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "fields"
+  ],
+  "title": "演义作品：state",
+  "type": "object"
+}

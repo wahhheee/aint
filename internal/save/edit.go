@@ -90,6 +90,10 @@ func (s *Service) EditState(ctx context.Context, saveID string, ops []state.Op) 
 	if err != nil {
 		return nil, nil, err
 	}
+	var migration []state.MigrationValue
+	if m.IsDev {
+		cur, migration = state.Migrate(m.State, cur)
+	}
 	next, changes, err := state.Apply(m.State, cur, ops)
 	if err != nil {
 		return nil, nil, errs.Invalid("%v", err)
@@ -98,14 +102,20 @@ func (s *Service) EditState(ctx context.Context, saveID string, ops []state.Op) 
 	for i, c := range changes {
 		parts[i] = state.Describe(c)
 	}
-	n, err := s.addEdit(ctx, saveID, head, editContent{state: next, notes: []string{"玩家修改了状态：" + strings.Join(parts, "；")}})
+	notes := []string{"玩家修改了状态：" + strings.Join(parts, "；")}
+	if m.IsDev && head.Meta.WorkHash != m.TreeHash {
+		notes = append(notes, "作品已重载，请使用当前作品定义与状态。")
+	}
+	n, err := s.addEdit(ctx, saveID, head, editContent{state: next, notes: notes, migration: migration, workHash: m.TreeHash})
 	return n, changes, err
 }
 
 type editContent struct {
-	state  map[string]any // 非 nil 时写入新快照
-	memory *MemoryWrite   // 非 nil 时写入新清单
-	notes  []string
+	state     map[string]any // 非 nil 时写入新快照
+	memory    *MemoryWrite   // 非 nil 时写入新清单
+	notes     []string
+	migration []state.MigrationValue
+	workHash  string
 }
 
 // addEdit 在 head 下创建 edit 节点并移动 head。
@@ -114,6 +124,10 @@ func (s *Service) addEdit(ctx context.Context, saveID string, head *Node, c edit
 		ID: ids.New(), SaveID: saveID, ParentID: head.ID, Depth: head.Depth + 1, Kind: KindEdit, Status: StatusCommitted,
 		TurnNo: head.TurnNo, StateHash: head.StateHash, MemoryHash: head.MemoryHash, WorkVersionID: head.WorkVersionID,
 		Notes: c.notes, CreatedAt: store.NowMillis(),
+		Meta: NodeMeta{Migration: c.migration, WorkHash: head.Meta.WorkHash},
+	}
+	if c.workHash != "" {
+		n.Meta.WorkHash = c.workHash
 	}
 	err := s.db.Tx(ctx, func(tx *sql.Tx) error {
 		var err error

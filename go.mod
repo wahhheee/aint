@@ -3,10 +3,13 @@ module github.com/wahhheee/yanyi
 go 1.27
 
 require (
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/osteele/liquid v1.9.2
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/image v0.47.0
+	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.60.1
 )

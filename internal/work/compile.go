@@ -245,17 +245,7 @@ func (c *compiler) stateSchema() {
 }
 
 func (c *compiler) lore() {
-	type docFront struct {
-		ID        string     `yaml:"id"`
-		Title     string     `yaml:"title"`
-		Kind      string     `yaml:"kind"`
-		Aliases   []string   `yaml:"aliases"`
-		Summary   string     `yaml:"summary"`
-		Load      string     `yaml:"load"`
-		Images    []string   `yaml:"images"`
-		PinImages bool       `yaml:"pin_images"`
-		Display   DocDisplay `yaml:"display"`
-	}
+
 	seen := map[string]string{}
 	for _, p := range c.fs.Glob("lore", ".md") {
 		data, _ := c.fs.Get(p)
@@ -294,17 +284,7 @@ func (c *compiler) lore() {
 }
 
 func (c *compiler) commands() {
-	type cmdFront struct {
-		Title       string       `yaml:"title"`
-		Description string       `yaml:"description"`
-		Args        []CommandArg `yaml:"args"`
-		Present     []string     `yaml:"present"`
-		ModeLabel   string       `yaml:"mode_label"`
-		ModeStyle   string       `yaml:"mode_style"`
-		Icon        string       `yaml:"icon"`
-		Confirm     string       `yaml:"confirm"`
-		AIVisible   *bool        `yaml:"ai_visible"`
-	}
+
 	for _, p := range c.fs.Glob("commands", ".md") {
 		if path.Dir(p) != "commands" {
 			continue // 一个命令一个文件，不递归子目录
@@ -349,13 +329,7 @@ func (c *compiler) markup() {
 	if !ok {
 		return
 	}
-	type tagRaw struct {
-		Description string   `yaml:"description"`
-		Style       TagStyle `yaml:"style"`
-		Icon        string   `yaml:"icon"`
-		Class       string   `yaml:"class"`
-		Tooltip     string   `yaml:"tooltip"`
-	}
+
 	var doc struct {
 		Tags map[string]tagRaw `yaml:"tags"`
 	}
@@ -466,13 +440,7 @@ func matchesMagic(ext string, b []byte) bool {
 }
 
 func (c *compiler) assets() {
-	type meta struct {
-		Path        string `yaml:"path"`
-		ID          string `yaml:"id"`
-		Description string `yaml:"description"`
-		Pin         bool   `yaml:"pin"`
-		Role        string `yaml:"role"`
-	}
+
 	byPath := map[string]meta{}
 	if data, ok := c.fs.Get("assets.yaml"); ok {
 		var list []meta

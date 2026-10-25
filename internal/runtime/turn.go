@@ -103,9 +103,17 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	if err != nil {
 		return nil, err
 	}
+	initState, _ = state.Migrate(w.State, initState)
+	var migration []state.MigrationValue
+	if w.IsDev {
+		headState, migration = state.Migrate(w.State, headState)
+	}
 
 	// 封装玩家消息
 	env := contextx.Envelope{Input: in, Notes: save.PendingNotes(line), Pace: firstNonEmpty(in.Pace, sv.Settings.Pace, w.Manifest.Narrator.Length)}
+	if w.IsDev && head.Meta.WorkHash != w.TreeHash {
+		env.Notes = append(env.Notes, "作品已重载，请使用当前作品定义与状态。")
+	}
 	if in.ChoiceID != "" {
 		label, ok := findChoice(headDisplay, in.ChoiceID)
 		if !ok {
@@ -115,7 +123,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	}
 	switch in.Kind {
 	case save.InputOpening:
-		if head.Kind != save.KindRoot {
+		if lastTurn(line) != nil {
 			return nil, errs.Invalid("故事已经开始，不需要再开场")
 		}
 		env.Text = "请按开场指引开始故事。"
@@ -191,7 +199,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	d := &draft{budget: budget,
 		id: turnID, started: time.Now(), save: sv, parent: head, root: root, initState: initState, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
-		state: headState, images: m.d.Images,
+		state: headState, images: m.d.Images, migration: migration, stateChanged: w.IsDev,
 		threshold: params.Threshold(model.ContextWindow, maxOutput(model)), hardLimit: params.HardLimit(model.ContextWindow, maxOutput(model)),
 		sinceCompaction: since,
 		req:             built.Request, turnMsgs: []llm.Message{built.Request.Messages[len(built.Request.Messages)-1]},
@@ -530,6 +538,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, Memory: memory, WorkVersionID: d.parent.WorkVersionID,
 		Status: d.status, Usage: &d.usage, PlainText: save.TranscriptBody(d.display, d.work.SpeakerName), UsageRecords: d.records, NodeID: d.id,
 		Meta: save.NodeMeta{
+			Migration: d.migration, WorkHash: d.work.TreeHash,
 			Model: d.model.Name, Stop: d.stop, StopRaw: d.stopRaw, Calls: d.calls, ToolCalls: d.toolCalls,
 			Continuations: d.continuations, DurationMS: time.Since(d.started).Milliseconds(), Error: d.errMsg,
 			PrefixHash: d.built.PrefixHash, PromptVersion: prompts.Version, ContextTokens: contextTokens,

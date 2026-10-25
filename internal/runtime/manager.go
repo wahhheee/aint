@@ -316,7 +316,7 @@ func (m *Manager) Compacting(saveID string) bool {
 
 // Exclusive 在存档没有任务（回合或整理）运行时执行 fn（移动 head、修改正文、编辑记忆或状态等直接改存档的操作），
 // 执行期间不能开始新回合（不变量 5：单一写者）。有任务在运行时返回 Conflict。
-// fn 返回后发布 timeline.changed 与最新的面板，其他标签页据此刷新。
+// fn 返回后向仍然存在的存档发布 timeline.changed 与最新的面板，其他标签页据此刷新。
 func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func() error) error {
 	if _, err := m.d.Saves.Get(ctx, saveID); err != nil {
 		return err
@@ -335,8 +335,8 @@ func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func(
 	}
 	if sv, err := m.d.Saves.Get(ctx, saveID); err == nil {
 		m.publish(saveID, event.TimelineChanged, event.TimelineChangedData{HeadID: sv.HeadNodeID, Reason: reason})
+		m.publishPanels(ctx, saveID)
 	}
-	m.publishPanels(ctx, saveID)
 	return nil
 }
 
@@ -362,6 +362,29 @@ func (m *Manager) dropIdle(saveID string, s *session) {
 	if s.running == nil && s.queued == nil && m.sessions[saveID] == s {
 		delete(m.sessions, saveID)
 	}
+}
+
+// WhenIdle 在所有存档空闲时执行存储维护。持锁期间不能开始任务，
+// 避免删除正在升级的目标版本或开发回合仍在读取的旧作品素材。
+func (m *Manager) WhenIdle(fn func() error) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, s := range m.sessions {
+		s.mu.Lock()
+		err := busyError(s)
+		s.mu.Unlock()
+		if err != nil {
+			return errs.Conflict("有存档正在生成或整理，请完成后再清理或删除作品")
+		}
+	}
+	err := fn()
+	if m.d.Builder != nil {
+		m.d.Builder.ClearCache()
+	}
+	if m.d.Images != nil {
+		m.d.Images.ClearDerived()
+	}
+	return err
 }
 
 // Shutdown 取消全部运行中的回合并等待它们提交完毕（已生成的内容以 interrupted 状态保存）。

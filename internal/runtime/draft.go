@@ -48,6 +48,7 @@ type draft struct {
 	// 状态：以父节点快照为起点，update_state 成功后整体替换（state.Apply 不修改原映射，读取方拿到的快照不会再变）
 	state        map[string]any
 	stateChanged bool
+	migration    []state.MigrationValue
 	stateLog     []state.Change
 	onState      func(changes []state.Change) // 状态变化后的通知：推送 turn.state、去抖重渲染面板
 	onCard       func(item save.DisplayItem)  // 追加展示项后的通知：推送 turn.display

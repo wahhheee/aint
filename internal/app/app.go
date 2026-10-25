@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/wahhheee/yanyi/examples"
+	"github.com/wahhheee/yanyi/internal/access"
 	"github.com/wahhheee/yanyi/internal/buildinfo"
 	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/event"
@@ -94,6 +95,13 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	if opts.Listen == "" {
+		configured, err := settings.NewService(db).Get(ctx)
+		if err != nil {
+			return err
+		}
+		opts.Listen = configured.Listen
+	}
 	ln, err := listen(ctx, opts)
 	if err != nil {
 		return err
@@ -109,6 +117,7 @@ func Run(ctx context.Context, opts Options) error {
 		_ = ln.Close()
 		return err
 	}
+	defer svc.closeDev()
 
 	srv := &http.Server{
 		Handler:           svc.server.Handler(),
@@ -129,8 +138,8 @@ func Run(ctx context.Context, opts Options) error {
 	}()
 
 	slog.Info("演义已就绪", "url", url)
-	if ip := net.ParseIP(hostOf(ln.Addr().String())); ip != nil && !ip.IsLoopback() {
-		slog.Warn("正在监听非本机地址：当前网络中的其他人可以访问你的存档与模型额度（访问密码功能尚未实现，TODO(M6-9)）")
+	if ip := net.ParseIP(hostOf(ln.Addr().String())); ip != nil && !ip.IsLoopback() && !svc.access.Enabled() {
+		slog.Warn("正在监听非本机地址且未设置访问密码：当前网络中的其他人可以访问你的存档与模型额度，建议设置访问密码")
 	}
 	if !opts.NoBrowser {
 		openBrowser(ctx, url)
@@ -161,9 +170,11 @@ func Run(ctx context.Context, opts Options) error {
 
 // services 是装配好的服务集合。
 type services struct {
-	server  *server.Server
-	runtime *runtime.Manager
-	tmpl    *tmpl.Engine
+	access   *access.Service
+	closeDev func()
+	server   *server.Server
+	runtime  *runtime.Manager
+	tmpl     *tmpl.Engine
 }
 
 // wire 组装全部服务（依赖关系一目了然）。
@@ -176,6 +187,10 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 	}
 
 	secrets, err := provider.OpenSecrets(dirs.Secrets)
+	if err != nil {
+		return nil, err
+	}
+	accessSvc, err := access.New(secrets)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +215,11 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 	if err != nil {
 		return nil, err
 	}
+	imports.SetGitHubToken(func() string { value, _ := secrets.Resolve("github_token"); return value })
 	saves := save.NewService(db, blobs, works, tm)
+	if _, err := saves.CollectStorage(ctx, true); err != nil {
+		slog.WarnContext(ctx, "启动存储清理失败", "err", err)
+	}
 	images := media.NewStore(db, blobs, filepath.Join(dirs.Cache, "derived"))
 
 	rt := runtime.NewManager(runtime.Deps{
@@ -209,10 +228,17 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 	})
 
 	srv := server.New(server.Deps{
+		Access: accessSvc, Secrets: secrets,
 		Info: info, Bus: bus, Settings: settingsSvc, Works: works, Imports: imports, Saves: saves,
 		Runtime: rt, Providers: providers, Usage: usage.NewService(db), Images: images, Web: web.Dist(),
 	})
-	return &services{server: srv, runtime: rt, tmpl: tm}, nil
+	closeDev, err := works.WatchDevelopment(ctx, func(id string, report *work.Report) {
+		bus.Publish(event.GlobalTopic, event.WorkReloaded, event.WorkReloadedData{WorkID: id, Report: report})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &services{server: srv, runtime: rt, tmpl: tm, closeDev: closeDev, access: accessSvc}, nil
 }
 
 // TemplateWorkerCommand 是模板渲染工作进程的隐藏子命令（cmd/yanyi 中登记）。

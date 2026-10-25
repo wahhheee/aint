@@ -98,6 +98,12 @@ func parseField(path string, v any) (*Field, error) {
 			return nil, fmt.Errorf("%s：未知类型 %q（可用：boolean、number、string、list、map、object）", path, t)
 		}
 		f.Default = zeroValue(f.Type)
+		if f.Type == List {
+			f.Items = &Field{Name: "items", Type: String, Default: ""}
+		}
+		if f.Type == Map {
+			f.Values = &Field{Name: "values", Type: String, Default: ""}
+		}
 		return f, nil
 	}
 	m, ok := v.(yaml.MapSlice)

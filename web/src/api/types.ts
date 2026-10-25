@@ -33,6 +33,7 @@ export interface SystemInfo {
 
 /** settings.Settings（GET/PATCH /settings） */
 export interface Settings {
+  listen?: string
   theme: ThemePreference
   use_work_theme: boolean
   reading: ReadingSettings
@@ -86,6 +87,7 @@ export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartia
 
 /** work.Source */
 export interface WorkSource {
+  etag?: string
   type: 'zip' | 'dir' | 'github' | 'url' | 'dev' | 'builtin'
   name?: string
   path?: string
@@ -100,6 +102,7 @@ export interface WorkSource {
 export interface VersionInfo {
   id: string
   version: string
+  changelog?: string
   source: WorkSource
   is_dev: boolean
   imported_at: number
@@ -558,6 +561,7 @@ export interface StateField {
 
 /** runtime.StateView（GET /saves/{id}/state）：head 处的状态与状态定义 */
 export interface StateView {
+  migration?: { path: string; value: unknown; reason: string }[]
   node_id: string
   turn_no: number
   state: Record<string, unknown>

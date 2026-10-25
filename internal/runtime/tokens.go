@@ -13,6 +13,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/prompts"
 	"github.com/wahhheee/yanyi/internal/save"
 	"github.com/wahhheee/yanyi/internal/settings"
+	"github.com/wahhheee/yanyi/internal/state"
 	"github.com/wahhheee/yanyi/internal/work"
 )
 
@@ -97,6 +98,7 @@ func (m *Manager) estimateHistory(ctx context.Context, sv *save.Save, w *work.Mo
 	if err != nil {
 		return 0, err
 	}
+	initState, _ = state.Migrate(w.State, initState)
 	built, err := m.d.Builder.Build(ctx, contextx.BuildInput{
 		SaveID: sv.ID, Work: w, Features: fs, Model: model, Settings: sv.Settings,
 		InitialState: initState, InitialStateHash: root.StateHash, Epoch: epoch,

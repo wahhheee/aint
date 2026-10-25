@@ -1,0 +1,57 @@
+{
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/lore-frontmatter.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "properties": {
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "display": {
+      "additionalProperties": true,
+      "properties": {
+        "avatar": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "id": {
+      "type": "string"
+    },
+    "images": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "load": {
+      "enum": [
+        "always",
+        "index",
+        "none"
+      ],
+      "type": "string"
+    },
+    "pin_images": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "演义作品：lore-frontmatter",
+  "type": "object"
+}

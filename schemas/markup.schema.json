@@ -1,0 +1,89 @@
+{
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/markup.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "properties": {
+    "tags": {
+      "additionalProperties": {
+        "additionalProperties": true,
+        "properties": {
+          "class": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "style": {
+            "additionalProperties": true,
+            "properties": {
+              "background": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              },
+              "dark_color": {
+                "type": "string"
+              },
+              "effect": {
+                "enum": [
+                  "glow",
+                  "shake",
+                  "flicker",
+                  "fade-in",
+                  "blur-reveal",
+                  "whisper",
+                  "glitch"
+                ],
+                "type": "string"
+              },
+              "font": {
+                "type": "string"
+              },
+              "italic": {
+                "type": "boolean"
+              },
+              "letter_spacing": {
+                "type": "number"
+              },
+              "opacity": {
+                "type": "number"
+              },
+              "size": {
+                "type": "number"
+              },
+              "underline": {
+                "enum": [
+                  "none",
+                  "solid",
+                  "dotted",
+                  "wavy"
+                ],
+                "type": "string"
+              },
+              "weight": {
+                "enum": [
+                  "normal",
+                  "bold"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "tooltip": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "object"
+    }
+  },
+  "title": "演义作品：markup",
+  "type": "object"
+}

@@ -131,7 +131,6 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 | 连接测试"模型列表"一项显示跳过 | 不少兼容接口不提供模型列表，不影响使用；手动填写模型 ID 即可 |
 | 回合失败"请求被模型服务拒绝" | 看 `<数据目录>/logs/llm-trace/raw/` 中该次请求的 `.resp.txt`：中转站常把上游故障也返回成 400；用 curl 重放 `.req.json` 可以判断是请求问题还是上游问题 |
 | 拉取新代码后启动报迁移错误，或数据表缺列 | 首次发布前 `0001_init.sql` 会被直接修改：删除 `.devdata/` 重建 |
-| 接口返回 501，或 AI 说"…暂时不可用" | 功能尚未实现。501 的错误信息里带任务编号；工具的编号写在 `tools/builtins.go` 的 `notYet` 调用中。到 [progress.md](progress.md) 查状态 |
 | 提交输入返回 409，或操作提示"正在整理上下文" | 同一存档同时只有一个写者：回合进行中不能再提交或改存档，整理期间输入排队（至多一个）。提交冲突会提示原因并重新同步会话；重新进入或换设备会恢复正在生成的正文与停止入口。默认 10 分钟回合时限会取消阻塞的模型流并保留已有正文 |
 
 ## 4. 测试
@@ -184,7 +183,7 @@ task build
 
 - `CGO_ENABLED=0`，纯 Go（`modernc.org/sqlite`），六个目标平台可交叉编译：`task build:cross`。
 - 版本号由 `git describe` 注入 `internal/buildinfo`。
-- TODO(M6-8)：GoReleaser 与发布说明。
+- GoReleaser 快照、标签触发的草稿发布与产物检查见 [发布构建](release.md)。
 
 ## 6. 代码约定
 
@@ -213,3 +212,20 @@ task check
 
 - 只启用"发现的问题几乎都值得修"的检查。遇到确属误报的，就地写 `//nolint:<linter> // 原因`（必须写明 linter 与原因，nolintlint 会检查），不要整体关闭检查。
 - 错误不能静默丢弃：确实无需处理的写 `_ = f()` 并在注释里说明原因；`defer` 中的关闭错误需要时记日志。
+
+## 7. 分发与创作者工具调试
+
+```bash
+go run ./cmd/yanyi work init /path/to/new-story
+go run ./cmd/yanyi work validate /path/to/new-story --json
+go run ./cmd/yanyi work pack /path/to/new-story -o /path/to/story.zip
+go run ./cmd/schema-gen
+```
+
+`init` 只接受新目录或空目录；`pack` 先校验，输出必须在作品目录之外且不覆盖已有包。浏览器「导入 → 开发目录」填写服务端所在电脑的路径；错误报告位于作品详情的校验页，校验失败保留之前可用内容。保存新目录中的文件、编辑器原子替换、恢复上次有效内容均受监听。
+
+GitHub 导入只支持公开仓库，带斜杠的 ref 可自动消歧（最多五次尝试）；深层路径在高级选项明确填写 ref 和子目录。下载失败先用 curl 验证 API 与 codeload 的状态及 DNS；不要把令牌输出到日志或放进 URL。测试可使用临时公开仓库里的合成作品。默认下载预算为 120 秒 / 528 MiB，解压仍受原有 512 MiB / 5,000 文件限制。
+
+密码排查只查看 `/api/v1/auth/status`，不打印 secrets.json。服务停止后可运行 `yanyi password set|clear --data <目录>`；设置通过隐藏输入读取，`--stdin` 只供自动化。密码错误 401，登录过频 429，跨站请求 403。密码修改会撤销全部会话；开放局域网而未设密码时显示警告。
+
+分发回归集中在 `work/remote_test.go`、`work/dev_test.go`、`work/schemas_test.go`、`save/gc_test.go`、`runtime/upgrade_test.go`、`server/api_access_test.go` 与 `web/e2e/distribution.spec.ts`；均不调用付费模型。

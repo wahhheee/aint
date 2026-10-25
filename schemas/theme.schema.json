@@ -1,0 +1,105 @@
+{
+  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/theme.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "properties": {
+    "background": {
+      "additionalProperties": true,
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "colors": {
+      "additionalProperties": true,
+      "properties": {
+        "dark": {
+          "additionalProperties": true,
+          "properties": {
+            "accent": {
+              "type": "string"
+            },
+            "background": {
+              "type": "string"
+            },
+            "muted": {
+              "type": "string"
+            },
+            "panel": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "light": {
+          "additionalProperties": true,
+          "properties": {
+            "accent": {
+              "type": "string"
+            },
+            "background": {
+              "type": "string"
+            },
+            "muted": {
+              "type": "string"
+            },
+            "panel": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "custom_css": {
+      "type": "string"
+    },
+    "fonts": {
+      "additionalProperties": true,
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "heading": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "reading": {
+      "additionalProperties": true,
+      "properties": {
+        "indent": {
+          "type": "string"
+        },
+        "line_height": {
+          "type": "number"
+        },
+        "max_width": {
+          "type": "string"
+        },
+        "paragraph_spacing": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "title": "演义作品：theme",
+  "type": "object"
+}

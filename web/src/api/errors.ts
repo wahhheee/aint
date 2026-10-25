@@ -4,6 +4,7 @@
  */
 
 export type ErrorCode =
+  | 'rate_limited'
   | 'invalid_argument'
   | 'not_found'
   | 'conflict'

@@ -59,3 +59,11 @@ func (c *Cache[K, V]) Len() int {
 	defer c.mu.Unlock()
 	return c.order.Len()
 }
+
+// Clear 丢弃全部缓存项；持久内容回收后可据此移除悬空引用。
+func (c *Cache[K, V]) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.order.Init()
+	clear(c.items)
+}

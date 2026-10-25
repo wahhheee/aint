@@ -49,6 +49,11 @@ func runningInstance(ctx context.Context, path string) string {
 	return info.URL
 }
 
+// RunningInstance 返回数据目录中仍在运行的服务地址，供离线维护命令检测冲突。
+func RunningInstance(ctx context.Context, dirs Dirs) string {
+	return runningInstance(ctx, dirs.Instance)
+}
+
 func writeInstance(path string, info instanceInfo) error {
 	b, err := jsonx.MarshalIndent(info)
 	if err != nil {

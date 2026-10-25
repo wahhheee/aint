@@ -60,7 +60,22 @@ func (s *Server) importWork(w http.ResponseWriter, r *http.Request) error {
 	switch mt {
 	case "multipart/form-data":
 	case "application/json":
-		return errs.NotImplemented("从 GitHub、链接或本机路径导入（M6-1 / M6-2）")
+		var req work.RemoteRequest
+		if err := decode(r, &req); err != nil {
+			return err
+		}
+		var p *work.ImportPreview
+		var err error
+		if req.Source == "dev" || req.Source == "dir" {
+			p, err = s.d.Imports.PreviewDirectory(r.Context(), req.Path, req.Source == "dev")
+		} else {
+			p, err = s.d.Imports.PreviewRemote(r.Context(), req)
+		}
+		if err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusOK, p)
+		return nil
 	default:
 		return errs.Invalid("请以 multipart/form-data 上传 zip 包或文件夹")
 	}

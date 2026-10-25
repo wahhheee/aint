@@ -27,6 +27,11 @@ const (
 // 然后与目录走同一流程（collect）：定位作品根 → 忽略规则 → 按声明大小检查限制 → 读取。
 // archive/zip 在读取时校验实际解压量不超过头中声明的大小，所以按声明大小做的限制检查是可靠的。
 func FromZip(r io.ReaderAt, size int64, lim Limits) (*FileSet, error) {
+	return fromZip(r, size, lim, nil)
+}
+
+// subdir 非空指针表示 GitHub 归档：移除归档顶层目录，只收集指定子目录。
+func fromZip(r io.ReaderAt, size int64, lim Limits, subdir *string) (*FileSet, error) {
 	if n, ok := zipEntryCount(r, size); ok && n > uint64(lim.maxEntries()) { //nolint:gosec // maxEntries 是正数，不会溢出
 		return nil, rejectf("zip 包中的条目过多（%d 个，上限 %d）", n, lim.maxEntries())
 	}
@@ -39,6 +44,7 @@ func FromZip(r io.ReaderAt, size int64, lim Limits) (*FileSet, error) {
 	}
 
 	files := make([]srcFile, 0, len(zr.File))
+	archiveRoot := ""
 	for _, f := range zr.File {
 		name, err := zipName(f)
 		if err != nil {
@@ -58,6 +64,24 @@ func FromZip(r io.ReaderAt, size int64, lim Limits) (*FileSet, error) {
 		}
 		if f.UncompressedSize64 > bombMinSize && f.UncompressedSize64/max(f.CompressedSize64, 1) > bombRatio {
 			return nil, rejectf("文件的压缩比异常（%d 倍），疑似 zip 炸弹：%s", f.UncompressedSize64/max(f.CompressedSize64, 1), name)
+		}
+		if subdir != nil {
+			clean, err := normPath(name)
+			if err != nil {
+				return nil, err
+			}
+			top, rest, ok := strings.Cut(clean, "/")
+			if !ok || (archiveRoot != "" && archiveRoot != top) {
+				return nil, rejectf("GitHub 归档应只有一个顶层目录")
+			}
+			archiveRoot = top
+			name = rest
+			if *subdir != "" {
+				name, ok = strings.CutPrefix(rest, *subdir+"/")
+				if !ok {
+					continue
+				}
+			}
 		}
 		files = append(files, srcFile{
 			path: name, size: clampInt64(f.UncompressedSize64), mode: f.Mode().Type(),

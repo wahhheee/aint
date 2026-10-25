@@ -13,6 +13,7 @@ import (
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
 	"github.com/wahhheee/yanyi/internal/pkg/logx"
 	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/yanyi/internal/work"
 )
 
 // 后台整理任务：回合提交后上下文达到阈值时（玩家阅读期间），以及玩家手动整理（按钮或 /compact）。
@@ -28,7 +29,7 @@ func (m *Manager) Compact(ctx context.Context, saveID string) error {
 	if err := busyError(s); err != nil {
 		return err
 	}
-	m.startCompactionLocked(saveID, s, compact.ReasonManual)
+	m.startCompactionLocked(saveID, s, compact.ReasonManual, nil)
 	return nil
 }
 
@@ -40,11 +41,11 @@ func (m *Manager) handoffCompaction(saveID string, slot *turnSlot) {
 	if s.running != slot.job {
 		return
 	}
-	m.startCompactionLocked(saveID, s, compact.ReasonThreshold)
+	m.startCompactionLocked(saveID, s, compact.ReasonThreshold, nil)
 }
 
 // startCompactionLocked 在写者槽位上开始一个整理任务（调用方持有 s.mu，且槽位空闲或属于即将让出的回合）。
-func (m *Manager) startCompactionLocked(saveID string, s *session, reason compact.Reason) {
+func (m *Manager) startCompactionLocked(saveID string, s *session, reason compact.Reason, target *work.Model) {
 	ctx, cancel := context.WithTimeout(m.base, m.d.Budget.WallClock)
 	j := newJob(ids.New(), jobCompaction, cancel)
 	s.running = j
@@ -61,12 +62,12 @@ func (m *Manager) startCompactionLocked(saveID string, s *session, reason compac
 				m.publish(saveID, event.CompactionFailed, event.CompactionFailedData{Message: "整理上下文时出错（详见日志）"})
 			}
 		}()
-		m.runCompactionJob(ctx, saveID, reason, release)
+		m.runCompactionJob(ctx, saveID, reason, target, release)
 	})
 }
 
 // runCompactionJob 对 head 所在的进度线执行整理。先让出槽位（排队的回合随即开始），再发布结果。
-func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason compact.Reason, release func()) {
+func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason compact.Reason, target *work.Model, release func()) {
 	sv, line, err := m.d.Saves.ProgressLine(ctx, saveID)
 	if err != nil {
 		release()
@@ -74,7 +75,7 @@ func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason co
 		m.publish(saveID, event.CompactionFailed, event.CompactionFailedData{Message: "整理上下文时出错（详见日志）"})
 		return
 	}
-	node, stats, err := m.compactLine(ctx, sv, line, reason)
+	node, stats, err := m.compactVersion(ctx, sv, line, reason, target, nil)
 	release()
 	if err != nil {
 		msg := compactionError(err)
@@ -109,7 +110,7 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 		return err
 	}
 	m.publish(d.save.ID, event.CompactionStarted, event.CompactionStartedData{Reason: string(reason)})
-	node, stats, err := m.compactLine(ctx, d.save, line, reason)
+	node, stats, err := m.compactVersion(ctx, d.save, line, reason, nil, d.work)
 	if err != nil {
 		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{Message: compactionError(err)})
 		return err

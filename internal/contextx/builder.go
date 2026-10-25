@@ -46,6 +46,9 @@ func NewBuilder(tm *tmpl.Engine, images ImageSource) *Builder {
 	return &Builder{tmpl: tm, images: images, cache: lru.New[string, *prefix](prefixCacheSize)}
 }
 
+// ClearCache 丢弃可能包含已回收派生图引用的前缀。
+func (b *Builder) ClearCache() { b.cache.Clear() }
+
 // BuildInput 是构建一次请求所需的全部输入。
 type BuildInput struct {
 	SaveID           string
@@ -118,7 +121,7 @@ func (b *Builder) Build(ctx context.Context, in BuildInput) (*Built, error) {
 }
 
 func (b *Builder) prefix(ctx context.Context, in BuildInput) (*prefix, error) {
-	key := strings.Join([]string{prompts.Version, in.Work.VersionID, in.Features.Signature(), in.InitialStateHash,
+	key := strings.Join([]string{prompts.Version, in.Work.VersionID, in.Work.TreeHash, in.Features.Signature(), in.InitialStateHash,
 		strconv.Itoa(in.Model.Caps.ImageMaxEdge), store.HashBytes(jsonx.MustMarshal(in.Tools))}, "|")
 	if p, ok := b.cache.Get(key); ok {
 		return p, nil

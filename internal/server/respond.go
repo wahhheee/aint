@@ -49,6 +49,8 @@ type errorInfo struct {
 // statusOf 把错误码映射为 HTTP 状态码。新增错误码时在这里补充。
 func statusOf(code errs.Code) int {
 	switch code {
+	case errs.CodeRateLimited:
+		return http.StatusTooManyRequests
 	case errs.CodeInvalidArgument:
 		return http.StatusBadRequest
 	case errs.CodeNotFound:
@@ -106,9 +108,4 @@ func readBody(r *http.Request) ([]byte, error) {
 		return nil, errs.Invalid("读取请求体失败：%v", err)
 	}
 	return b, nil
-}
-
-// notImplemented 是尚未实现的端点。what 写清楚是哪项功能与对应任务编号。
-func (s *Server) notImplemented(what string) http.HandlerFunc {
-	return s.h(func(http.ResponseWriter, *http.Request) error { return errs.NotImplemented(what) })
 }

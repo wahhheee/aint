@@ -189,7 +189,7 @@ func TestImportRejects(t *testing.T) {
 	}
 
 	rec := do(t, h, http.MethodPost, "/api/v1/works/import", "application/json", strings.NewReader(`{"github":"x"}`))
-	if rec.Code != http.StatusNotImplemented {
-		t.Fatalf("GitHub 导入尚未实现，应返回 501：%d", rec.Code)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("未知导入字段应返回 400：%d", rec.Code)
 	}
 }

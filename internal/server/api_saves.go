@@ -117,12 +117,10 @@ func (s *Server) patchSave(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) deleteSave(w http.ResponseWriter, r *http.Request) error {
 	id := r.PathValue("id")
-	if s.d.Runtime.Running(id) != "" {
-		return errs.Conflict("存档正在进行回合，请先停止")
-	}
-	if err := s.d.Saves.Delete(r.Context(), id); err != nil {
+	if err := s.d.Runtime.Exclusive(r.Context(), id, "delete", func() error { return s.d.Saves.Delete(r.Context(), id) }); err != nil {
 		return err
 	}
+	s.collectAfterDelete(r)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

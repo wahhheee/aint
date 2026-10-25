@@ -28,6 +28,7 @@ type Source struct {
 	Commit string `json:"commit,omitzero"` // github：实际提交 SHA
 	Subdir string `json:"subdir,omitzero"` // github：子目录
 	URL    string `json:"url,omitzero"`    // url
+	ETag   string `json:"etag,omitzero"`   // url：服务端内容标识
 }
 
 // Service 是作品服务。并发安全。
@@ -68,10 +69,10 @@ type ImportResult struct {
 
 // ImportFileSet 是所有导入来源的公共后半段：编译 → 校验 → 去重 → 入库。
 //
-// 开发目录不走这里：它的版本是"树哈希即版本身份"的例外，每部作品至多一个、原地更新（D-37，TODO(M6-2)）。
+// 开发目录交给 importDev：每部作品至多一个、原地更新，不参与固定版本去重（D-37）。
 func (s *Service) ImportFileSet(ctx context.Context, set *FileSet, src Source) (*ImportResult, error) {
 	if src.Type == "dev" {
-		return nil, errs.NotImplemented("开发目录")
+		return s.importDev(ctx, set, src, "")
 	}
 	m, rep := s.compile(set)
 	if rep.HasErrors() {
@@ -87,6 +88,9 @@ func (s *Service) ImportFileSet(ctx context.Context, set *FileSet, src Source) (
 		}
 		if existing != "" {
 			res.VersionID = existing
+			if src.Type != "builtin" {
+				return setLatest(ctx, tx, m.Manifest.ID, existing, src)
+			}
 			return nil
 		}
 		res.VersionID, res.Created = ids.New(), true
@@ -137,6 +141,17 @@ func (s *Service) EnsureBuiltins(ctx context.Context, fsys fs.FS) {
 		sub, _ := fs.Sub(fsys, e.Name())
 		set, err := FromFS(sub, DefaultLimits)
 		if err == nil {
+			m, rep := Compile(set)
+			var deleted int
+			if !rep.HasErrors() {
+				if err := s.db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM settings WHERE key = ?`, "deleted_builtin:"+m.Manifest.ID).Scan(&deleted); err != nil {
+					slog.WarnContext(ctx, "读取内置作品删除标记失败", "err", err)
+					continue
+				}
+			}
+			if deleted > 0 {
+				continue
+			}
 			_, err = s.ImportFileSet(ctx, set, Source{Type: "builtin", Name: e.Name()})
 		}
 		if err != nil {
@@ -159,6 +174,7 @@ func (s *Service) EnsureBuiltins(ctx context.Context, fsys fs.FS) {
 type VersionInfo struct {
 	ID         string `json:"id"`
 	Version    string `json:"version"`
+	Changelog  string `json:"changelog,omitzero"`
 	Source     Source `json:"source"`
 	IsDev      bool   `json:"is_dev"`
 	ImportedAt int64  `json:"imported_at"`
@@ -196,7 +212,7 @@ type Detail struct {
 
 func versionInfo(v versionRow) VersionInfo {
 	e, w := v.Report.Count()
-	return VersionInfo{ID: v.ID, Version: v.Version, Source: v.Source, IsDev: v.IsDev, ImportedAt: v.ImportedAt, Errors: e, Warnings: w}
+	return VersionInfo{ID: v.ID, Version: v.Version, Changelog: v.Manifest.Changelog, Source: v.Source, IsDev: v.IsDev, ImportedAt: v.ImportedAt, Errors: e, Warnings: w}
 }
 
 func summaryOf(w workRow, v versionRow) Summary {
@@ -294,8 +310,8 @@ func (s *Service) Report(ctx context.Context, workID, versionID string) (*Report
 // Model 返回作品版本的编译结果（带缓存）。
 func (s *Service) Model(ctx context.Context, versionID string) (*Model, error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	m, ok := s.cache[versionID]
-	s.mu.Unlock()
 	if ok {
 		return m, nil
 	}
@@ -327,11 +343,7 @@ func (s *Service) Model(ctx context.Context, versionID string) (*Model, error) {
 		return nil, errs.New(errs.CodeWorkInvalid, "作品版本无法加载").WithDetails(rep)
 	}
 	m.VersionID, m.WorkID, m.IsDev = v.ID, v.WorkID, v.IsDev
-	// TODO(M6-2)：开发版本原地更新后需使这里的缓存失效。
-
-	s.mu.Lock()
 	s.cache[versionID] = m
-	s.mu.Unlock()
 	return m, nil
 }
 
@@ -389,12 +401,6 @@ func (s *Service) existing(ctx context.Context, workID, treeHash string) (*Impor
 	ex.SameVersionID, ex.SameVersion = v.ID, v.Version
 	return ex, nil
 }
-
-// TODO(M6-1)：GitHub 导入（链接解析、ref 歧义处理、codeload 归档下载，技术方案 5.4）与 URL 导入（下载大小上限、超时，P1）：
-// 下载到导入暂存目录后与 zip 上传相同（FromZip → Importer.preview）。
-// TODO(M6-2)：开发目录（WRK-10）：每部作品至多一个开发版本（is_dev = 1），重载时原地替换 work_files 并更新
-// tree_hash（D-37）；fsnotify 去抖 400ms，推送 work.reloaded；已有存档始终使用最新内容。
-// TODO(M6-5)：Export（确定性 zip）、Delete（有存档引用时提示）。
 
 func nonNil[T any](s []T) []T {
 	if s == nil {

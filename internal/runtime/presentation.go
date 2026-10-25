@@ -100,7 +100,7 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 	if err != nil {
 		return nil, err
 	}
-	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: head.Kind == save.KindRoot, DevWork: w.IsDev,
+	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: lastTurn(line) == nil, DevWork: w.IsDev,
 		Compacting: m.Compacting(saveID)}
 	for _, n := range line {
 		if n.Kind == save.KindCompaction {
@@ -162,15 +162,19 @@ func (m *Manager) Panels(ctx context.Context, saveID string) ([]event.PanelRende
 	if err != nil {
 		return nil, err
 	}
+	if w.IsDev {
+		st, _ = state.Migrate(w.State, st)
+	}
 	return panel.Render(m.d.Tmpl, w, panel.Vars{State: st, Turn: head.TurnNo, WorkTitle: w.Manifest.Title, SaveTitle: sv.Title}), nil
 }
 
 // StateView 是存档当前的状态（GET /saves/{id}/state）：head 节点的状态快照与作品的状态定义。
 type StateView struct {
-	NodeID string         `json:"node_id"`
-	TurnNo int            `json:"turn_no"`
-	State  map[string]any `json:"state"`
-	Schema *state.Schema  `json:"schema"`
+	Migration []state.MigrationValue `json:"migration"`
+	NodeID    string                 `json:"node_id"`
+	TurnNo    int                    `json:"turn_no"`
+	State     map[string]any         `json:"state"`
+	Schema    *state.Schema          `json:"schema"`
 }
 
 // State 返回存档 head 处的状态。回合进行中的修改是草稿，提交后才在这里出现（草稿经 turn.state 事件推送）。
@@ -188,7 +192,16 @@ func (m *Manager) State(ctx context.Context, saveID string) (*StateView, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &StateView{NodeID: head.ID, TurnNo: head.TurnNo, State: st, Schema: w.State}, nil
+	records := []state.MigrationValue{}
+	for _, n := range line {
+		records = append(records, n.Meta.Migration...)
+	}
+	if w.IsDev {
+		var pending []state.MigrationValue
+		st, pending = state.Migrate(w.State, st)
+		records = append(records, pending...)
+	}
+	return &StateView{NodeID: head.ID, TurnNo: head.TurnNo, State: st, Schema: w.State, Migration: records}, nil
 }
 
 // panelDebounce 是回合内状态变化后重新渲染面板的去抖间隔（《02-技术方案》17）：

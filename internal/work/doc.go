@@ -2,7 +2,7 @@
 //
 // 数据流（《02-技术方案》5.1）：
 //
-//	来源（zip / 浏览器上传的文件夹 / 本机目录 / 内置；GitHub、URL、开发目录待做）
+//	来源（zip / 浏览器文件夹 / 本机目录 / 内置 / GitHub / URL / 开发目录）
 //	  → FileSet：路径规范化（NFC）与冲突检查、定位作品根、忽略规则、    fileset.go、archive.go、upload.go、ignore.go
 //	    按声明大小检查限制后才读取内容（zip 另查条目数、压缩比、加密）
 //	  → Compile → Model + Report（error / warning / info）              compile.go、report.go

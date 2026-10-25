@@ -2,15 +2,18 @@ import { Copy } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { useSystemInfo } from '@/api/queries'
+import { useCollectStorage, useSystemInfo } from '@/api/queries'
+import { errorMessage } from '@/api/errors'
+import { formatBytes } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 
 import { SectionTitle, SettingGroup, SettingRow } from './SettingRow'
 
-/** 存储（《04-交互与界面设计》9.7）。TODO(M6-5)：各部分占用、清理未使用的数据（GC）。 */
+/** 数据目录与未使用内容的清理。 */
 export function StorageSection() {
   const { t } = useTranslation()
   const { data } = useSystemInfo()
+  const collect = useCollectStorage()
   if (!data) return null
   const copy = (text: string) => {
     void navigator.clipboard.writeText(text).then(() => toast(t('common.copied')))
@@ -32,8 +35,18 @@ export function StorageSection() {
         </SettingRow>
       </SettingGroup>
       <SettingGroup>
-        <SettingRow label={t('settings.storage.cleanup')} hint={t('common.notImplemented')}>
-          <Button variant="outline" size="sm" disabled>
+        <SettingRow label={t('settings.storage.cleanup')} hint={t('distribution.cleanupHint')}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={collect.isPending}
+            onClick={() =>
+              collect.mutate(undefined, {
+                onSuccess: (result) => toast(t('distribution.cleanupDone', { count: result.blobs, size: formatBytes(result.bytes) })),
+                onError: (e) => toast.error(errorMessage(e)),
+              })
+            }
+          >
             {t('settings.storage.cleanupAction')}
           </Button>
         </SettingRow>

@@ -53,7 +53,26 @@ export interface CreateSaveParams {
   settings: Partial<SaveSettings>
 }
 
+export interface RemoteImportParams {
+  source: 'github' | 'url' | 'dev' | 'dir'
+  url?: string
+  path?: string
+  ref?: string
+  subdir?: string
+  timeout_seconds?: number
+  max_download_mib?: number
+}
+
 export const api = {
+  access: {
+    status: () => http.get<{ enabled: boolean; authenticated: boolean; exposed: boolean }>('/auth/status'),
+    login: (password: string) => http.post('/auth/login', { password }),
+    logout: () => http.post('/auth/logout'),
+    password: (current: string, password: string) => http.put('/auth/password', { current_password: current, password }),
+    revoke: () => http.del('/auth/sessions'),
+    github: () => http.get<{ configured: boolean }>('/settings/github-token'),
+    setGitHub: (token: string) => http.put<{ configured: boolean }>('/settings/github-token', { token }),
+  },
   debug: {
     imageURL: (id: string, call: string, blob: string) => `/api/v1/saves/${id}/debug/calls/${call}/images/${blob.replace(/^sha256:/, '')}`,
     status: (id: string) => http.get<DebugStatus>(`/saves/${id}/debug`),
@@ -64,6 +83,7 @@ export const api = {
       http.get<DebugFileContent>(`/saves/${id}/debug/calls/${call}/file?${new URLSearchParams({ phase, path, offset: String(offset) })}`),
   },
   system: {
+    collect: () => http.post<{ blobs: number; bytes: number }>('/storage/gc'),
     info: () => http.get<SystemInfo>('/system/info'),
   },
   settings: {
@@ -71,6 +91,11 @@ export const api = {
     patch: (patch: DeepPartial<Settings>) => http.patch<Settings>('/settings', patch),
   },
   works: {
+    remotePreview: (params: RemoteImportParams, signal?: AbortSignal) => http.post<ImportPreview>('/works/import', params, signal),
+    checkUpdate: (id: string, versionId: string) =>
+      http.post<{ changed: boolean; preview?: ImportPreview }>(`/works/${encodeURIComponent(id)}/check-update`, { version_id: versionId }),
+    remove: (id: string, versionId?: string) => http.del(`/works/${encodeURIComponent(id)}${versionId ? `/versions/${versionId}` : ''}`),
+    exportURL: (id: string, versionId: string) => `/api/v1/works/${encodeURIComponent(id)}/versions/${versionId}/export`,
     list: () => http.get<WorkSummary[]>('/works'),
     get: (id: string) => http.get<WorkDetail>(`/works/${encodeURIComponent(id)}`),
     saves: (id: string) => http.get<Save[]>(`/works/${encodeURIComponent(id)}/saves`),
@@ -83,6 +108,7 @@ export const api = {
     importCancel: (task: string) => http.del(`/works/import/${encodeURIComponent(task)}`),
   },
   saves: {
+    upgrade: (id: string, versionId: string) => http.post<void>(`/saves/${id}/upgrade`, { version_id: versionId }),
     title: (id: string) => http.post<void>(`/saves/${id}/title`),
     exit: (id: string) => http.post<void>(`/saves/${id}/exit`),
     settings: (id: string, settings: Partial<SaveSettings>) => http.patch<Save>(`/saves/${id}`, { settings }),

@@ -2,6 +2,7 @@ package settings
 
 import (
 	"math"
+	"net"
 	"slices"
 
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
@@ -9,6 +10,9 @@ import (
 
 // Validate 检查完整设置；拒绝非法值，避免界面或模型请求落入无法操作的状态。
 func (s Settings) Validate() error {
+	if net.ParseIP(s.Listen) == nil {
+		return errs.Invalid("监听地址应为 IP 地址，例如 127.0.0.1 或 0.0.0.0")
+	}
 	choices := []struct {
 		name, value string
 		allowed     []string

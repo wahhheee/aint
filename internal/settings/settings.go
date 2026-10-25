@@ -2,7 +2,7 @@
 //
 // 存储方式：整份设置序列化为一个 JSON 文档（key = "app"）。读取时先取默认值，再把库中的值覆盖上去——
 // 新版本增加的设置项自动获得默认值，无需迁移。前端以"部分更新"（PATCH）的方式修改。
-// 访问密码等安全相关设置不在这里（见 secrets.json，TODO(M6-9)）。
+// 访问密码等安全相关设置不在这里（见 access 包与 secrets.json）。
 package settings
 
 import (
@@ -18,6 +18,7 @@ import (
 
 // Settings 是全局设置。修改字段时同步 web/src/api/types.ts。
 type Settings struct {
+	Listen       string     `json:"listen"`         // 监听地址，重启生效。
 	Theme        string     `json:"theme"`          // system | light | dark
 	UseWorkTheme bool       `json:"use_work_theme"` // 关闭则使用平台主题（样式标签仍生效）
 	Reading      Reading    `json:"reading"`
@@ -82,6 +83,7 @@ type Context struct {
 // Defaults 返回默认设置（《04-交互与界面设计》10.2、9.4）。
 func Defaults() Settings {
 	return Settings{
+		Listen:       "127.0.0.1",
 		Theme:        "system",
 		UseWorkTheme: true,
 		Reading: Reading{

@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { WorkCover } from '@/features/library/WorkCover'
 import { NewGameDialog } from '@/features/save/NewGameDialog'
-import { formatDateTime } from '@/lib/format'
+import { VersionList } from './VersionList'
 
 import { ReportList } from './ReportList'
 import { SaveList } from './SaveList'
@@ -105,19 +105,7 @@ export function WorkDetailPage() {
           <SaveList workId={w.id} saves={saves.data} onStart={() => setStarting(true)} />
         </TabsContent>
         <TabsContent value="versions" className="pt-4">
-          <ul className="divide-y divide-rule">
-            {w.versions.map((v) => (
-              <li key={v.id} className="flex h-14 items-center gap-6 px-1">
-                <span className="w-20 font-medium text-ink tabular">{v.version}</span>
-                <span className="text-ink-muted">{t(`work.sources.${v.source.type}`)}</span>
-                {v.id === w.latest.id && (
-                  <span className="rounded-md bg-gold-soft px-1.5 py-0.5 text-xs leading-4 text-gold-text">{t('work.latest')}</span>
-                )}
-                <span className="ml-auto text-xs text-ink-faint tabular">{formatDateTime(v.imported_at)}</span>
-              </li>
-            ))}
-          </ul>
-          {/* TODO(M6-1/M6-5)：检查更新、导出 zip、删除版本 */}
+          <VersionList work={w} />
         </TabsContent>
         <TabsContent value="report" className="pt-6">
           <ReportList issues={w.report.issues} />

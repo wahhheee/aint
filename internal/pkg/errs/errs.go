@@ -18,6 +18,7 @@ import (
 type Code string
 
 const (
+	CodeRateLimited     Code = "rate_limited"
 	CodeInvalidArgument Code = "invalid_argument" // 请求参数不合法
 	CodeNotFound        Code = "not_found"        // 资源不存在
 	CodeConflict        Code = "conflict"         // 状态冲突，如存档正忙

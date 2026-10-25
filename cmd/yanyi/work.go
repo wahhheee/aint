@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/wahhheee/yanyi/internal/contextx"
@@ -32,9 +33,9 @@ func runWork(args []string) error {
 	case "prompt":
 		return workPrompt(args)
 	case "init":
-		return fmt.Errorf("yanyi work init 尚未实现（TODO(M6-3)：生成最小作品模板）")
+		return workInit(args)
 	case "pack":
-		return fmt.Errorf("yanyi work pack 尚未实现（TODO(M6-3)：确定性 zip，文件按路径排序、统一时间戳与权限）")
+		return workPack(args)
 	}
 	return fmt.Errorf("未知子命令：work %s", sub)
 }
@@ -187,11 +188,16 @@ func workPrompt(args []string) error {
 }
 
 // reorderFlags 让标志可以写在位置参数之后（yanyi work validate ./dir --json）。
-func reorderFlags(args []string) []string {
+func reorderFlags(args []string, valueFlags ...string) []string {
 	var flags, rest []string
-	for _, a := range args {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
 		if strings.HasPrefix(a, "-") {
 			flags = append(flags, a)
+			if slices.Contains(valueFlags, strings.TrimLeft(a, "-")) && i+1 < len(args) {
+				i++
+				flags = append(flags, args[i])
+			}
 		} else {
 			rest = append(rest, a)
 		}

@@ -19,11 +19,13 @@ import { DeveloperSection } from './sections/DeveloperSection'
 import { ProvidersSection } from './sections/ProvidersSection'
 import { ReadingSection } from './sections/ReadingSection'
 import { StorageSection } from './sections/StorageSection'
+import { AccessSection } from './sections/AccessSection'
 
-const SECTIONS = ['providers', 'background', 'audio', 'context', 'reading', 'storage', 'developer', 'about'] as const
+const SECTIONS = ['providers', 'background', 'audio', 'context', 'reading', 'storage', 'access', 'developer', 'about'] as const
 type Section = (typeof SECTIONS)[number]
 
 const ICONS: Record<Section, LucideIcon> = {
+  access: Wrench,
   providers: Cpu,
   background: Cpu,
   audio: Info,
@@ -76,6 +78,7 @@ export function SettingsPage() {
           {current === 'context' && <ContextSection />}
           {current === 'reading' && <ReadingSection />}
           {current === 'storage' && <StorageSection />}
+          {current === 'access' && <AccessSection />}
           {current === 'developer' && <DeveloperSection />}
           {current === 'about' && <AboutSection />}
         </div>

@@ -5,8 +5,8 @@
 //
 // 文件组织：
 //
-//	routes.go      全部路由一处看全（含尚未实现的端点，返回 501）
-//	middleware.go  恢复、请求 ID、访问日志、Host 校验、跨站校验、访问密码（TODO(M6-9)）
+//	routes.go      全部业务路由
+//	middleware.go  恢复、请求 ID、访问日志、Host 校验、跨站校验、访问密码
 //	respond.go     JSON 编解码与错误响应
 //	sse.go         事件流（断线续传、心跳、resync）
 //	static.go      前端静态资源与 SPA 回退
@@ -16,6 +16,8 @@ package server
 import (
 	"io/fs"
 	"net/http"
+
+	"github.com/wahhheee/yanyi/internal/access"
 
 	"github.com/wahhheee/yanyi/internal/buildinfo"
 	"github.com/wahhheee/yanyi/internal/event"
@@ -51,6 +53,8 @@ type TurnDefaults struct {
 
 // Deps 是 HTTP 层依赖的服务。
 type Deps struct {
+	Access    *access.Service
+	Secrets   *provider.Secrets
 	Info      SystemInfo
 	Bus       *event.Bus
 	Settings  *settings.Service

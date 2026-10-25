@@ -1,10 +1,8 @@
 package server
 
 // routes 注册全部路由（《02-技术方案》18.2，前缀 /api/v1）。
-// 尚未实现的端点也在这里列出并返回 501，作为"还剩什么"的一览表；实现后替换处理函数即可。
 func (s *Server) routes() {
 	m := s.mux
-	todo := s.notImplemented
 
 	// 系统
 	m.HandleFunc("GET /api/v1/system/info", s.h(s.systemInfo))
@@ -14,21 +12,22 @@ func (s *Server) routes() {
 	// 设置
 	m.HandleFunc("GET /api/v1/settings", s.h(s.getSettings))
 	m.HandleFunc("PATCH /api/v1/settings", s.h(s.patchSettings))
+	m.HandleFunc("POST /api/v1/storage/gc", s.h(s.collectStorage))
 
 	// 作品
 	m.HandleFunc("GET /api/v1/works", s.h(s.listWorks))
 	m.HandleFunc("GET /api/v1/works/{id}", s.h(s.getWork))
 	m.HandleFunc("GET /api/v1/works/{id}/saves", s.h(s.listWorkSaves))
-	m.HandleFunc("POST /api/v1/works/import", s.h(s.importWork)) // zip / 文件夹；GitHub、链接见 M6-1
+	m.HandleFunc("POST /api/v1/works/import", s.h(s.importWork)) // zip / 文件夹 / GitHub / URL / 本机目录
 	m.HandleFunc("POST /api/v1/works/import/{task}/confirm", s.h(s.confirmImport))
 	m.HandleFunc("DELETE /api/v1/works/import/{task}", s.h(s.cancelImport)) // 放弃导入（技术方案未单列，补充）
-	m.HandleFunc("GET /api/v1/works/{id}/versions", todo("版本列表（M6-5）"))
-	m.HandleFunc("POST /api/v1/works/{id}/check-update", todo("检查更新（M6-1）"))
-	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/export", todo("导出 zip（M6-5）"))
+	m.HandleFunc("GET /api/v1/works/{id}/versions", s.h(s.listVersions))
+	m.HandleFunc("POST /api/v1/works/{id}/check-update", s.h(s.checkWorkUpdate))
+	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/export", s.h(s.exportVersion))
 	m.HandleFunc("GET /api/v1/works/{id}/versions/{vid}/report", s.h(s.versionReport))
-	m.HandleFunc("DELETE /api/v1/works/{id}", todo("删除作品（M6-5）"))
-	m.HandleFunc("DELETE /api/v1/works/{id}/versions/{vid}", todo("删除版本（M6-5）"))
-	m.HandleFunc("POST /api/v1/works/dev-link", todo("链接开发目录（M6-2）"))
+	m.HandleFunc("DELETE /api/v1/works/{id}", s.h(s.deleteWork))
+	m.HandleFunc("DELETE /api/v1/works/{id}/versions/{vid}", s.h(s.deleteWork))
+	m.HandleFunc("POST /api/v1/works/dev-link", s.h(s.linkDev))
 	m.HandleFunc("GET /api/v1/assets/{hash}", s.h(s.asset))
 	m.HandleFunc("POST /api/v1/uploads", s.h(s.createUpload))
 	m.HandleFunc("GET /api/v1/uploads/{hash}", s.h(s.upload))
@@ -60,6 +59,7 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/v1/saves/{id}/exit", s.h(s.exitSave))
 	m.HandleFunc("POST /api/v1/saves/{id}/title", s.h(s.generateTitle))
 	m.HandleFunc("POST /api/v1/saves/{id}/compact", s.h(s.compact))
+	m.HandleFunc("POST /api/v1/saves/{id}/upgrade", s.h(s.upgradeSave))
 	m.HandleFunc("GET /api/v1/saves/{id}/state", s.h(s.saveState))
 	m.HandleFunc("PATCH /api/v1/saves/{id}/state", s.h(s.patchState))
 	m.HandleFunc("GET /api/v1/saves/{id}/memory", s.h(s.memory))
@@ -82,9 +82,13 @@ func (s *Server) routes() {
 
 	// 用量与访问控制
 	m.HandleFunc("GET /api/v1/usage", s.h(s.usageSummary))
-	m.HandleFunc("POST /api/v1/auth/login", todo("登录（M6-9）"))
-	m.HandleFunc("POST /api/v1/auth/logout", todo("退出登录（M6-9）"))
-	m.HandleFunc("PUT /api/v1/auth/password", todo("设置访问密码（M6-9）"))
+	m.HandleFunc("GET /api/v1/auth/status", s.h(s.authStatus))
+	m.HandleFunc("POST /api/v1/auth/login", s.h(s.login))
+	m.HandleFunc("POST /api/v1/auth/logout", s.h(s.logout))
+	m.HandleFunc("PUT /api/v1/auth/password", s.h(s.password))
+	m.HandleFunc("DELETE /api/v1/auth/sessions", s.h(s.revokeSessions))
+	m.HandleFunc("GET /api/v1/settings/github-token", s.h(s.githubToken))
+	m.HandleFunc("PUT /api/v1/settings/github-token", s.h(s.githubToken))
 
 	// 未匹配的 /api 路径返回 JSON 404；其余交给前端（SPA）
 	m.HandleFunc("/api/", s.h(s.apiNotFound))

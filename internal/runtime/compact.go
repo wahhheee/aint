@@ -55,13 +55,20 @@ type CompactStats struct {
 // 工具定义不变（前缀稳定）。
 var compactAllowed = map[string]bool{"read": true, "list": true, "search": true, "write": true, "edit": true, "remove": true, "get_state": true}
 
-// compactLine 对进度线 line（root → 整理时的 head）执行一次整理，提交 compaction 节点（成为 head）。
-func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason) (*save.Node, *CompactStats, error) {
+// compactVersion 对进度线执行整理；current 用于固定开发回合正在使用的作品快照，target 指定升级目标。
+func (m *Manager) compactVersion(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model) (*save.Node, *CompactStats, error) {
 	start := time.Now()
 	head := line[len(line)-1]
-	w, err := m.d.Works.Model(ctx, head.WorkVersionID)
-	if err != nil {
-		return nil, nil, err
+	if target != nil && lastTurn(line) == nil {
+		return m.upgradeEmpty(ctx, sv, line, target)
+	}
+	w := current
+	if w == nil {
+		var err error
+		w, err = m.d.Works.Model(ctx, head.WorkVersionID)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	narratorProvider, narrator, err := m.d.Models.Resolve(ctx, sv.Settings.NarratorModel)
 	if err != nil {
@@ -75,7 +82,13 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 	if err != nil {
 		return nil, nil, err
 	}
+	if target != nil && len(ec.turns) == 0 {
+		return m.upgradeEmpty(ctx, sv, line, target)
+	}
 	idx := compact.KeepFrom(ec.sizes, params.KeepTokens(threshold))
+	if target != nil && len(ec.turns) > 0 {
+		idx = max(idx, 1)
+	}
 	if idx == 0 {
 		return nil, nil, errNothingToCompact
 	}
@@ -108,6 +121,10 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 	if err != nil {
 		return nil, nil, err
 	}
+	var migration []state.MigrationValue
+	if w.IsDev {
+		headState, migration = state.Migrate(w.State, headState)
+	}
 	task, err := contextx.RenderCompactionTask(features, params.SummaryChars(threshold), overlay.TotalSize() > vfs.MemoryWarnTotal, w.CompactionGuide)
 	if err != nil {
 		return nil, nil, err
@@ -121,6 +138,7 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 		if err != nil {
 			return nil, nil, err
 		}
+		initState, _ = state.Migrate(w.State, initState)
 		built, err := m.d.Builder.Build(ctx, contextx.BuildInput{
 			SaveID: sv.ID, Work: w, Features: features, Model: narrator, Settings: sv.Settings,
 			InitialState: initState, InitialStateHash: root.StateHash, Epoch: ec.block,
@@ -152,6 +170,25 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 
 	// 阶段块：摘要 + 阶段开始时的状态 + 落盘后的记忆目录
 	kept := ec.turns[idx:]
+	var keptFrom, keptTo int
+	var keepID string
+	if len(kept) > 0 {
+		keptFrom, keptTo, keepID = kept[0].TurnNo, kept[len(kept)-1].TurnNo, kept[0].ID
+	}
+	var notes []string
+	versionID := ""
+	if target != nil {
+		w = target
+		versionID = w.VersionID
+		var records []state.MigrationValue
+		headState, records = state.Migrate(w.State, headState)
+		migration = append(migration, records...)
+		features = contextx.Profile(w, sv.Settings, narrator.Caps, false)
+		notes = []string{"作品已更新到 " + w.Manifest.Version}
+		if w.Manifest.Changelog != "" {
+			notes = append(notes, w.Manifest.Changelog)
+		}
+	}
 	memWrite := memoryWrite(overlay)
 	var memIndex []save.MemoryEntry
 	if memWrite != nil {
@@ -163,12 +200,12 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 		return nil, nil, err
 	}
 	epoch := contextx.RenderEpoch(features, w.State, contextx.EpochInput{
-		N: ec.n + 1, FromTurn: head.TurnNo + 1, KeptFrom: kept[0].TurnNo, KeptTo: kept[len(kept)-1].TurnNo,
+		N: ec.n + 1, FromTurn: head.TurnNo + 1, KeptFrom: keptFrom, KeptTo: keptTo,
 		Summary: summary, State: headState, Memory: memIndex,
 	})
 	stats := &CompactStats{
 		Reason: string(reason), Mode: mode, SummaryFrom: ec.turns[0].TurnNo, SummaryTo: ec.turns[idx-1].TurnNo,
-		KeepFromTurn: kept[0].TurnNo, SummaryChars: len([]rune(summary)), Before: contextTokensOf(line), Calls: run.calls,
+		KeepFromTurn: keptFrom, SummaryChars: len([]rune(summary)), Before: contextTokensOf(line), Calls: run.calls,
 	}
 	written, removed := overlay.Changes()
 	stats.MemoryWrites = len(written) + len(removed)
@@ -183,9 +220,11 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 	}
 
 	node, err := m.d.Saves.CommitCompaction(ctx, save.CompactionCommit{
-		SaveID: sv.ID, Parent: head, Epoch: epoch, KeepFrom: kept[0].ID, Memory: memWrite,
+		SaveID: sv.ID, Parent: head, Epoch: epoch, KeepFrom: keepID, Memory: memWrite,
+		WorkVersionID: versionID, State: headState, Notes: notes,
 		Messages: run.msgs, Usage: &run.usage, UsageRecords: run.records,
 		Meta: save.NodeMeta{
+			Migration: migration, WorkHash: w.TreeHash,
 			Model: model.Name, Stop: "summary", Calls: run.calls, ToolCalls: run.toolCalls, DurationMS: time.Since(start).Milliseconds(),
 			PromptVersion: prompts.Version, ContextTokens: stats.After, CompactReason: string(reason),
 			SummaryFrom: stats.SummaryFrom, SummaryTo: stats.SummaryTo, KeepFromTurn: stats.KeepFromTurn,

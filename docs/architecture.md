@@ -31,7 +31,7 @@
 | 编排   | `runtime`                                                                                                          | 存档会话（单一写者）、回合循环、预算、取消、提交、上下文整理的执行、事件发布                                                                 |
 | 引擎   | `contextx` `tools` `panel` `compact` `helper`                                                                      | 上下文分层构建与按需组装；工具注册与执行；面板渲染；整理的参数与规则；后台助手的有界隔离工具循环                                             |
 | 存档   | `save`                                                                                                             | 存档、节点树、进度线、建档、回合与整理的提交事务、分支操作、玩家编辑、原文、时间线与分支结构                                                 |
-| 领域   | `work` `settings` `provider` `usage`                                                                               | 作品编译与导入；全局设置；供应商与模型配置、密钥、内置模型预设、连接测试；用量记录与统计（按存档、作品、节点，分用途与模型，按货币分别求和） |
+| 领域   | `work` `settings` `provider` `usage` `access`                                                                               | 作品编译与导入；全局设置；供应商与模型配置、密钥、内置模型预设、连接测试；用量记录与统计（按存档、作品、节点，分用途与模型，按货币分别求和） |
 | 基础   | `llm`（含 `wire` 与适配器子包）`event` `store` `prompts` `tmpl` `state` `markup` `vfs` `media` `pkg/*` `buildinfo` | 中立模型层与三协议适配器；事件总线；SQLite 与 blob；平台提示词；作者模板（隔离工作进程）；状态类型；叙事标记；虚拟文件系统；图片             |
 
 几条贯穿性的约定：
@@ -180,7 +180,7 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 新增一个 SSE 事件        | `event/types.go`（常量 + 载荷）→ 发布处 → `web/src/api/events.ts`（类型 + `EVENT_TYPES`）→ `stores/reader.ts` 的 `reduceEvent`                                         |
 | 新增一个工具             | `tools/builtins.go`：`Def`（名称、类型、显示策略、可用条件、`Spec` 裁切、`Handle`）；需要存档数据时扩展 `tools.Env` 并在 `runtime/draft.go` 实现                       |
 | 新增一段平台提示词       | `prompts/l0.go` 加片段（声明 `When` 条件）；新条件在 `prompts/features.go` 加特征、在 `contextx/profile.go` 计算；**递增 `prompts.Version`**                           |
-| 新增作品文件类型或字段   | `work/manifest.go` 或 `work/model.go` → `work/compile.go`（解析 + 校验代码）→ 示例作品 → JSON Schema（TODO(M6-4)）                                                     |
+| 新增作品文件类型或字段   | `work/manifest.go` 或 `work/model.go` → `work/compile.go`（解析 + 校验代码）→ 示例作品 → `work/schemas.go` → `go run ./cmd/schema-gen`                                                     |
 | 新增数据库表或列         | 首次发布前直接改 `store/migrations/0001_init.sql`（D-43）；发布后追加 `NNNN_说明.sql`（编号递增，已发布的脚本不改）→ 对应包的 `repo.go`                                |
 | 新增模型协议             | `llm/<协议>/` 实现 `llm.Provider`（HTTP 与 SSE 用 `llm/wire`，导出 `Body()`）→ `provider/service.go` 的 `NewAdapter` 中登记 → 录制夹具与 `live_test.go` 子测试         |
 | 新增内置模型预设         | `provider/presets.go`（窗口、输出上限、能力与推理映射、官方价格；同一模型经不同协议接入时用 `ReasoningBy`）                                                            |
@@ -212,3 +212,12 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 - `helper.Run` 只负责有界循环；运行时注入模型调用与工具执行。research 只读，curate 的记忆写入当前回合覆盖层；不提供状态、选项与递归委派工具。助手用量进入本回合 `usage_log`，状态通过 `helper.progress` 推送。
 - `runtime/title.go` 在进程上下文下生成标题；`save.CommitTitle` 记录用量并比较任务开始时的标题、来源及 head，避免覆盖并发命名或新进度。自动生成按 head 去重，事件为 `save.titled` / `save.title_failed`。
 - 前端舞台从显示项推导，音效只播放当前草稿的新标记；资源只取作品素材表。回合目录复用分页时间线；已加载回合的检索与跳转不发起模型调用。
+
+## 7. 分发、开发目录与访问控制
+
+- 远程导入由 `work/remote.go` 下载至暂存目录，继续使用 `Importer` 的预览与确认流程。GitHub 先解析 ref 为提交 SHA，再下载固定提交归档；URL 使用 ETag 和文件树哈希检查更新。HTTPS、逐跳重定向校验、解析后的公网地址直连、流式大小上限与超时共同约束网络请求，GitHub 令牌只发往 API 主机。
+- `work/dev.go` 递归监听开发目录，400 ms 去抖后编译，只有校验通过才替换唯一开发版本与缓存。正在运行的回合继续持有旧 Model；后续回合使用新内容。前缀缓存键包含文件树哈希，状态按 D-69 迁移；全局 `work.reloaded` 刷新作品、呈现信息与面板。校验错误保存报告并保留上次可用文件。
+- `runtime.Upgrade` 占用存档写者槽位，按旧版本整理后构建新阶段块；`CommitCompaction` 在同一事务中提交状态、版本、迁移记录和 head。没有待整理回合时复用摘要或迁移初始状态，不调用模型。`setHead` 同步存档的版本绑定，历史节点保护它们引用的作品版本。
+- `save.CollectStorage` 在写事务内从作品文件、所有历史节点、近期上传开始递归标记 blob，保护最近一小时的新内容；磁盘回收在数据库删除提交后再次核对引用。手动清理和删除后清理由 `runtime.WhenIdle` 防止与活跃生成竞争，并清空含派生图引用的缓存。启动时至多每周扫描一次。`media.CollectCache` 清除孤立缩略图。
+- `access` 通过注入的 Secrets 接口保存 PBKDF2 密码哈希与会话令牌哈希，不依赖 provider。HTTP 业务 API（包括素材、上传、调试和事件流）统一检查会话；登录页静态资源、登录状态和单实例健康端点公开。密码变化或会话撤销关闭已打开的事件流，会话到期也会结束连接。Host 与跨站检查先于鉴权。监听地址在 settings，密码和 GitHub 令牌在 secrets.json。
+- 发布与离线 Schema 见 [release.md](release.md) 与 [schemas/README.md](../schemas/README.md)。
