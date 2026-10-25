@@ -208,13 +208,34 @@ func TestCompactionSeparateAndPrefix(t *testing.T) {
 		if e.mgr.Compacting(sv.ID) {
 			waitAny(t, sub, event.CompactionDone)
 			compactions++
+			if compactions == 1 {
+				// 阶段内的记忆编辑应进入下一次独立整理，不能复用上一阶段的目录快照。
+				for path, content := range map[string]string{
+					"/memory/chronicle/01.md":   "---\nsummary: 第一章已核实\n---\n# 第一章\n不应自动注入的章节全文。\n",
+					"/memory/threads/letter.md": "# 待追查的信\n不应自动注入的线索全文。\n",
+				} {
+					if _, err := e.saves.EditMemory(ctx, sv.ID, path, &content); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 		}
 	}
 	var sep *llm.Request
 	for _, r := range reqs {
 		if r.Purpose == "compact" {
+			if sep == nil && strings.Contains(r.Messages[0].TextOf(), "<memory_index>") {
+				t.Fatal("首次整理时记忆为空，不应生成记忆目录块")
+			}
 			sep = r
 		}
+	}
+	if sep == nil {
+		t.Fatal("没有捕获到独立整理请求")
+	}
+	wantIndex := "<memory_index>\n- /memory/chronicle/01.md — 第一章已核实\n- /memory/threads/letter.md — 待追查的信\n</memory_index>"
+	if body := sep.Messages[0].TextOf(); !strings.Contains(body, wantIndex) || strings.Contains(body, "不应自动注入") {
+		t.Fatalf("独立整理应包含当前记忆目录及摘要，不包含文件全文：%s", body)
 	}
 	if !strings.HasPrefix(sep.System[0].Text, prompts.CompactionSeparateSystem) || !strings.Contains(sep.Messages[0].TextOf(), "<transcript>") ||
 		!strings.Contains(sep.Messages[0].TextOf(), "<previous_summary>\n## 故事至今") {

@@ -54,18 +54,26 @@ func epochParts(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, 
 			parts = append(parts, fmt.Sprintf("<state as_of=\"%s\">\n%s</state>", asOf, b))
 		}
 	}
-	if len(memory) > 0 {
-		var lines []string
-		for _, e := range memory {
-			line := "- " + e.Path
-			if e.Summary != "" {
-				line += " — " + e.Summary
-			}
-			lines = append(lines, line)
-		}
-		parts = append(parts, "<memory_index>\n"+strings.Join(lines, "\n")+"\n</memory_index>")
+	if index := RenderMemoryIndex(memory); index != "" {
+		parts = append(parts, index)
 	}
 	return parts
+}
+
+// RenderMemoryIndex 渲染阶段块与独立整理共用的记忆目录；没有记忆时不生成块。
+func RenderMemoryIndex(memory []save.MemoryEntry) string {
+	if len(memory) == 0 {
+		return ""
+	}
+	var lines []string
+	for _, e := range memory {
+		line := "- " + e.Path
+		if e.Summary != "" {
+			line += " — " + e.Summary
+		}
+		lines = append(lines, line)
+	}
+	return "<memory_index>\n" + strings.Join(lines, "\n") + "\n</memory_index>"
 }
 
 // RenderCompactionTask 渲染整理指令（prompts.CompactionTask）。

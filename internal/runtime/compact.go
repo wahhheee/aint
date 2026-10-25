@@ -133,7 +133,11 @@ func (m *Manager) compactLine(ctx context.Context, sv *save.Save, line []*save.N
 		req = built.Request
 	} else {
 		toolFS = contextx.Profile(w, sv.Settings, model.Caps, false)
-		if req, err = m.separateRequest(ctx, sv, w, toolFS, model, ec, headState, task); err != nil {
+		memIndex, err := m.d.Saves.MemoryIndex(ctx, head.MemoryHash)
+		if err != nil {
+			return nil, nil, err
+		}
+		if req, err = m.separateRequest(ctx, sv, w, toolFS, model, ec, headState, memIndex, task); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -224,7 +228,7 @@ func compactionMessage(history []llm.Message, notes []string, task string) llm.M
 // separateRequest 组装 separate 模式的请求：整理专用的系统提示、记忆相关工具，user 消息中是上一份摘要、
 // 上下文中各回合的原文（放不下时从最早的回合起省略）、当前状态、记忆目录与整理指令。
 func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Model, fs prompts.FeatureSet, model *llm.Model,
-	ec *epochContext, st map[string]any, task string) (*llm.Request, error) {
+	ec *epochContext, st map[string]any, memory []save.MemoryEntry, task string) (*llm.Request, error) {
 	var specs []llm.ToolSpec
 	for _, s := range m.d.Tools.Specs(fs, w) {
 		if compactAllowed[s.Name] {
@@ -247,6 +251,9 @@ func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Mo
 		if y, err := state.YAML(w.State, st); err == nil {
 			fmt.Fprintf(&tail, "<state>\n%s</state>\n", y)
 		}
+	}
+	if index := contextx.RenderMemoryIndex(memory); index != "" {
+		tail.WriteString(index + "\n")
 	}
 	tail.WriteString("\n" + task)
 
