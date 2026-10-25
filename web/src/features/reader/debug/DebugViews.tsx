@@ -88,6 +88,7 @@ export function ContextView({ call, imageURL }: { call: DebugCall; imageURL: (bl
   const { t } = useTranslation()
   const req = call.request
   if (!req) return <EmptyDebug text={t('debug.noContext')} />
+  const layerMax = Math.max(1, ...Object.values(call.layers ?? {}))
   return (
     <div className="space-y-4">
       <p className="text-xs leading-6 text-ink-muted">{t('debug.contextHint')}</p>
@@ -97,13 +98,16 @@ export function ContextView({ call, imageURL }: { call: DebugCall; imageURL: (bl
           {Object.entries(call.layers).map(([layer, n]) => (
             <div key={layer} className="grid grid-cols-[2rem_1fr_4rem] items-center gap-2 text-xs">
               <span>{layer}</span>
-              <meter
+              <div
+                role="meter"
                 aria-label={`${layer} ${t('debug.layerEstimate')}`}
-                min={0}
-                max={Math.max(1, ...Object.values(call.layers!))}
-                value={n}
-                className="h-3 w-full"
-              />
+                aria-valuemin={0}
+                aria-valuemax={layerMax}
+                aria-valuenow={n}
+                className="h-1.5 overflow-hidden rounded-full bg-rule-strong"
+              >
+                <div className="h-full rounded-full bg-gold/80" style={{ width: `${(n / layerMax) * 100}%` }} />
+              </div>
               <span className="text-right font-mono">{n}</span>
             </div>
           ))}
