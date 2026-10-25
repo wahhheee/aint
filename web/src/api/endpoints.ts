@@ -83,6 +83,9 @@ export const api = {
     importCancel: (task: string) => http.del(`/works/import/${encodeURIComponent(task)}`),
   },
   saves: {
+    title: (id: string) => http.post<void>(`/saves/${id}/title`),
+    exit: (id: string) => http.post<void>(`/saves/${id}/exit`),
+    settings: (id: string, settings: Partial<SaveSettings>) => http.patch<Save>(`/saves/${id}`, { settings }),
     recent: (limit = 6) => http.get<Save[]>(`/saves?limit=${limit}`),
     create: (p: CreateSaveParams) => http.post<Save>('/saves', p),
     get: (id: string) => http.get<Presentation>(`/saves/${id}`),

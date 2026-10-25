@@ -19,9 +19,10 @@
  *   chrome/            顶栏、用量环、阅读设置、帮助
  *   drawers/           记忆、时间线与分支、状态（开发者工具）抽屉
  *
- * TODO(M5-2)：舞台层（背景、转场、BGM）。TODO(M5-13)：退出时 POST /saves/{id}/exit 与 pagehide 信标。
+ * 舞台层负责背景与音频；退出标题由 useTitleOnExit 通知后台。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -45,9 +46,11 @@ import { hasPanels } from './panels/layout'
 import { FloatPanels, SidebarPanels, TopbarPanels } from './panels/Panels'
 import { PanelSheet } from './panels/PanelSheet'
 import { ReaderContext, type ReaderContextValue } from './ReaderContext'
-import { lastSceneBackground } from './stage/scene'
+import { stageCues } from './stage/scene'
+import { StageAudio } from './stage/StageAudio'
 import { StageBackground } from './stage/StageBackground'
 import { Stream } from './stream/Stream'
+import { useTitleOnExit } from './useTitleOnExit'
 import { useReaderSession } from './useReaderSession'
 import { useReadingStyle } from './useReadingStyle'
 import { useTurnActions } from './useTurnActions'
@@ -59,6 +62,7 @@ export function ReaderPage() {
   const panels = usePanels(saveId)
   const settings = useSettings()
   useReaderSession(saveId)
+  useTitleOnExit(saveId)
 
   if (presentation.isError) {
     return (
@@ -75,6 +79,8 @@ export function ReaderPage() {
       saveId={saveId}
       presentation={presentation.data}
       timeline={timeline.data}
+      loadEarlier={() => void timeline.fetchNextPage()}
+      loadingEarlier={timeline.isFetchingNextPage}
       panels={panels.data?.panels}
       reading={settings.data?.reading}
       workTheme={settings.data?.use_work_theme !== false}
@@ -84,6 +90,8 @@ export function ReaderPage() {
 }
 
 type ViewProps = {
+  loadEarlier: () => void
+  loadingEarlier: boolean
   saveId: string
   presentation: NonNullable<ReturnType<typeof usePresentation>['data']>
   timeline: ReturnType<typeof useTimeline>['data']
@@ -95,7 +103,8 @@ type ViewProps = {
   devTools: boolean
 }
 
-function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme, devTools }: ViewProps) {
+function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timeline, panels, reading, workTheme, devTools }: ViewProps) {
+  const { t } = useTranslation()
   const { ui, save } = presentation
   const actions = useTurnActions(saveId, ui.commands)
   const busy = useReader(selectBusy)
@@ -117,9 +126,6 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
   }, [])
   const toggleDebug = (enabled: boolean) =>
     debugActions.toggle.mutate(enabled, {
-      onSuccess: () => {
-        if (enabled) inspect()
-      },
       onError: (err) => toast.error(errorMessage(err)),
     })
 
@@ -165,7 +171,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
       ui,
       vision: presentation.model.vision,
       reading,
-      choose: (item) => void actions.choose(item),
+      choose: actions.choose,
       focusInput: () => dockRef.current?.focus(),
       runCommand,
       actions,
@@ -176,12 +182,23 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
 
   // 舞台背景：进度线上（含进行中的回合）最近一次 <scene bg>
   const draft = useReader((s) => s.draft)
-  const sceneBg = useMemo(
-    () => lastSceneBackground([...(timeline?.nodes.map((n) => n.display) ?? []), draft?.items ?? []]),
-    [timeline, draft?.items],
+  const cues = useMemo(
+    () =>
+      stageCues(
+        [
+          ...(timeline?.nodes.filter((n) => n.id !== draft?.turnId).map((n) => ({ id: n.id, items: n.display })) ?? []),
+          ...(draft ? [{ id: draft.turnId, items: draft.items }] : []),
+        ],
+        ui.builtin_tags,
+      ),
+    [timeline, draft, ui.builtin_tags],
   )
+  const scene = cues.findLast((c) => c.kind === 'scene' && c.attrs.bg)
+  const sceneBg = scene?.attrs.bg
   const lastTurnId = useMemo(() => timeline?.nodes.findLast((n) => n.kind === 'turn')?.id, [timeline])
-  const stageAsset = ui.builtin_tags.includes('scene') ? ui.assets.find((a) => a.id === sceneBg && a.kind === 'image') : undefined
+  const stageAsset = ui.builtin_tags.includes('scene')
+    ? ui.assets.find((a) => (a.id === sceneBg || a.path === sceneBg) && a.kind === 'image')
+    : undefined
 
   // 宽屏：sidebar 面板在右侧栏，drawer 面板在抽屉；窄屏没有右侧栏，两者都在抽屉里
   const hasSidebar = hasPanels(ui.panels, panels, 'sidebar')
@@ -207,7 +224,16 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
           {/* 作品主题的背景图（低透明度的纸纹、雾气等），在舞台背景之下 */}
           {theme?.reading.backdrop && <div aria-hidden className="work-backdrop pointer-events-none absolute inset-0 bg-cover bg-center" />}
           {/* 舞台背景铺满整页（侧栏是半透明的磨砂面，背景从下面透出来） */}
-          <StageBackground asset={stageAsset} intensity={reading?.stage_intensity} />
+          <StageBackground
+            asset={stageAsset}
+            intensity={reading?.stage_intensity}
+            transition={scene?.attrs.transition}
+            reduce={
+              reading?.reduce_motion === 'on' ||
+              (reading?.reduce_motion !== 'off' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+            }
+          />
+          <StageAudio cues={cues} draftId={draft?.turnId} assets={ui.assets} />
 
           <div className="relative flex min-w-0 flex-1 flex-col">
             {connection === 'reconnecting' && (
@@ -216,7 +242,7 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
                 className="absolute inset-x-0 top-0 z-20 flex h-7 items-center justify-center gap-2 bg-warn/12 text-xs text-warn backdrop-blur"
               >
                 <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-warn" />
-                连接已断开，正在重连……
+                {t('reader.reconnecting')}
               </div>
             )}
             <ReaderTopBar
@@ -237,29 +263,35 @@ function ReaderView({ saveId, presentation, timeline, panels, reading, workTheme
                 <DebugControl
                   enabled={!!debug.data?.enabled}
                   pending={debug.isPending || debugActions.toggle.isPending}
-                  available={debugAvailable}
                   onToggle={toggleDebug}
-                  onOpen={() => inspect()}
                 />
               }
             />
             <TopbarPanels meta={ui.panels} rendered={panels} />
-            <Stream timeline={timeline} onRetry={() => void actions.retry()} onContinue={() => void actions.submit({ kind: 'continue' })} />
-            <FloatPanels meta={ui.panels} rendered={panels} />
-            <InputDock
-              ref={dockRef}
-              busy={busy}
-              defaultPace={save.settings.pace || ui.pace}
-              onSubmit={actions.submitText}
-              onStop={() => void actions.stop()}
-              onHelp={() => setHelpOpen(true)}
+            <Stream
+              loadEarlier={loadEarlier}
+              loadingEarlier={loadingEarlier}
+              timeline={timeline}
+              onRetry={() => void actions.retry()}
+              onContinue={() => void actions.submit({ kind: 'continue' })}
             />
+            <FloatPanels meta={ui.panels} rendered={panels} />
+            <div className="shrink-0 xl:pl-52">
+              <InputDock
+                ref={dockRef}
+                busy={busy}
+                defaultPace={save.settings.pace || ui.pace}
+                onSubmit={actions.submitText}
+                onStop={() => void actions.stop()}
+                onHelp={() => setHelpOpen(true)}
+              />
+            </div>
           </div>
 
           {hasSidebar && sidebarOpen && (
             <aside
               className="scroll-stable relative hidden w-[320px] shrink-0 border-l border-rule bg-paper/75 px-6 pt-[18px] pb-6 backdrop-blur-xl min-[1200px]:block"
-              aria-label="面板"
+              aria-label={t('reader.panels')}
             >
               <SidebarPanels meta={ui.panels} rendered={panels} />
             </aside>

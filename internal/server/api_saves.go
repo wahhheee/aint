@@ -7,6 +7,7 @@ import (
 
 	"github.com/wahhheee/yanyi/internal/event"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/save"
 )
 
@@ -26,6 +27,11 @@ func (s *Server) recentSaves(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) createSave(w http.ResponseWriter, r *http.Request) error {
 	var p save.CreateParams
+	g, err := s.d.Settings.Get(r.Context())
+	if err != nil {
+		return err
+	}
+	p.Settings.Helpers = g.Play.Helpers
 	if err := decode(r, &p); err != nil {
 		return err
 	}
@@ -69,7 +75,7 @@ func (s *Server) newSaveSettings(ctx context.Context, in save.Settings) (save.Se
 	if in.CacheTTL == "" {
 		in.CacheTTL = g.Play.CacheTTL
 	}
-	return in, nil
+	return in, in.Validate()
 }
 
 // getSave 返回阅读页所需的呈现信息（存档 + 作品界面配置 + 模型摘要）。
@@ -84,13 +90,18 @@ func (s *Server) getSave(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) patchSave(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
-		Title *string `json:"title"`
-		// TODO(M5-10)：存档设置（模型、篇幅、推理、助手开关）的修改。
+		Title    *string     `json:"title"`
+		Settings jsonx.Value `json:"settings"`
 	}
 	if err := decode(r, &body); err != nil {
 		return err
 	}
 	id := r.PathValue("id")
+	if len(body.Settings) > 0 {
+		if err := s.d.Runtime.PatchSettings(r.Context(), id, body.Settings); err != nil {
+			return err
+		}
+	}
 	if body.Title != nil {
 		if err := s.d.Saves.Rename(r.Context(), id, *body.Title); err != nil {
 			return err
@@ -177,5 +188,21 @@ func (s *Server) cancelTurn(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) generateTitle(w http.ResponseWriter, r *http.Request) error {
+	if err := s.d.Runtime.GenerateTitle(r.Context(), r.PathValue("id"), false); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusAccepted)
+	return nil
+}
+
+func (s *Server) exitSave(w http.ResponseWriter, r *http.Request) error {
+	if err := s.d.Runtime.GenerateTitle(r.Context(), r.PathValue("id"), true); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusAccepted)
 	return nil
 }

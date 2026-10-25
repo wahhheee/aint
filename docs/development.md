@@ -69,7 +69,7 @@ task dev:server:real
 
 前缀哈希（`meta.prefix_hash`）在相邻回合间变化，说明缓存被重建了——看 `task prompt` 的片段列表找原因。
 
-**游玩调试操作**：点击顶栏“调试”图标开启当前存档的记录并打开右侧面板；开启时图标以淡金色与小圆点标识，旁边的面板图标用于查看已有记录。面板提供“开始记录”与“暂停记录”按钮；收起面板继续记录，暂停后已开始的调用记录至结束。
+**游玩调试操作**：顶栏“调试”只切换当前存档的记录，开启时亮起。用量环中的“检查器”或回合菜单中的“检查器”打开记录页；关闭检查器不影响记录。面板内也可暂停 / 开始记录；已开始的调用会记录至结束。
 列表按调用时间排列，可搜索回合、模型、用途；“跟随最新”自动选中新调用，手动选中历史记录时关闭跟随。
 回合菜单与用量浮层都提供检查入口。按 `Esc` 收起面板，查看面板时数字键不会选择故事选项。
 
@@ -154,7 +154,8 @@ task test
   交还选项、状态维护与面板渲染，并以场外提问检查事实召回（答案写进报告，人工核对）：
   `YANYI_EVAL=<live.json 的绝对路径> YANYI_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
   报告在 `.local/eval/<时间>/story.md`（`YANYI_EVAL_OUT` 可指定），`YANYI_EVAL_TRACE=<目录>` 录制原始报文。
-- 尚缺：Playwright 端到端（M5-12）、测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
+- Playwright 端到端：在 `web/` 首次执行 `pnpm exec playwright install chromium`，之后在仓库根执行 `task test:e2e`。测试使用独立临时目录、7879 / 5179 端口与假模型，不读取真实密钥；失败追踪位于 `web/test-results/`，CI 会上传。
+- 尚缺：测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
 
 ### 4.1 M4 协议验收
 

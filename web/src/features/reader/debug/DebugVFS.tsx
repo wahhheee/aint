@@ -69,6 +69,11 @@ export function DebugVFS({ saveId, call }: { saveId: string; call: DebugCall }) 
               ))}
             </div>
           )}
+          {[...changes.keys()]
+            .filter((p) => p.startsWith('/memory/'))
+            .map((p) => (
+              <MemoryDiff key={p} saveId={saveId} call={call} path={p} />
+            ))}
           <div className="relative">
             <Search className="absolute top-2.5 left-3 size-4 text-ink-faint" />
             <Input
@@ -187,6 +192,67 @@ function FilePreview({
           </>
         )
       )}
+    </div>
+  )
+}
+
+function MemoryDiff({ saveId, call, path }: { saveId: string; call: DebugCall; path: string }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  return (
+    <details onToggle={(e) => setOpen(e.currentTarget.open)} className="rounded-lg border border-rule p-3 text-xs">
+      <summary className="cursor-pointer">
+        {t('debug.memoryDiff')} · {path}
+      </summary>
+      {open && <MemoryDiffContent saveId={saveId} call={call} path={path} />}
+    </details>
+  )
+}
+
+function MemoryDiffContent({ saveId, call, path }: { saveId: string; call: DebugCall; path: string }) {
+  const { t } = useTranslation()
+  const a = call.before?.files.find((f) => f.path === path)
+  const b = call.after?.files.find((f) => f.path === path)
+  const before = useDebugFile(saveId, call.id, 'before', a ? path : '', 1, a?.blob ?? '')
+  const after = useDebugFile(saveId, call.id, 'after', b ? path : '', 1, b?.blob ?? '')
+  if ((a && before.isPending) || (b && after.isPending)) return <p>{t('common.loading')}</p>
+  if (before.isError || after.isError)
+    return (
+      <LoadError
+        error={before.error ?? after.error}
+        onRetry={() => {
+          void before.refetch()
+          void after.refetch()
+        }}
+      />
+    )
+  const old = before.data?.text.split('\n') ?? []
+  const next = after.data?.text.split('\n') ?? []
+  return (
+    <div className="mt-3">
+      <p className="mb-2 text-ink-faint">{t('debug.diffHint')}</p>
+      {Array.from({ length: Math.max(old.length, next.length) }, (_, i) => (
+        <div key={i} className="font-mono whitespace-pre-wrap break-all">
+          {old[i] === next[i] ? (
+            <div>
+              {i + 1} {old[i]}
+            </div>
+          ) : (
+            <>
+              {old[i] !== undefined && (
+                <div className="bg-danger/10 text-danger">
+                  − {i + 1} {old[i]}
+                </div>
+              )}
+              {next[i] !== undefined && (
+                <div className="bg-gold/10 text-gold-text">
+                  + {i + 1} {next[i]}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

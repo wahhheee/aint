@@ -142,6 +142,8 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 	msgs := built.Request.Messages // 以本回合的玩家消息结尾，再接本回合已有的其余消息
 	msgs = append(msgs, d.turnMsgs[1:]...)
 	d.req.Messages = msgs
+	built.Request = d.req
+	d.built = built
 	d.lastInput = 0 // 上下文已经换了，之前的用量不再代表下一次请求
 	return nil
 }

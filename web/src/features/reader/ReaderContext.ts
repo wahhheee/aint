@@ -11,7 +11,7 @@ export interface ReaderContextValue {
   /** 主笔模型能看图（附件、图片相关的提示） */
   vision: boolean
   reading?: ReadingSettings
-  choose: (item: ChoiceItem) => void
+  choose: (item: ChoiceItem) => Promise<boolean>
   focusInput: () => void
   /** 执行命令（面板按钮、命令栏）：传入 "/follow 林舟" 这样的文字；confirmed 表示调用方已请玩家确认过 */
   runCommand: (text: string, confirmed?: boolean) => void

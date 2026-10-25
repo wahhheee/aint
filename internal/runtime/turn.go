@@ -39,6 +39,7 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, 
 	m.publish(saveID, event.TurnStarted, event.TurnStartedData{TurnID: turnID, ParentID: d.parent.ID, Input: d.input})
 
 	d.slot, d.release = slot, slot.release
+	d.delegate = func(ctx context.Context, kind, task string) (string, error) { return m.delegate(ctx, d, kind, task) }
 	refresh := m.panelRefresher(d)
 	d.onState = func(changes []state.Change) {
 		m.publish(saveID, event.TurnState, event.TurnStateData{TurnID: turnID, Changes: changes})
@@ -72,7 +73,8 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	if err != nil {
 		return nil, err
 	}
-	features := contextx.Profile(w, sv.Settings, model.Caps, false) // TODO(M5-8)：轻量模型已配置时才允许后台助手
+	_, _, lightReady := m.lightModel(ctx)
+	features := contextx.Profile(w, sv.Settings, model.Caps, lightReady)
 
 	// 阶段块与历史消息：最近一次整理的阶段块 + 保留的回合 + 之后的回合（第 0 阶段为开局阶段块 + 全部回合）
 	ec, err := m.loadContext(ctx, w, features, line)
@@ -161,6 +163,11 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 		return nil, err
 	}
 
+	budget := m.turnBudget(ctx, sv.Settings)
+	if budget.MaxOutputCap > 0 {
+		built.Request.MaxOutput = min(built.Request.MaxOutput, budget.MaxOutputCap)
+	}
+
 	fsys, memory, err := m.buildVFS(ctx, w, features, sv.ID, line, turnNo+1, uploads.all)
 	if err != nil {
 		return nil, err
@@ -176,7 +183,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 			}
 		}
 	}
-	d := &draft{
+	d := &draft{budget: budget,
 		id: turnID, started: time.Now(), save: sv, parent: head, root: root, initState: initState, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
 		state: headState, images: m.d.Images,
@@ -194,7 +201,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 func (m *Manager) loop(ctx context.Context, d *draft) {
 	choicesNudged := false
 	for {
-		if reason := m.d.Budget.exceeded(d); reason != "" {
+		if reason := d.budget.exceeded(d); reason != "" {
 			d.stop = "budget"
 			d.addNotice("warn", "本回合已达上限（"+reason+"），可以点“继续”接着写。")
 			return
@@ -371,6 +378,7 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	raw := contextx.EstimateRequest(d.req)
 
 	d.inspection = m.debugStart(ctx, d.save.ID, d.id, d.turnNo, d.provider, d.model, d.req, d.vfs, d.state)
+	d.inspection.contextDetails(d.built)
 	stream, err := debugStream(ctx, d.provider, d.model, d.req, d.inspection)
 	if err != nil {
 		return nil, err
@@ -521,7 +529,7 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	m.publish(d.save.ID, event.TurnCommitted, event.TurnCommittedData{TurnID: d.id, NodeID: node.ID, Status: string(node.Status)})
 	if d.stop == "error" {
 		code, msg, recoverable := describeError(d.err)
-		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: code, Message: msg, Recoverable: recoverable})
+		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, NodeID: node.ID, ParentID: node.ParentID, Code: code, Message: msg, Recoverable: recoverable})
 	}
 	m.publishPanels(ctx, d.save.ID)
 	slog.InfoContext(ctx, "回合结束", "stop", d.stop, "status", d.status, "calls", d.calls, "tool_calls", d.toolCalls,

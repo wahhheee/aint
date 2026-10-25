@@ -9,7 +9,7 @@ import (
 const maxDepth = 4 // 行内元素最多嵌套 4 层
 
 // voidTags 是空元素：没有内容，不写 "/" 也按自闭合处理。
-var voidTags = map[string]bool{"scene": true, "cg": true, "bgm": true, "sfx": true, "pause": true}
+var voidTags = map[string]bool{"scene": true, "cg": true, "bgm": true, "sfx": true, "pause": true, "br": true}
 
 // Parse 把叙事标记源码解析为块级节点列表。任何输入都有确定的结果，不会出错。
 //

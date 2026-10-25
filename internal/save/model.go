@@ -35,6 +35,9 @@ const (
 
 // Settings 是存档设置（saves.settings）。创建时由全局设置与作品推荐值合成，之后可单独修改。
 type Settings struct {
+	MaxCalls      int    `json:"max_calls,omitzero"`
+	MaxToolCalls  int    `json:"max_tool_calls,omitzero"`
+	MaxOutput     int    `json:"max_output,omitzero"`
 	NarratorModel string `json:"narrator_model"`     // models.id；假模型模式下为 "fake"
 	Pace          string `json:"pace"`               // short | medium | long | "<最少>-<最多>"
 	Reasoning     string `json:"reasoning"`          // off | low | medium | high
@@ -162,10 +165,12 @@ type DisplayItem struct {
 	Asset  string `json:"asset,omitzero"`
 	Status string `json:"status,omitzero"` // pending | ready | failed
 	// choices
-	Prompt   string       `json:"prompt,omitzero"`
-	Items    []ChoiceItem `json:"items,omitzero"`
-	Free     bool         `json:"free,omitzero"` // 是否允许自由输入
-	Selected string       `json:"selected,omitzero"`
+	TimeoutSeconds int          `json:"timeout_seconds,omitzero"`
+	DefaultChoice  string       `json:"default_choice,omitzero"`
+	Prompt         string       `json:"prompt,omitzero"`
+	Items          []ChoiceItem `json:"items,omitzero"`
+	Free           bool         `json:"free,omitzero"` // 是否允许自由输入
+	Selected       string       `json:"selected,omitzero"`
 	// notice
 	Level string `json:"level,omitzero"` // info | warn | error
 }

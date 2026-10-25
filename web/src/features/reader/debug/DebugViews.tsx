@@ -25,6 +25,15 @@ export function Overview({ call }: { call: DebugCall }) {
         ))}
       </div>
       <p className="text-xs leading-6 text-ink-muted">{t('debug.reasoningHint')}</p>
+      {call.steps.some(
+        (s) =>
+          s.kind === 'text' &&
+          /(?:let me|I (?:need|will)|接下来|我需要).{0,60}(?:call|tool|工具)|<(?:offer_choices|update_state)\b/i.test(s.text ?? ''),
+      ) && (
+        <p role="status" className="rounded-lg border border-warn/30 p-3 text-xs leading-6 text-warn">
+          {t('debug.immersionWarning')}
+        </p>
+      )}
       {!call.steps.length && <EmptyDebug text={t(call.status === 'running' ? 'debug.waiting' : 'debug.noSteps')} />}
       <ol className="space-y-5">
         {call.steps.map((step, i) => {
@@ -82,6 +91,48 @@ export function ContextView({ call, imageURL }: { call: DebugCall; imageURL: (bl
   return (
     <div className="space-y-4">
       <p className="text-xs leading-6 text-ink-muted">{t('debug.contextHint')}</p>
+      {call.layers && (
+        <section className="space-y-2 rounded-lg border border-rule p-3">
+          <h4 className="text-sm">{t('debug.layerEstimate')}</h4>
+          {Object.entries(call.layers).map(([layer, n]) => (
+            <div key={layer} className="grid grid-cols-[2rem_1fr_4rem] items-center gap-2 text-xs">
+              <span>{layer}</span>
+              <meter
+                aria-label={`${layer} ${t('debug.layerEstimate')}`}
+                min={0}
+                max={Math.max(1, ...Object.values(call.layers!))}
+                value={n}
+                className="h-3 w-full"
+              />
+              <span className="text-right font-mono">{n}</span>
+            </div>
+          ))}
+        </section>
+      )}
+      {call.prefix_hash && (
+        <p className="break-all font-mono text-xs text-ink-muted">
+          {t('debug.prefix')}: {call.prefix_hash}
+          <br />
+          {call.prefix_changes?.length
+            ? call.prefix_changes.map((c) => t(`debug.prefixReason.${c as 'model'}`)).join(' · ')
+            : t('debug.prefixStable')}
+        </p>
+      )}
+      {call.fragments && (
+        <details className="rounded-lg border border-rule p-3">
+          <summary className="cursor-pointer text-sm">{t('debug.fragments')}</summary>
+          <ul className="mt-3 space-y-2">
+            {call.fragments.map((f) => (
+              <li key={f.id} className="text-xs">
+                <span className={f.enabled ? 'text-ink' : 'text-ink-faint'}>
+                  {f.layer} · {f.id} · {f.chars} {t('debug.charsUnit')}
+                </span>
+                <p className="text-ink-faint">{f.reason || t(f.enabled ? 'debug.fragmentEnabled' : 'debug.fragmentDisabled')}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {(req.system ?? []).map((s, i) => (
         <CodeBlock key={i} label={t('debug.system', { n: i + 1 })} value={s.text} />
       ))}
@@ -132,6 +183,7 @@ export function ToolsView({ call, imageURL }: { call: DebugCall; imageURL: (blob
               </span>
             </div>
             <div className="space-y-3">
+              <ToolPreview name={tool.name} args={tool.args} />
               <CodeBlock label={t('debug.arguments')} value={tool.args} />
               {parts ? (
                 <DebugParts parts={parts} imageURL={imageURL} textLabel={t('debug.result')} />
@@ -201,4 +253,35 @@ export function RawView({ call }: { call: DebugCall }) {
       ))}
     </div>
   )
+}
+
+/** 展示终止工具的结构化内容；检查器内不提供游玩操作。 */
+function ToolPreview({ name, args }: { name: string; args: unknown }) {
+  const { t } = useTranslation()
+  if (!args || typeof args !== 'object') return null
+  const data = args as Record<string, unknown>
+  if (name === 'offer_choices' && Array.isArray(data.choices))
+    return (
+      <div className="rounded-lg border border-rule p-3">
+        <h4 className="mb-2 text-xs text-ink-muted">{t('debug.choicePreview')}</h4>
+        <ol className="list-inside list-decimal space-y-2 text-sm">
+          {data.choices.map((c: unknown, i: number) => {
+            const value = c as { label?: unknown; detail?: unknown }
+            return (
+              <li key={i}>
+                {String(value?.label ?? '')}
+                {typeof value?.detail === 'string' && <p className="text-xs text-ink-faint">{value.detail}</p>}
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+    )
+  if (name === 'delegate')
+    return (
+      <p className="rounded-lg border border-rule p-3 text-sm">
+        {String(data.kind ?? '')} · {String(data.task ?? '')}
+      </p>
+    )
+  return null
 }

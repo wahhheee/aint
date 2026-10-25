@@ -11,6 +11,7 @@ import { saveTitle } from '@/lib/format'
 import { selectBusy, useReader } from '@/stores/reader'
 
 import { ContextRing } from './ContextRing'
+import { PlaySettings } from './PlaySettings'
 import { ReadingSettingsPopover } from './ReadingSettingsPopover'
 
 /** 阅读页顶栏：返回、作品与存档名、上下文用量、工具按钮。安静、细，不抢正文。 */
@@ -56,16 +57,16 @@ export function ReaderTopBar({
   const busy = useReader(selectBusy)
 
   return (
-    <header className="relative z-10 flex h-14 shrink-0 items-center gap-2 px-2 sm:gap-3 sm:px-4">
+    <header className="relative z-10 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2 sm:h-14 sm:flex-nowrap sm:gap-3 sm:px-4 sm:py-0">
       <IconButton label={t('reader.backToLibrary')} asLink="/">
         <ArrowLeft />
       </IconButton>
-      <div className="min-w-0 leading-tight">
+      <div className="min-w-0 flex-1 leading-tight">
         <p className="truncate font-serif text-[15px] font-semibold tracking-[0.06em] text-ink">{save?.work_title}</p>
         {save && <p className="truncate text-xs text-ink-faint">{saveTitle(save)}</p>}
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex w-full items-center justify-end gap-1 sm:w-auto">
         <ContextRing
           saveId={saveId}
           lastTurnId={lastTurnId}
@@ -92,6 +93,7 @@ export function ReaderTopBar({
             </IconButton>
           )}
         </div>
+        {save && <PlaySettings save={save} />}
         <ReadingSettingsPopover />
         {debugControl}
         {onOpenDrawer && (

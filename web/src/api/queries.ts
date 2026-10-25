@@ -1,8 +1,8 @@
 /**
  * TanStack Query 封装：查询键集中定义（失效与 SSE 推送更新时要用同一个键），组件只用这里的 hooks。
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 
 import type { UploadOptions } from './client'
 import { api, type CreateSaveParams } from './endpoints'
@@ -169,8 +169,21 @@ export function useDeleteSave() {
 
 export const usePresentation = (id: string) => useQuery({ queryKey: qk.save(id), queryFn: () => api.saves.get(id), staleTime: 30_000 })
 
-export const useTimeline = (id: string) =>
-  useQuery({ queryKey: qk.timeline(id), queryFn: () => api.saves.timeline(id), staleTime: Infinity })
+export function useTimeline(id: string) {
+  const query = useInfiniteQuery({
+    queryKey: qk.timeline(id),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => api.saves.timeline(id, pageParam),
+    getNextPageParam: (page) => (page.has_more ? page.nodes[0]?.id : undefined),
+    staleTime: Infinity,
+  })
+  const data = useMemo(() => {
+    if (!query.data) return undefined
+    const pages = query.data.pages
+    return { ...pages[0], has_more: pages.at(-1)!.has_more, nodes: [...pages].reverse().flatMap((p) => p.nodes) }
+  }, [query.data])
+  return { ...query, data }
+}
 
 export const usePanels = (id: string) => useQuery({ queryKey: qk.panels(id), queryFn: () => api.saves.panels(id), staleTime: Infinity })
 

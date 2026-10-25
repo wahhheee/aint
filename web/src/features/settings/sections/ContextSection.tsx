@@ -1,11 +1,12 @@
 /**
  * 上下文（《04-交互与界面设计》9.4）：整理上下文的默认参数。存档设置可以单独覆盖（save.Settings）。
- * TODO(M5-10)：每回合上限、工具提示等其他"上下文与成本"设置；存档级覆盖的界面。
  */
 import { useTranslation } from 'react-i18next'
 
 import { useModels, useSettings, useUpdateSettings } from '@/api/queries'
 import type { ContextSettings } from '@/api/types'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { formatTokens } from '@/lib/format'
 
@@ -64,6 +65,29 @@ export function ContextSection() {
               {t('settings.context.separate')}
             </ToggleGroupItem>
           </ToggleGroup>
+        </SettingRow>
+        {(['max_calls', 'max_tool_calls', 'max_output'] as const).map((k) => (
+          <SettingRow key={k} label={t(`playSettings.${k}`)} hint={t('playSettings.zeroHint')}>
+            <Input
+              key={`${k}-${ctx[k]}`}
+              aria-label={t(`playSettings.${k}`)}
+              type="number"
+              min={0}
+              max={k === 'max_calls' ? 50 : k === 'max_tool_calls' ? 200 : 128000}
+              className="w-28"
+              defaultValue={ctx[k]}
+              onBlur={(e) => {
+                if (e.currentTarget.validity.valid && Number(e.target.value) !== ctx[k]) patch({ [k]: Number(e.target.value) })
+              }}
+            />
+          </SettingRow>
+        ))}
+        <SettingRow label={t('settings.context.toolHints')}>
+          <Switch
+            aria-label={t('settings.context.toolHints')}
+            checked={data.reading.tool_hints}
+            onCheckedChange={(v) => update.mutate({ reading: { tool_hints: v } })}
+          />
         </SettingRow>
       </SettingGroup>
     </section>

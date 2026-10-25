@@ -8,7 +8,10 @@ export interface EventMap {
   'turn.text': { turn_id: string; seq: number; delta: string }
   'turn.tool': { turn_id: string; call_id: string; name: string; phase: 'start' | 'done' | 'error'; display?: string }
   'turn.display': { turn_id: string; item: DisplayItem }
-  'turn.choices': { turn_id: string; choices: { t: 'choices'; prompt?: string; items: ChoiceItem[]; free?: boolean } }
+  'turn.choices': {
+    turn_id: string
+    choices: { t: 'choices'; timeout_seconds?: number; default_choice?: string; prompt?: string; items: ChoiceItem[]; free?: boolean }
+  }
   'turn.state': { turn_id: string; changes: StateChange[] }
   'turn.usage': {
     turn_id: string
@@ -20,7 +23,7 @@ export interface EventMap {
     context: { used: number; threshold: number }
   }
   'turn.committed': { turn_id: string; node_id: string; status: 'committed' | 'interrupted' }
-  'turn.failed': { turn_id: string; code: string; message: string; recoverable: boolean }
+  'turn.failed': { turn_id: string; node_id?: string; parent_id?: string; code: string; message: string; recoverable: boolean }
   panels: { panels: PanelRender[] }
   /** 回合以外的操作改了存档（移动 head、修改正文、丢弃、删除分支、编辑记忆或状态、整理）：重新拉取时间线 */
   'timeline.changed': { head_id: string; reason: string }
@@ -29,6 +32,7 @@ export interface EventMap {
   'compaction.failed': { message: string }
   'helper.progress': { turn_id: string; kind: 'research' | 'curate'; phase: string }
   'work.reloaded': { work_id: string; report: unknown }
+  'save.title_failed': { save_id: string }
   'save.titled': { save_id: string; title: string }
 }
 
@@ -53,6 +57,7 @@ export const EVENT_TYPES: EventType[] = [
   'helper.progress',
   'work.reloaded',
   'save.titled',
+  'save.title_failed',
 ]
 
 /** 带类型的事件（判别联合），便于在 switch 中收窄。 */

@@ -29,7 +29,7 @@
 | 组合根 | `cmd/yanyi`、`app` | 命令行；数据目录、日志、单实例、**唯一装配所有服务的地方**（`app.wire`） |
 | 接口 | `server` | HTTP 路由、中间件、错误格式、SSE、静态资源。只做协议转换，不含业务规则 |
 | 编排 | `runtime` | 存档会话（单一写者）、回合循环、预算、取消、提交、上下文整理的执行、事件发布 |
-| 引擎 | `contextx` `tools` `panel` `compact` `helper` | 上下文分层构建与按需组装；工具注册与执行；面板渲染；整理的参数与规则；后台助手（TODO(M5-8)） |
+| 引擎 | `contextx` `tools` `panel` `compact` `helper` | 上下文分层构建与按需组装；工具注册与执行；面板渲染；整理的参数与规则；后台助手的有界隔离工具循环 |
 | 存档 | `save` | 存档、节点树、进度线、建档、回合与整理的提交事务、分支操作、玩家编辑、原文、时间线与分支结构 |
 | 领域 | `work` `settings` `provider` `usage` | 作品编译与导入；全局设置；供应商与模型配置、密钥、内置模型预设、连接测试；用量记录与统计（按存档、作品、节点，分用途与模型，按货币分别求和） |
 | 基础 | `llm`（含 `wire` 与适配器子包）`event` `store` `prompts` `tmpl` `state` `markup` `vfs` `media` `pkg/*` `buildinfo` | 中立模型层与三协议适配器；事件总线；SQLite 与 blob；平台提示词；作者模板（隔离工作进程）；状态类型；叙事标记；虚拟文件系统；图片 |
@@ -197,3 +197,11 @@ i18n/       zh-CN.ts（全部文案；键名有类型检查）
 | 作品不执行 | `tmpl`（隔离工作进程、超时即杀、render 只读作品 ui/ 模板、输入输出上限）、导入安全限制（`work/archive.go`、`fileset.go`）、前端 DOMPurify 白名单与 style 过滤（`features/reader/panels/PanelHTML.tsx`、`sanitize.ts`）、素材只按媒体类型提供并带 CSP sandbox（`server/api_assets.go`） | `tmpl/tmpl_test.go`、`work/archive_test.go`、`server/api_assets_test.go`、`features/reader/panels/PanelHTML.test.tsx` |
 | 密钥不出后端 | `provider/secrets.go`（0600）、`ProviderView.KeyMasked`、额外请求头不允许放密钥、`logx.Secret`；原始报文追踪中鉴权头脱敏（`llm/wire/trace.go`）；数据目录新建目录 0750、日志与追踪文件 0600（`fsx.DirPerm` / `PrivateFilePerm`）；真实调用测试的密钥只放 `.local/secrets/` | `provider/service_test.go`（掩码、secrets.json） |
 | 存档不膨胀 | 游玩只追加节点；存档条目只在 `save.Create` 与"复制为新存档"产生 | `runtime/invariants_test.go` |
+
+## M5 运行参数与后台任务
+
+- `runtime/settings.go` 使用同一存档写者槽位更新设置，拒绝回合 / 整理期间的修改。回合开始冻结预算，优先级为存档覆盖、全局设置、默认值。模型能力与提示词在下一回合重建。
+- `turn.failed` 在失败正文已提交时携带 `node_id` 与 `parent_id`；前端以重新生成为重试，不向当前 head 重交已消费的选项。
+- `helper.Run` 只负责有界循环；运行时注入模型调用与工具执行。research 只读，curate 的记忆写入当前回合覆盖层；不提供状态、选项与递归委派工具。助手用量进入本回合 `usage_log`，状态通过 `helper.progress` 推送。
+- `runtime/title.go` 在进程上下文下生成标题；`save.CommitTitle` 记录用量并比较任务开始时的标题、来源及 head，避免覆盖并发命名或新进度。自动生成按 head 去重，事件为 `save.titled` / `save.title_failed`。
+- 前端舞台从显示项推导，音效只播放当前草稿的新标记；资源只取作品素材表。回合目录复用分页时间线；已加载回合的检索与跳转不发起模型调用。

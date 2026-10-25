@@ -34,3 +34,6 @@ desktop.ini
 
 # 任务缓存
 .task/
+
+web/test-results/
+web/playwright-report/

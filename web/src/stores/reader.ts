@@ -15,6 +15,8 @@ import type { DisplayItem, TurnInput, Usage } from '@/api/types'
 
 export interface TurnFailure {
   turnId: string
+  nodeId?: string
+  parentId?: string
   code: string
   message: string
   recoverable: boolean
@@ -58,6 +60,7 @@ export interface ReaderState {
   /** 最近一个回合的用量：新回合开始时清空，本页面没有进行过回合时为 null */
   turnUsage: TurnUsage | null
   /** 正在整理上下文（顶栏显示"正在整理记忆"，此时提交的输入排队） */
+  helper?: string
   compacting: boolean
   connection: StreamStatus
 
@@ -71,14 +74,17 @@ export interface ReaderState {
   clearFailure: () => void
 }
 
-type Snapshot = Pick<ReaderState, 'draft' | 'pending' | 'pendingParent' | 'failure' | 'context' | 'turnUsage' | 'compacting'>
+type Snapshot = Pick<ReaderState, 'draft' | 'pending' | 'pendingParent' | 'failure' | 'context' | 'turnUsage' | 'compacting' | 'helper'>
 
 /** 处理一条 SSE 事件，返回新状态（纯函数）。 */
 export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
   switch (ev.type) {
+    case 'helper.progress':
+      return { ...s, helper: ev.data.phase === 'start' ? ev.data.kind : undefined }
     case 'turn.started':
       return {
         ...s,
+        helper: undefined,
         pending: null,
         pendingParent: null,
         failure: null,
@@ -137,12 +143,15 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
     case 'turn.failed':
       return {
         ...s,
+        helper: undefined,
         pending: null,
         pendingParent: null,
         // 后端在有内容时先发 committed 再发 failed；仍在 streaming 说明这一回合没有留下任何内容，草稿可以移除
         draft: s.draft?.turnId === ev.data.turn_id && s.draft.status === 'streaming' ? null : s.draft,
         failure: {
           turnId: ev.data.turn_id,
+          nodeId: ev.data.node_id,
+          parentId: ev.data.parent_id,
           code: ev.data.code,
           message: ev.data.message,
           recoverable: ev.data.recoverable,
@@ -174,6 +183,7 @@ export const useReader = create<ReaderState>((set) => ({
       context: null,
       turnUsage: null,
       compacting: false,
+      helper: undefined,
       connection: 'connecting',
     }),
   setPending: (pending, parentId) => set({ pending, pendingParent: pending ? (parentId ?? null) : null, failure: null }),

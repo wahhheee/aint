@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import { api } from '@/api/endpoints'
 import { errorMessage, isApiError } from '@/api/errors'
+import type { Presentation } from '@/api/types'
 import { qk } from '@/api/queries'
 import type { ChoiceItem, Command, TurnInput } from '@/api/types'
 import { confirmAction } from '@/components/common/confirm'
@@ -21,6 +22,7 @@ export function useTurnActions(saveId: string, commands: Command[]) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const lastInput = useRef<TurnInput | null>(null)
+  const lastRegeneration = useRef<{ nodeId: string; parentId: string; input?: TurnInput; shown?: TurnInput } | null>(null)
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
@@ -39,6 +41,7 @@ export function useTurnActions(saveId: string, commands: Command[]) {
       const { setPending } = useReader.getState()
       if (busy()) return false
       lastInput.current = input
+      lastRegeneration.current = null
       setPending(input)
       try {
         await api.saves.submit(saveId, input)
@@ -113,8 +116,6 @@ export function useTurnActions(saveId: string, commands: Command[]) {
     }
   }, [saveId])
 
-  const retry = useCallback(() => (lastInput.current ? submit(lastInput.current) : Promise.resolve(false)), [submit])
-
   /**
    * 重新生成回合 nodeId（input 非空时为修改玩家输入）。parentId 是它的父节点：等待期间正文流只显示到父节点为止；
    * shown 是等待期间显示的输入行（重新生成时沿用原回合的输入，见 displayedInput）。
@@ -123,6 +124,12 @@ export function useTurnActions(saveId: string, commands: Command[]) {
     async (nodeId: string, parentId: string, input?: TurnInput, shown?: TurnInput) => {
       const { setPending } = useReader.getState()
       if (busy()) return false
+      lastRegeneration.current = { nodeId, parentId, input, shown }
+      const presentation = qc.getQueryData<Presentation>(qk.save(saveId))
+      if (presentation && presentation.save.branch_count <= 1 && !sessionStorage.getItem('yanyi.branchHint')) {
+        toast(t('reader.firstBranchHint'), { duration: 8000 })
+        sessionStorage.setItem('yanyi.branchHint', '1')
+      }
       setPending(input ?? shown ?? { kind: 'continue' }, parentId)
       try {
         await api.saves.regenerate(saveId, nodeId, input)
@@ -133,8 +140,18 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         return false
       }
     },
-    [saveId],
+    [saveId, qc, t],
   )
+
+  const retry = useCallback(() => {
+    const { failure, draft } = useReader.getState()
+    if (failure?.nodeId && failure.parentId) {
+      return regenerate(failure.nodeId, failure.parentId, undefined, draft?.input ?? lastInput.current ?? undefined)
+    }
+    const previous = lastRegeneration.current
+    if (previous) return regenerate(previous.nodeId, previous.parentId, previous.input, previous.shown)
+    return lastInput.current ? submit(lastInput.current) : Promise.resolve(false)
+  }, [regenerate, submit])
 
   /** 不调用模型、直接改存档的操作：成功后刷新时间线（同一存档的其他标签页经 timeline.changed 刷新）。 */
   const direct = useCallback(

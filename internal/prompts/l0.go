@@ -25,6 +25,7 @@ var L0 = []Fragment{
 
 	{ID: "write.direct", Section: "写作", Text: `- 正文作为普通回复直接输出，不需要输出与正文无关的操作说明。`},
 	{ID: "write.tags", Section: "写作", When: Requires(FTags), Text: `- 需要特殊呈现时，可以使用"叙事标记"一节中的标签。`},
+	{ID: "write.immersion", Section: "写作", Text: `- 普通文本会直接展示给玩家，只写故事本身。调用工具前后不要输出执行计划、工具说明或自言自语（例如“接下来调用工具生成选项”“Alright, let me call…”）。需要工具时直接使用原生工具调用；不要向玩家解释模型、API、参数、记忆维护或后台工作。换行使用实际换行；除本文明确支持的格式外，不输出任意 HTML。`},
 	{ID: "write.pace", Section: "写作", Text: `- 篇幅参考玩家消息末尾的 <pace>。一个回合可以写很多段，中途随时可以调用工具，写完再交还决定权。`},
 	{ID: "write.dice", Section: "写作", When: Requires(FDice), Text: `- 需要随机结果时，可以用 roll_dice 掷骰，再按结果写出相应的正文。`},
 	{ID: "write.player", Section: "写作", Text: `- 玩家的输入代表玩家的意图；玩家角色的关键决定和关键台词，留给玩家来做（作品或玩家另有约定时，以约定为准）。`},
@@ -44,6 +45,7 @@ var L0 = []Fragment{
 	{ID: "handoff.required", Section: "交还决定权", When: Requires(FForceChoices),
 		Text: `- 每个回合的正文写完后，请调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项，再结束本回合。{{if has "free_input"}}玩家也可以自由输入。{{end}}只有场外回应、没有正文时不需要给选项。`},
 	{ID: "handoff.render", Section: "交还决定权", Text: `- 将选项放入 offer_choices 调用的 choices 参数，平台会生成选项按钮。不要用正文中的选项列表、代码块或 HTML 代替工具调用。调用成功后等待玩家，玩家的作答会作为该调用的工具结果返回。`},
+	{ID: "write.act", Section: "写作", When: Requires(FCommands), Text: `- 可以用 <act cmd="/命令 参数">文字</act> 提供可点击词，命令必须来自作品已定义的命令。`},
 	{ID: "handoff.command", Section: "交还决定权", When: Requires(FCommands), Text: `- 选项可以附带命令（command），玩家选中时会执行该命令。`},
 	{ID: "handoff.timed", Section: "交还决定权", When: Requires(FTimed), Text: `- 情势紧迫时，可以给选项设置时限（timeout_seconds）和超时默认项（default_choice）。`},
 

@@ -74,13 +74,13 @@ const EpochIntro = "以下是上下文整理后的交接信息，其后保留了
 // EpochIntroNoKept 是没有保留原文时（极少见：阶段内只有整理节点之后的回合）阶段块的首句。
 const EpochIntroNoKept = "以下是上下文整理后的交接信息。"
 
-// HelperResearch / HelperCurate 是后台助手提示词（20.4）。TODO(M5-8)：由 helper 包使用。
+// HelperResearch / HelperCurate 是后台助手提示词（20.4）。运行时按助手能力渲染。
 const (
 	HelperResearch = `你是这部互动小说执笔者的资料助手。请按任务查阅{{if has "lore"}}/work、{{end}}/memory、/transcript{{if has "vision"}}、/uploads{{end}}，整理成一份简洁的调查结果：每条结论附上出处（文件路径或回合号），并标明哪些是原文明确写到的、哪些是推测。1500 字以内即可。`
 	HelperCurate   = `你是这部互动小说执笔者的记忆整理助手。请按任务整理记忆文件：合并重复、补充修订，让每个文件保持简短，并同步更新 /memory/index.md。仍然有用的信息请保留，不确定的内容可以标注"未确认"。完成后用 300 字以内说明改动。`
 )
 
-// SaveTitle 是存档标题提示词（20.5）。TODO(M5-13)：由 save 的标题生成使用。
+// SaveTitle 是存档标题提示词（20.5）。由运行时在独立上下文中使用。
 const SaveTitle = `请根据下面的作品与最新进度，为这个存档起一个便于辨认的标题：16 字以内，点出当前所处的情节或场景，写已经发生的内容。直接输出标题即可。
 
 作品：{{.WorkTitle}}

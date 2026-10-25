@@ -50,6 +50,7 @@ export type Pace = 'short' | 'medium' | 'long' | (string & {})
 export type Reasoning = 'off' | 'low' | 'medium' | 'high'
 
 export interface ReadingSettings {
+  timed_choices: boolean
   font_family: 'work' | 'serif' | 'sans'
   font_size: number
   line_height: number
@@ -64,6 +65,9 @@ export interface ReadingSettings {
 
 /** settings.Context：上下文整理 */
 export interface ContextSettings {
+  max_calls: number
+  max_tool_calls: number
+  max_output: number
   /** 工作上下文预算（token）：上下文达到它（且不超过模型窗口 − 预留）时整理 */
   budget: number
   /** 整理后原样保留的最近回合（token） */
@@ -265,6 +269,9 @@ export interface Command {
 
 /** save.Settings */
 export interface SaveSettings {
+  max_calls?: number
+  max_tool_calls?: number
+  max_output?: number
   narrator_model: string
   pace: Pace
   reasoning: Reasoning
@@ -327,7 +334,15 @@ export type DisplayItem =
   | { t: 'tools'; summary: string }
   | { t: 'dice'; expr: string; rolls: number[]; total: number; text?: string }
   | { t: 'image'; source: 'work' | 'upload' | 'generated'; asset: string; status: 'pending' | 'ready' | 'failed' }
-  | { t: 'choices'; prompt?: string; items: ChoiceItem[]; free?: boolean; selected?: string }
+  | {
+      t: 'choices'
+      timeout_seconds?: number
+      default_choice?: string
+      prompt?: string
+      items: ChoiceItem[]
+      free?: boolean
+      selected?: string
+    }
   | { t: 'notice'; level: 'info' | 'warn' | 'error'; text: string }
 
 /**
@@ -707,6 +722,10 @@ export interface DebugSnapshot {
   error: string
 }
 export interface DebugCall extends DebugSummary {
+  fragments?: { id: string; layer: string; section?: string; enabled: boolean; reason?: string; chars: number }[]
+  layers?: Record<string, number>
+  prefix_hash?: string
+  prefix_changes?: string[]
   request?: {
     system: { text: string }[]
     messages: { role: string; parts: DebugPart[] }[]

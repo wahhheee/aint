@@ -30,8 +30,9 @@ const (
 
 	// 全局主题（GlobalTopic）
 
-	WorkReloaded = "work.reloaded" // WorkReloadedData：开发目录中的作品重新加载
-	SaveTitled   = "save.titled"   // SaveTitledData：存档标题生成完成
+	WorkReloaded    = "work.reloaded"     // WorkReloadedData：开发目录中的作品重新加载
+	SaveTitleFailed = "save.title_failed" // SaveTitleFailedData：标题后台任务未完成
+	SaveTitled      = "save.titled"       // SaveTitledData：存档标题生成完成
 
 	// Resync 不经过总线，由 SSE 端点在无法补发时直接发出，客户端应重新拉取时间线。
 	Resync = "resync"
@@ -96,7 +97,10 @@ type TurnCommittedData struct {
 }
 
 type TurnFailedData struct {
-	TurnID      string `json:"turn_id"`
+	TurnID string `json:"turn_id"`
+	// NodeID / ParentID 非空表示已保存中断回合，重试应在其父节点重新生成。
+	NodeID      string `json:"node_id,omitzero"`
+	ParentID    string `json:"parent_id,omitzero"`
 	Code        string `json:"code"`
 	Message     string `json:"message"`
 	Recoverable bool   `json:"recoverable"`
@@ -145,4 +149,8 @@ type WorkReloadedData struct {
 type SaveTitledData struct {
 	SaveID string `json:"save_id"`
 	Title  string `json:"title"`
+}
+
+type SaveTitleFailedData struct {
+	SaveID string `json:"save_id"`
 }

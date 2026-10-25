@@ -44,7 +44,7 @@ type Timeline struct {
 
 // Timeline 返回进度线上的节点（回合、编辑、整理），before 为空时取最新的 limit 个，否则取 before 之前的 limit 个。
 //
-// TODO(M5)：2,000 回合级别的存档需要按深度直接分页查询（目前先取整条进度线再切片），并批量查询兄弟数。
+// TODO(M5-11)：2,000 回合级别的存档需要按深度直接分页查询（目前先取整条进度线再切片），并批量查询兄弟数。
 func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int) (*Timeline, error) {
 	sv, line, err := s.ProgressLine(ctx, saveID)
 	if err != nil {

@@ -22,10 +22,12 @@ import (
 // draft 是进行中回合的内存草稿。只由回合 goroutine 访问（工具的读并行只读取不可变字段）。
 // 提交前所有变化都只在这里；崩溃即丢弃，不会产生半提交。
 type draft struct {
-	id      string
-	started time.Time
-	slot    *turnSlot // 写者槽位：提交后需要整理时交给整理任务
-	release func()    // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
+	budget   Budget
+	delegate func(context.Context, string, string) (string, error)
+	id       string
+	started  time.Time
+	slot     *turnSlot // 写者槽位：提交后需要整理时交给整理任务
+	release  func()    // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
 
 	// 只读上下文（prepare 阶段确定）
 	save      *save.Save
@@ -69,6 +71,7 @@ type draft struct {
 
 	// 计数与结果
 	calls, toolCalls, continuations int
+	helperCalls                     int
 	continuing                      bool // 下一次调用是截断后的续写（只对紧接着的那一次调用有效）
 	usage                           llm.Usage
 	stop, stopRaw, errMsg           string
@@ -167,4 +170,8 @@ func (d *draft) hasNarrative() bool {
 		}
 	}
 	return strings.TrimSpace(markup.PlainText(text.String())) != ""
+}
+
+func (d *draft) Delegate(ctx context.Context, kind, task string) (string, error) {
+	return d.delegate(ctx, kind, task)
 }

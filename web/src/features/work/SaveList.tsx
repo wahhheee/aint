@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
+import { api } from '@/api/endpoints'
+import { confirmAction } from '@/components/common/confirm'
 import { errorMessage } from '@/api/errors'
 import { useCopySave, useDeleteSave, useRenameSave } from '@/api/queries'
 import type { Save } from '@/api/types'
@@ -81,7 +83,23 @@ export function SaveList({ workId, saves, onStart }: { workId: string; saves?: S
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setRenaming(s)}>{t('common.rename')}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => copy(s)}>{t('work.copySave')}</DropdownMenuItem>
-                {/* TODO(M5-13)：生成标题；TODO(M6-6)：升级到新版本 */}
+                <DropdownMenuItem
+                  onSelect={() =>
+                    void (async () => {
+                      if (await confirmAction(t('background.titleCost'))) {
+                        try {
+                          await api.saves.title(s.id)
+                          toast(t('background.titleStarted'))
+                        } catch (err) {
+                          toast.error(errorMessage(err))
+                        }
+                      }
+                    })()
+                  }
+                >
+                  {t('background.generateTitle')}
+                </DropdownMenuItem>
+                {/* TODO(M6-6)：升级到新版本 */}
                 <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(s)}>
                   {t('common.delete')}
                 </DropdownMenuItem>

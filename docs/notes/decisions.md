@@ -14,7 +14,7 @@
 | D-29 | 选项待答时玩家独立输入命令 / 场外 / 继续：工具结果如实写"没有从选项中作答"，输入照常跟在后面；选项附带命令时仍算选项作答，工具结果写所选项，随后附上命令输入 | `internal/contextx/envelope.go` |
 | D-30 | 内置标签 `<ooc>`（随 `features.ooc`）：AI 的场外回应写在其中，浅色块显示，不进入原文检索 | `prompts/l0.go`、`markup/`、`web/src/markup/` |
 | D-31 | **开发目录**用于作品链接本地目录；**开发者选项**是设置开关，默认关，开启后显示完整状态与状态编辑，开发目录作品默认显示。游玩调试使用阅读页独立开关（D-63），状态编辑仍属于开发者工具 | `internal/settings`、阅读页 |
-| D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.0`），与程序发布版本解耦 | `internal/work/engine.go` |
+| D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.1`），与程序发布版本解耦 | `internal/work/engine.go` |
 | D-33 | 静态开场节点存两条消息：合成的 user `<input kind="opening">（开场）</input>` + 助手开场正文与选项工具调用（有选项时）；历史始终以 user 开头，首轮作答回填为工具结果 | `internal/save/service.go` |
 | D-34 | 模型价格带货币；费用按货币分别汇总，不做汇率换算 | `internal/llm/usage.go`、`usage_log.currency`、`internal/usage`（汇总） |
 | D-35 | AI 读取设定文档时把 `[[id]]` 补全为路径（不改作品文件）；校验器检查链接目标 | `internal/work/links.go` |
@@ -92,3 +92,11 @@
 | --- | --- | --- |
 | D-64 | 模型预设随应用版本维护，按接入协议与模型前缀匹配；模型设置提供“应用预设能力参数”和“填入官方价格”，填入表单后保存生效。已有模型配置不会自动更新，能力更新不覆盖中转站报价。预设不建立在线更新服务 | `provider/presets.go`、`server/api_providers.go`、`settings/providers/ModelDialog.tsx` |
 | D-65 | M4 验收采用三协议在 T1/T3 的短流程与跨协议切换，费用核对原始 API usage 与本地统计；供应商控制台仅在已有账单数据可用时核对。M4-8 按场景覆盖，以历史真实录制加手工边界夹具覆盖文本、工具往返、Native、缓存、推理、截断、拒答、错误与重试，不以每协议十份真实录制为门槛。真实评测默认跳过，限制每回合调用数与输出 token，失败时先通过独立脚本判断供应商状态 | `runtime/m4_live_test.go`、`provider/replay_test.go`、`llm/*/*_test.go` |
+
+## M5 体验与调用费用（2026-10-25）
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-66 | 后台助手与存档标题默认关闭。玩家主动开启时说明轻量模型费用；供应商连接测试只在点击“开始测试”后调用，允许跳过。助手每回合累计最多 10 次调用；标题同进度自动生成去重，手动命名优先 | runtime/helper.go、runtime/title.go、settings、ProviderDialog |
+| D-67 | 正文的工具旁白由提示词约束与检查器启发式提示，不按关键词删改；`<br>` / `<br/>` 是安全换行，其他 HTML 不放开。能力版本 `1.1` 包含 `<act>`、音频与限时选项 | prompts、markup、reader/debug |
+| D-68 | 调试图标只切换记录，不展开检查器；检查器入口位于用量环与回合菜单。游玩设置在空闲时保存，下一回合生效；模型切换前说明文风、能力、缓存及上下文影响并确认，推理使用滑块 | reader/chrome、reader/debug、runtime/settings.go |

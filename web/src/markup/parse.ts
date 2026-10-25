@@ -104,7 +104,7 @@ export class MarkupParser {
 
   /** 标签是否在白名单中（场外块内部不再识别 <ooc>）。 */
   has(name: string): boolean {
-    return !(this.inOOC && name === 'ooc') && this.tags.has(name)
+    return !(this.inOOC && name === 'ooc') && (name === 'br' || this.tags.has(name))
   }
 
   private commit(src: string, end: number, blocks: Block[]) {
@@ -152,6 +152,7 @@ function inlineText(nodes: Inline[]): string {
     if (n.type === 'text' || n.type === 'raw') {
       s += n.text
     } else if (n.type === 'tag') {
+      if (n.name === 'br') s += '\n'
       if (n.name === 'ooc') continue
       if (n.name === 'say' && n.attrs.who) s += n.attrs.who + '：'
       s += inlineText(n.children)
@@ -238,7 +239,7 @@ function isDivider(line: string): boolean {
 
 const MAX_DEPTH = 4 // 行内元素最多嵌套 4 层
 /** 空元素：没有内容，不写 "/" 也按自闭合处理，结束标签忽略 */
-const VOID_TAGS: ReadonlySet<string> = new Set(['scene', 'cg', 'bgm', 'sfx', 'pause'])
+const VOID_TAGS: ReadonlySet<string> = new Set(['scene', 'cg', 'bgm', 'sfx', 'pause', 'br'])
 const SPECIAL = /[\\<*]/g
 
 type Container = Extract<Inline, { children: Inline[] }>

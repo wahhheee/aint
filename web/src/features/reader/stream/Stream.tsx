@@ -7,13 +7,15 @@
  *
  * 滚动（《04-交互与界面设计》8.5）：只有在底部附近（< 80px）时才自动跟随；
  * 玩家向上翻阅后停止跟随，底部出现"回到最新"。
- * TODO(M5)：时间线虚拟化（@tanstack/react-virtual）与向上分页加载更早的回合。
+ * 更早回合按页加载，加载时保留滚动锚点；目录支持回合号与正文片段检索。
  */
-import { ArrowDown } from 'lucide-react'
+import { useReducedMotion } from 'motion/react'
+import { ArrowDown, List } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DisplayItem, Timeline, TimelineNode, TurnInput } from '@/api/types'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useReader, type DraftTurn } from '@/stores/reader'
@@ -28,21 +30,29 @@ import { TurnView } from './TurnView'
 const FOLLOW_THRESHOLD = 80
 
 interface Props {
+  loadEarlier: () => void
+  loadingEarlier: boolean
   timeline?: Timeline
   onRetry: () => void
   onContinue: () => void
 }
 
-export function Stream({ timeline, onRetry, onContinue }: Props) {
+export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarlier }: Props) {
   const { t } = useTranslation()
   const draft = useReader((s) => s.draft)
   const pending = useReader((s) => s.pending)
   const pendingParent = useReader((s) => s.pendingParent)
   const compacting = useReader((s) => s.compacting)
+  const helper = useReader((s) => s.helper)
   const failure = useReader((s) => s.failure)
   const clearDraft = useReader((s) => s.clearDraft)
   const { reading, actions } = useReaderContext()
+  const systemReduce = useReducedMotion()
+  const reduce = reading?.reduce_motion === 'on' || (reading?.reduce_motion !== 'off' && systemReduce)
 
+  const [indexOpen, setIndexOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const anchor = useRef<{ height: number; top: number } | null>(null)
   const nodes = timeline?.nodes ?? []
   // 草稿已提交但打字机还没显示完时，先不显示时间线里的同一个节点（避免内容跳变）
   let visible = draft?.nodeId ? nodes.filter((n) => n.id !== draft.nodeId) : nodes
@@ -64,7 +74,7 @@ export function Stream({ timeline, onRetry, onContinue }: Props) {
   }
   const jumpToLatest = () => {
     const el = scrollRef.current!
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'instant' : 'smooth' })
     following.current = true
     setShowJump(false)
   }
@@ -84,94 +94,178 @@ export function Stream({ timeline, onRetry, onContinue }: Props) {
     if (timeline && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [timeline?.save_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const earlier = () => {
+    const el = scrollRef.current
+    if (el) anchor.current = { height: el.scrollHeight, top: el.scrollTop }
+    following.current = false
+    loadEarlier()
+  }
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (anchor.current && el && !loadingEarlier) {
+      el.scrollTop = anchor.current.top + el.scrollHeight - anchor.current.height
+      anchor.current = null
+    }
+  }, [timeline?.nodes, loadingEarlier])
+  const jump = (id: string) => {
+    following.current = false
+    contentRef.current?.querySelector<HTMLElement>(`[data-node="${id}"]`)?.scrollIntoView({ block: 'start' })
+    setShowJump(true)
+    setIndexOpen(false)
+  }
+  const entries = visible
+    .filter((n) => n.kind === 'turn')
+    .map((n) => ({
+      id: n.id,
+      no: n.turn_no,
+      text: n.display
+        .filter((d) => d.t === 'text')
+        .map((d) => d.markup)
+        .join(' ')
+        .replace(/<[^>]*>/g, '')
+        .slice(0, 120),
+    }))
+    .filter((n) => `${n.no} ${n.text}`.includes(search))
   return (
-    <div className="relative min-h-0 flex-1">
-      {/* 上下两端渐隐：正文滚到顶栏与输入栏下面时柔和地淡出，而不是被一刀切断 */}
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="scroll-stable absolute inset-0 overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_28px,#000_calc(100%-36px),transparent)]"
+    <div className="relative flex min-h-0 flex-1">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="absolute top-1 left-2 z-20 xl:hidden"
+        aria-label={t('reader.turnIndex')}
+        onClick={() => setIndexOpen(!indexOpen)}
       >
+        <List />
+      </Button>
+      <nav
+        aria-label={t('reader.turnIndex')}
+        className={cn(
+          'absolute inset-y-0 left-0 z-10 w-52 shrink-0 overflow-y-auto border-r border-rule bg-paper/95 p-3 pt-10 backdrop-blur xl:relative xl:block xl:bg-transparent xl:pt-4',
+          !indexOpen && 'hidden',
+        )}
+      >
+        <p className="mb-3 font-serif text-sm text-ink-muted">{t('reader.turnIndex')}</p>
+        <Input
+          aria-label={t('reader.findTurn')}
+          placeholder={t('reader.findTurn')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-3 h-8 text-xs"
+        />
+        {timeline?.has_more && (
+          <Button variant="ghost" size="sm" disabled={loadingEarlier} onClick={earlier}>
+            {t('reader.loadEarlier')}
+          </Button>
+        )}
+        <ol className="space-y-1">
+          {entries.map((n) => (
+            <li key={n.id}>
+              <button
+                className="w-full rounded-lg p-2 text-left text-xs leading-5 text-ink-muted hover:bg-hover focus-visible:bg-hover"
+                onClick={() => jump(n.id)}
+              >
+                <span className="block text-gold-text">{t('reader.turnNumber', { no: n.no })}</span>
+                <span className="line-clamp-2">{n.text}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <div className="relative min-w-0 flex-1">
+        {/* 上下两端渐隐：正文滚到顶栏与输入栏下面时柔和地淡出，而不是被一刀切断 */}
         <div
-          ref={contentRef}
-          className="mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-6 pt-10 pb-14"
-          style={{ fontSize: 'var(--reading-size)' }}
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="scroll-stable absolute inset-0 overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_28px,#000_calc(100%-36px),transparent)]"
         >
-          {visible.map((n, i) =>
-            n.kind === 'turn' ? (
-              <section key={n.id} className={cn('group/turn', i > 0 && 'mt-[2.4em]')} data-node={n.id} data-turn={n.turn_no}>
-                <TurnToolbar node={n} latest={n === latestTurn} disabled={busy} />
-                <TurnView
-                  items={n.display}
-                  // 已选择、等待新回合开始期间：选项仍显示，所选项高亮、其余变淡
-                  interactive={n === latestTurn && (!busy || (!!pending?.choice_id && !draft))}
-                  selected={n === latestTurn ? pending?.choice_id : undefined}
-                  noticeActions={
-                    n === latestTurn && !busy && n.status === 'interrupted' ? (
-                      <>
-                        <Continue onClick={onContinue} />
-                        <SmallButton onClick={() => void actions.regenerate(n.id, n.parent_id, undefined, displayedInput(n.display))}>
-                          {t('reader.regenerate')}
-                        </SmallButton>
-                        <SmallButton onClick={() => void actions.discard(n.id)}>{t('reader.discard')}</SmallButton>
-                      </>
-                    ) : undefined
-                  }
+          <div
+            ref={contentRef}
+            className="mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-6 pt-10 pb-14"
+            style={{ fontSize: 'var(--reading-size)' }}
+          >
+            {timeline?.has_more && (
+              <div className="mb-6 text-center">
+                <Button variant="ghost" size="sm" disabled={loadingEarlier} onClick={earlier}>
+                  {t('reader.loadEarlier')}
+                </Button>
+              </div>
+            )}
+            {visible.map((n, i) =>
+              n.kind === 'turn' ? (
+                <TurnFrame key={n.id} node={n} latest={n === latestTurn} disabled={busy} spaced={i > 0}>
+                  <TurnView
+                    items={n.display}
+                    // 已选择、等待新回合开始期间：选项仍显示，所选项高亮、其余变淡
+                    interactive={n === latestTurn && (!busy || (!!pending?.choice_id && !draft))}
+                    selected={n === latestTurn ? pending?.choice_id : undefined}
+                    noticeActions={
+                      n === latestTurn && !busy && n.status === 'interrupted' ? (
+                        <>
+                          <Continue onClick={onContinue} />
+                          <SmallButton onClick={() => void actions.regenerate(n.id, n.parent_id, undefined, displayedInput(n.display))}>
+                            {t('reader.regenerate')}
+                          </SmallButton>
+                          <SmallButton onClick={() => void actions.discard(n.id)}>{t('reader.discard')}</SmallButton>
+                        </>
+                      ) : undefined
+                    }
+                  />
+                </TurnFrame>
+              ) : (
+                <MetaNode key={n.id} node={n} />
+              ),
+            )}
+
+            {/* 回到了更早的回合：继续游玩会开启新分支 */}
+            {timeline?.has_later && !busy && latestTurn && (
+              <Notice
+                actions={
+                  <SmallButton onClick={() => void actions.switchTo(timeline.head_id)}>{t('reader.backToLatestProgress')}</SmallButton>
+                }
+              >
+                {t('reader.branchHint', { turn: latestTurn.turn_no })}
+              </Notice>
+            )}
+
+            {/* 已提交输入、等待回合开始：先显示玩家的输入与等待态（整理期间排队） */}
+            {pending && !draft && (
+              <section className="mt-[2.4em]">
+                <TurnView items={inputItems(pending, latestTurn?.display)} />
+                <Waiting label={compacting ? t('reader.queued') : t('reader.waiting')} />
+              </section>
+            )}
+
+            {draft && (
+              <section className={visible.length > 0 ? 'mt-[2.4em]' : undefined}>
+                <DraftTurnView
+                  draft={draft}
+                  typewriter={reduce ? 'instant' : (reading?.typewriter ?? 'normal')}
+                  onRevealed={() => draftCommittedInTimeline && clearDraft()}
                 />
               </section>
-            ) : (
-              <MetaNode key={n.id} node={n} />
-            ),
-          )}
+            )}
 
-          {/* 回到了更早的回合：继续游玩会开启新分支 */}
-          {timeline?.has_later && !busy && latestTurn && (
-            <Notice
-              actions={
-                <SmallButton onClick={() => void actions.switchTo(timeline.head_id)}>{t('reader.backToLatestProgress')}</SmallButton>
-              }
-            >
-              {t('reader.branchHint', { turn: latestTurn.turn_no })}
-            </Notice>
-          )}
-
-          {/* 已提交输入、等待回合开始：先显示玩家的输入与等待态（整理期间排队） */}
-          {pending && !draft && (
-            <section className="mt-[2.4em]">
-              <TurnView items={inputItems(pending, latestTurn?.display)} />
-              <Waiting label={compacting ? t('reader.queued') : t('reader.waiting')} />
-            </section>
-          )}
-
-          {draft && (
-            <section className={visible.length > 0 ? 'mt-[2.4em]' : undefined}>
-              <DraftTurnView
-                draft={draft}
-                typewriter={reading?.typewriter ?? 'normal'}
-                onRevealed={() => draftCommittedInTimeline && clearDraft()}
-              />
-            </section>
-          )}
-
-          {failure && !busy && (
-            <Notice level="error" actions={failure.recoverable ? <RetryButton onClick={onRetry} /> : undefined}>
-              {failure.message}
-            </Notice>
-          )}
+            {helper && <QuietLine>{t(helper === 'curate' ? 'reader.helperCurate' : 'reader.helperResearch')}</QuietLine>}
+            {failure && !busy && (
+              <Notice level="error" actions={failure.recoverable ? <RetryButton onClick={onRetry} /> : undefined}>
+                {failure.message}
+              </Notice>
+            )}
+          </div>
         </div>
-      </div>
 
-      {showJump && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={jumpToLatest}
-          className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-paper-overlay/90 shadow-overlay backdrop-blur"
-        >
-          <ArrowDown />
-          {t('reader.backToLatest')}
-        </Button>
-      )}
+        {showJump && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={jumpToLatest}
+            className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-paper-overlay/90 shadow-overlay backdrop-blur"
+          >
+            <ArrowDown />
+            {t('reader.backToLatest')}
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
@@ -188,7 +282,14 @@ function DraftTurnView({
 }) {
   const { t } = useTranslation()
   const total = draft.items.reduce((n, it) => n + (it.t === 'text' ? it.markup.length : 0), 0)
-  const { shown, done, revealAll } = useTypewriter(total, typewriter, draft.turnId)
+  const { ui } = useReaderContext()
+  const source = ui.builtin_tags.includes('pause')
+    ? draft.items
+        .filter((it) => it.t === 'text')
+        .map((it) => it.markup)
+        .join('')
+    : ''
+  const { shown, done, revealAll } = useTypewriter(total, typewriter, draft.turnId, source)
 
   useEffect(() => {
     if (done && draft.status !== 'streaming') onRevealed()
@@ -295,5 +396,61 @@ function RetryButton({ onClick }: { onClick: () => void }): ReactNode {
     <Button size="xs" variant="outline" onClick={onClick}>
       {t('common.retry')}
     </Button>
+  )
+}
+
+/** 触屏长按打开回合菜单，移动或触及交互控件时取消。 */
+function TurnFrame({
+  node,
+  latest,
+  disabled,
+  spaced,
+  children,
+}: {
+  node: TimelineNode
+  latest: boolean
+  disabled: boolean
+  spaced: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const pointer = useRef<{ x: number; y: number; timer: number } | null>(null)
+  const clear = () => {
+    if (pointer.current) window.clearTimeout(pointer.current.timer)
+    pointer.current = null
+  }
+  useEffect(
+    () => () => {
+      if (pointer.current) window.clearTimeout(pointer.current.timer)
+    },
+    [],
+  )
+  return (
+    <section
+      className={cn('group/turn', spaced && 'mt-[2.4em]')}
+      data-node={node.id}
+      data-turn={node.turn_no}
+      onPointerDown={(e) => {
+        if (e.pointerType !== 'touch' || (e.target as HTMLElement).closest('button,a,input,textarea')) return
+        clear()
+        pointer.current = {
+          x: e.clientX,
+          y: e.clientY,
+          timer: window.setTimeout(() => {
+            setOpen(true)
+            pointer.current = null
+          }, 550),
+        }
+      }}
+      onPointerMove={(e) => {
+        const p = pointer.current
+        if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) clear()
+      }}
+      onPointerUp={clear}
+      onPointerCancel={clear}
+    >
+      <TurnToolbar node={node} latest={latest} disabled={disabled} open={open} onOpenChange={setOpen} />
+      {children}
+    </section>
   )
 }

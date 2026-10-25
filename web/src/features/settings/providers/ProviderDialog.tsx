@@ -10,7 +10,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Plus } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { api } from '@/api/endpoints'
@@ -374,19 +374,10 @@ function ProviderTest({ provider, modelId, onDone }: { provider: ProviderView; m
   const models = useModels()
   const { testProvider } = useProviderMutations()
   const model = models.data?.find((m) => m.id === modelId)
-  const { mutate } = testProvider
-  const started = useRef('')
-
-  // 每次测试都会真实调用模型（产生费用）：同一供应商与模型只自动测试一次（StrictMode 下 effect 会执行两遍）。
-  useEffect(() => {
-    const key = `${provider.id}/${modelId ?? ''}`
-    if (started.current === key) return
-    started.current = key
-    mutate({ id: provider.id, model_id: modelId })
-  }, [mutate, provider.id, modelId])
 
   return (
     <div className="space-y-4">
+      <p className="text-sm leading-6 text-ink-muted">{t('settings.providers.testing.costNotice')}</p>
       <TestReportView report={testProvider.data} running={testProvider.isPending} model={model?.name} />
       {testProvider.isError && (
         <p role="alert" className="rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-[13px] leading-6 text-ink">
@@ -400,10 +391,10 @@ function ProviderTest({ provider, modelId, onDone }: { provider: ProviderView; m
           disabled={testProvider.isPending}
           onClick={() => testProvider.mutate({ id: provider.id, model_id: modelId })}
         >
-          {t('settings.providers.testing.again')}
+          {t(testProvider.isIdle ? 'settings.providers.testing.start' : 'settings.providers.testing.again')}
         </Button>
         <Button type="button" onClick={onDone} className="min-w-24">
-          {t('settings.providers.testing.done')}
+          {t(testProvider.isIdle ? 'settings.providers.testing.skip' : 'settings.providers.testing.done')}
         </Button>
       </DialogFooter>
     </div>

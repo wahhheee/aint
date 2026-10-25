@@ -4,6 +4,9 @@
 import { Fragment, memo, useContext, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ImageViewer } from '@/components/common/ImageViewer'
+import { ReaderContext } from '@/features/reader/ReaderContext'
+import { selectBusy, useReader } from '@/stores/reader'
 import { WorkIcon } from '@/components/common/WorkIcon'
 
 import { findAsset, MarkupContext, type MarkupContextValue } from './context'
@@ -44,16 +47,10 @@ function renderBlock(b: Block, ctx: MarkupContextValue, isDraftTail: boolean): R
     case 'cg': {
       const a = findAsset(b.attrs.src, ctx)
       if (a?.kind !== 'image') return null
-      // TODO(M5-2)：点击全屏查看
-      return (
-        <figure className="cg-card">
-          <img src={a.url} alt={b.attrs.caption ?? a.description ?? ''} loading="lazy" />
-          {b.attrs.caption && <figcaption>{b.attrs.caption}</figcaption>}
-        </figure>
-      )
+      return <ImageViewer src={a.url} caption={b.attrs.caption ?? a.description ?? ''} />
     }
     case 'scene':
-      // 背景切换由舞台层负责（features/reader/stage），这里只显示标题卡。TODO(M5-2)：转场（fade / cut / blur）。
+      // 背景切换由舞台层负责，这里显示标题卡。
       return b.attrs.title ? <h3 className="scene-title">{b.attrs.title}</h3> : null
     case 'quote':
       return <blockquote className={tail}>{renderInline(b.children, ctx)}</blockquote>
@@ -121,8 +118,12 @@ function renderTag(n: Extract<Inline, { type: 'tag' }>, ctx: MarkupContextValue)
       return <span className="mk-ooc">{children}</span>
     case 'fx':
       return <span className={`fx-${(n.attrs.type ?? '').replace(/[^a-z-]/g, '')}`}>{children}</span>
-    case 'pause': // 打字机停顿：TODO(M5-1)
-    case 'bgm': // 音频：TODO(M5-2)
+    case 'br':
+      return <br />
+    case 'act':
+      return <ActionWord command={n.attrs.cmd}>{children}</ActionWord>
+    case 'pause': // 打字机停顿由 useTypewriter 处理
+    case 'bgm': // 音频由舞台层处理
     case 'sfx':
       return null
     case 'cg': // 段落中间的插图按说明文字显示（段首的插图已提升为块级卡片）
@@ -139,4 +140,20 @@ function renderTag(n: Extract<Inline, { type: 'tag' }>, ctx: MarkupContextValue)
       )
     }
   }
+}
+
+function ActionWord({ command, children }: { command?: string; children: ReactNode }) {
+  const reader = useContext(ReaderContext)
+  const busy = useReader(selectBusy)
+  if (!command || !reader) return children
+  return (
+    <button
+      type="button"
+      className="cursor-pointer border-b border-dotted border-gold text-gold-text disabled:cursor-default disabled:opacity-50"
+      disabled={busy}
+      onClick={() => reader.runCommand(command)}
+    >
+      {children}
+    </button>
+  )
 }

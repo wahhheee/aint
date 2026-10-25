@@ -63,6 +63,8 @@ type BuildInput struct {
 
 // Built 是构建结果。
 type Built struct {
+	HeadParts  int // 首条消息中 L3 + L4 的数量
+	LoreParts  int // L3 的数量
 	Request    *llm.Request
 	Fragments  []FragmentReport
 	PrefixHash string // L0–L3 + 工具；与上一请求不同即缓存重建
@@ -112,7 +114,7 @@ func (b *Builder) Build(ctx context.Context, in BuildInput) (*Built, error) {
 		Tools  []llm.ToolSpec    `json:"tools"`
 		L3     []llm.Part        `json:"l3"`
 	}{p.system, in.Tools, p.l3}))
-	return &Built{Request: req, Fragments: p.fragments, PrefixHash: hash}, nil
+	return &Built{HeadParts: len(head), LoreParts: len(p.l3), Request: req, Fragments: p.fragments, PrefixHash: hash}, nil
 }
 
 func (b *Builder) prefix(ctx context.Context, in BuildInput) (*prefix, error) {

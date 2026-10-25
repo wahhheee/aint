@@ -33,6 +33,7 @@ type Settings struct {
 
 // Reading 是阅读设置（SET-02）。
 type Reading struct {
+	TimedChoices     bool    `json:"timed_choices"`
 	FontFamily       string  `json:"font_family"` // work | serif | sans
 	FontSize         int     `json:"font_size"`   // 14–24 px
 	LineHeight       float64 `json:"line_height"` // 1.5–2.4
@@ -70,9 +71,12 @@ type Play struct {
 
 // Context 是上下文整理的默认参数（《04-交互与界面设计》9.4）；存档设置可以单独覆盖（save.Settings）。
 type Context struct {
-	Budget     int    `json:"budget"`      // 工作上下文预算（token）：上下文达到它（且不超过模型窗口 − 预留）时整理
-	KeepRecent int    `json:"keep_recent"` // 整理后原样保留的最近回合（token）
-	Mode       string `json:"mode"`        // inline（主笔在原上下文中整理，复用缓存）| separate（轻量模型单独整理）
+	MaxCalls     int    `json:"max_calls"` // 0 沿用运行时默认上限
+	MaxToolCalls int    `json:"max_tool_calls"`
+	MaxOutput    int    `json:"max_output"`
+	Budget       int    `json:"budget"`      // 工作上下文预算（token）：上下文达到它（且不超过模型窗口 − 预留）时整理
+	KeepRecent   int    `json:"keep_recent"` // 整理后原样保留的最近回合（token）
+	Mode         string `json:"mode"`        // inline（主笔在原上下文中整理，复用缓存）| separate（轻量模型单独整理）
 }
 
 // Defaults 返回默认设置（《04-交互与界面设计》10.2、9.4）。
@@ -81,11 +85,11 @@ func Defaults() Settings {
 		Theme:        "system",
 		UseWorkTheme: true,
 		Reading: Reading{
-			FontFamily: "work", FontSize: 18, LineHeight: 1.9, ParagraphSpacing: 0.9, MaxWidth: 40,
+			TimedChoices: true, FontFamily: "work", FontSize: 18, LineHeight: 1.9, ParagraphSpacing: 0.9, MaxWidth: 40,
 			Indent: "work", Typewriter: "normal", ReduceMotion: "system", StageIntensity: 0.6, ToolHints: true,
 		},
 		Audio:   Audio{Master: 0.6, BGM: 1, SFX: 1},
-		Play:    Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "auto"},
+		Play:    Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "off"},
 		Context: Context{Budget: 128_000, KeepRecent: 12_000, Mode: "inline"},
 		Models:  ModelRoles{},
 	}
@@ -133,7 +137,9 @@ func (s *Service) Patch(ctx context.Context, patch []byte) (Settings, error) {
 		if err := jsonx.UnmarshalStrict(bytes.NewReader(patch), &cur); err != nil {
 			return errs.Invalid("设置格式不正确：%v", err)
 		}
-		// TODO(M5-10)：取值范围校验（字号 14–24、行距 1.5–2.4 等）。
+		if err := cur.Validate(); err != nil {
+			return err
+		}
 		b, err := jsonx.Marshal(cur)
 		if err != nil {
 			return err

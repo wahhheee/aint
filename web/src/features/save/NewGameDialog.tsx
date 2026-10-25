@@ -7,7 +7,9 @@ import { Link, useNavigate } from 'react-router'
 
 import { errorMessage, isApiError } from '@/api/errors'
 import { useCreateSave, useModels, useSettings } from '@/api/queries'
-import type { FormField, Pace, Reasoning, WorkDetail } from '@/api/types'
+import type { FormField, Pace, Reasoning, SaveSettings, WorkDetail } from '@/api/types'
+import { AdvancedPlaySettings } from './AdvancedPlaySettings'
+import { confirmAction } from '@/components/common/confirm'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -34,18 +36,27 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
   const create = useCreateSave()
 
   const fields = work.new_game.fields ?? []
+  const [advanced, setAdvanced] = useState<Partial<SaveSettings>>({})
+  const [modelId, setModelId] = useState('')
+  const [helpers, setHelpers] = useState<boolean | undefined>()
   const [title, setTitle] = useState('')
   const [form, setForm] = useState<Record<string, unknown>>(() => Object.fromEntries(fields.map((f) => [f.key, f.default ?? emptyOf(f)])))
   const [pace, setPace] = useState<Pace>(work.narrator.length || 'medium')
   const [reasoning, setReasoning] = useState<Reasoning>(work.narrator.reasoning ?? settings.data?.play.reasoning ?? 'low')
 
-  const model = models.data?.find((m) => m.id === settings.data?.models.narrator) ?? models.data?.[0]
+  const model = models.data?.find((m) => m.id === (modelId || settings.data?.models.narrator)) ?? models.data?.[0]
   const noModel = models.data !== undefined && models.data.length === 0
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (helpers && !settings.data?.play.helpers && !(await confirmAction(t('background.helperCost')))) return
     create.mutate(
-      { work_id: work.id, title, form, settings: { pace, reasoning, narrator_model: model?.id } },
+      {
+        work_id: work.id,
+        title,
+        form,
+        settings: { ...advanced, pace, reasoning, narrator_model: model?.id, helpers: helpers ?? settings.data?.play.helpers ?? false },
+      },
       { onSuccess: (sv) => navigate(`/play/${sv.id}`) },
     )
   }
@@ -86,7 +97,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
               {t('newGame.runSection')}
             </legend>
             <div className="flex items-baseline justify-between gap-4">
-              <Label>{t('newGame.model')}</Label>
+              <Label htmlFor="new-model">{t('newGame.model')}</Label>
               {noModel ? (
                 <span className="text-sm text-warn">
                   {t('newGame.noModel')}
@@ -95,7 +106,18 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
                   </Link>
                 </span>
               ) : (
-                <span className="text-sm text-ink">{model?.display_name || model?.name || '…'}</span>
+                <select
+                  id="new-model"
+                  className="h-9 max-w-[65%] rounded-lg border border-rule bg-paper px-2 text-sm"
+                  value={model?.id ?? ''}
+                  onChange={(e) => setModelId(e.target.value)}
+                >
+                  {models.data?.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.display_name || m.name}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
             {/* 作品需要看图而主笔模型不能看图（《02-技术方案》15.1）：提示，但不阻止开始 */}
@@ -137,7 +159,21 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
                 ))}
               </ToggleGroup>
             </div>
-            {/* TODO(M5-10)：高级——上下文预算、保留原文量（存档级覆盖）、后台助手、缓存时长 */}
+            <label className="flex items-center justify-between text-sm">
+              <span>{t('background.helpers')}</span>
+              <Switch
+                disabled={!settings.data?.models.light}
+                checked={helpers ?? settings.data?.play.helpers ?? false}
+                onCheckedChange={setHelpers}
+              />
+            </label>
+            <AdvancedPlaySettings
+              value={{ ...advanced, pace }}
+              onChange={(v) => {
+                if (v.pace) setPace(v.pace)
+                setAdvanced((s) => ({ ...s, ...v }))
+              }}
+            />
           </fieldset>
 
           {create.isError && (

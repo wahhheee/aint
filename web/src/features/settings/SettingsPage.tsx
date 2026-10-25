@@ -11,6 +11,8 @@ import { NavLink, useParams } from 'react-router'
 import { PageHeader } from '@/components/common/PageHeader'
 import { cn } from '@/lib/utils'
 
+import { AudioSection } from './sections/AudioSection'
+import { BackgroundSection } from './sections/BackgroundSection'
 import { AboutSection } from './sections/AboutSection'
 import { ContextSection } from './sections/ContextSection'
 import { DeveloperSection } from './sections/DeveloperSection'
@@ -18,11 +20,13 @@ import { ProvidersSection } from './sections/ProvidersSection'
 import { ReadingSection } from './sections/ReadingSection'
 import { StorageSection } from './sections/StorageSection'
 
-const SECTIONS = ['providers', 'context', 'reading', 'storage', 'developer', 'about'] as const
+const SECTIONS = ['providers', 'background', 'audio', 'context', 'reading', 'storage', 'developer', 'about'] as const
 type Section = (typeof SECTIONS)[number]
 
 const ICONS: Record<Section, LucideIcon> = {
   providers: Cpu,
+  background: Cpu,
+  audio: Info,
   context: Layers,
   reading: BookOpen,
   storage: HardDrive,
@@ -67,6 +71,8 @@ export function SettingsPage() {
         </nav>
         <div className="min-w-0">
           {current === 'providers' && <ProvidersSection />}
+          {current === 'audio' && <AudioSection />}
+          {current === 'background' && <BackgroundSection />}
           {current === 'context' && <ContextSection />}
           {current === 'reading' && <ReadingSection />}
           {current === 'storage' && <StorageSection />}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
 	"github.com/wahhheee/yanyi/internal/store"
 )
@@ -172,7 +173,13 @@ func pathToRoot(ctx context.Context, q store.Querier, headID string) ([]*Node, e
 		}
 		out = append(out, n)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(out) == 0 {
+		return nil, errs.NotFound("存档进度已不存在")
+	}
+	return out, nil
 }
 
 func insertTranscript(ctx context.Context, q store.Querier, saveID, nodeID, text string) error {
@@ -181,4 +188,24 @@ func insertTranscript(ctx context.Context, q store.Querier, saveID, nodeID, text
 	}
 	_, err := q.ExecContext(ctx, `INSERT INTO transcript_fts (text, node_id, save_id) VALUES (?, ?, ?)`, text, nodeID, saveID)
 	return err
+}
+
+func updateSettings(ctx context.Context, q store.Querier, id, raw string) error {
+	_, err := q.ExecContext(ctx, `UPDATE saves SET settings = ? WHERE id = ?`, raw, id)
+	return err
+}
+
+func titleCurrent(ctx context.Context, q store.Querier, id, head string) (bool, error) {
+	var found bool
+	err := q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM usage_log WHERE save_id = ? AND node_id = ? AND call_kind = 'title' AND stop = 'title')`, id, head).Scan(&found)
+	return found, err
+}
+
+func setGeneratedTitle(ctx context.Context, q store.Querier, sv *Save, title string) (bool, error) {
+	res, err := q.ExecContext(ctx, `UPDATE saves SET title = ?, title_source = 'generated', updated_at = ? WHERE id = ? AND head_node_id = ? AND COALESCE(title, '') = ? AND COALESCE(title_source, '') = ?`, title, store.NowMillis(), sv.ID, sv.HeadNodeID, sv.Title, sv.TitleSource)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }

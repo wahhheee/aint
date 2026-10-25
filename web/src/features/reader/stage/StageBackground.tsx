@@ -7,7 +7,7 @@
  *   颗粒：极淡的噪点，消除深色渐变的色带
  *
  * 舞台状态从时间线推导（最近一次 <scene bg>），回看或切换分支时自然恢复到对应位置的舞台。
- * TODO(M5-2)：transition（fade / cut / blur）、BGM 与音效、"减少动画"时直接替换。
+ * 转场支持淡化、切换与模糊；减少动画时直接替换。
  */
 import { AnimatePresence, motion } from 'motion/react'
 
@@ -16,7 +16,17 @@ import type { AssetRef } from '@/api/types'
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
 
-export function StageBackground({ asset, intensity = 0.6 }: { asset?: AssetRef; intensity?: number }) {
+export function StageBackground({
+  asset,
+  intensity = 0.6,
+  transition = 'fade',
+  reduce = false,
+}: {
+  asset?: AssetRef
+  intensity?: number
+  transition?: string
+  reduce?: boolean
+}) {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
       <AnimatePresence>
@@ -24,10 +34,10 @@ export function StageBackground({ asset, intensity = 0.6 }: { asset?: AssetRef; 
           <motion.div
             key={asset.url}
             className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={reduce || transition === 'cut' ? false : { opacity: 0, filter: transition === 'blur' ? 'blur(20px)' : 'blur(0px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            transition={{ duration: reduce || transition === 'cut' ? 0 : 0.6, ease: 'easeInOut' }}
           >
             <img
               src={asset.url}

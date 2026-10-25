@@ -77,6 +77,12 @@ tasks:
       - task: web
         vars: { SCRIPT: test }
 
+  test:e2e:
+    desc: 浏览器端到端测试（假模型，首次需在 web/ 执行 pnpm exec playwright install chromium）
+    cmds:
+      - task: web
+        vars: { SCRIPT: test:e2e }
+
   check:
     desc: 提交前检查：全部静态检查 + 全部测试（与 CI 相同）
     cmds:

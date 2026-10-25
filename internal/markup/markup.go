@@ -5,7 +5,7 @@
 // 改语法时三处一起改：本包、parse.ts、测试向量。
 //
 // 服务端用途：生成故事原文的纯文本（原文索引、/transcript、存档标题输入）；
-// TODO(M5-9)：检查器警告（正文中直接写了"只应由工具产生"的内容等）。
+// 可疑的工具旁白由前端检查器提示，解析器不按关键词删除故事文字。
 //
 // # 语法
 //
@@ -86,7 +86,7 @@ func (o *Options) has(name string) bool {
 	if o.inOOC && name == "ooc" {
 		return false
 	}
-	return o.AllTags || o.Tags[name]
+	return name == "br" || o.AllTags || o.Tags[name]
 }
 
 // PlainText 把叙事标记转为故事原文的纯文本（原文索引、/transcript），规则见 Plain。
@@ -135,6 +135,8 @@ func writeInline(sb *strings.Builder, nodes []Node, name func(string) string) {
 			sb.WriteString(n.Text)
 		case NodeTag:
 			switch n.Name {
+			case "br":
+				sb.WriteString("\n")
 			case "ooc":
 				continue
 			case "say":

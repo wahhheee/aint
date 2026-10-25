@@ -88,6 +88,13 @@ export function ReadingSection() {
       </div>
 
       <SettingGroup>
+        <SettingRow label={t('reader.timedChoices')} hint={t('reader.timedSettingHint')}>
+          <Switch
+            aria-label={t('reader.timedChoices')}
+            checked={local.timed_choices}
+            onCheckedChange={(v) => patch({ timed_choices: v })}
+          />
+        </SettingRow>
         <SettingRow label={t('settings.reading.theme')}>
           <ToggleGroup
             type="single"

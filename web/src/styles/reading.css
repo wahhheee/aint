@@ -208,3 +208,16 @@
   font-size: 12px;
   color: var(--ink-muted);
 }
+
+/* 完整段落轻淡入，减少动画偏好沿用全局规则。 */
+.prose-book > p:not(.is-drafting) {
+  animation: paragraph-reveal 220ms ease-out;
+}
+@keyframes paragraph-reveal {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}

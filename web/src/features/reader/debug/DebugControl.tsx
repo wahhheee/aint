@@ -1,23 +1,11 @@
-import { Bug, PanelRightOpen } from 'lucide-react'
+import { Bug } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-export function DebugControl({
-  enabled,
-  pending,
-  available,
-  onToggle,
-  onOpen,
-}: {
-  enabled: boolean
-  pending: boolean
-  available: boolean
-  onToggle: (on: boolean) => void
-  onOpen: () => void
-}) {
+export function DebugControl({ enabled, pending, onToggle }: { enabled: boolean; pending: boolean; onToggle: (on: boolean) => void }) {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-1">
@@ -38,16 +26,6 @@ export function DebugControl({
         </TooltipTrigger>
         <TooltipContent>{t(enabled ? 'debug.pauseCapture' : 'debug.startCapture')}</TooltipContent>
       </Tooltip>
-      {available && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" onClick={onOpen} aria-label={t('debug.open')}>
-              <PanelRightOpen />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t('debug.open')}</TooltipContent>
-        </Tooltip>
-      )}
     </div>
   )
 }

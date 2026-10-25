@@ -23,7 +23,7 @@ import (
 )
 
 // Profile 计算能力画像（《02-技术方案》8.6）：作品用到了哪些功能、模型能做什么、存档开了什么。
-// 结果在一个存档的游玩过程中不变（只依赖稳定输入）。
+// 同一设置与模型能力下结果稳定；游玩设置变更后在下一回合重算。
 func Profile(m *work.Model, st save.Settings, caps llm.Caps, helpersAvailable bool) prompts.FeatureSet {
 	fs := prompts.FeatureSet{}
 	set := func(f prompts.Feature, on bool) {
@@ -91,6 +91,6 @@ func EnabledBuiltinTags(fs prompts.FeatureSet) []string {
 	add(prompts.FTagAudio, "bgm", "sfx")
 	add(prompts.FTagEffects, "pause", "fx", "aside")
 	add(prompts.FOOC, "ooc") // AI 的场外回应（D-30）；在"消息格式"中说明，不计入 tags 特征
-	// TODO(P1)：act（有命令时启用）
+	add(prompts.FCommands, "act")
 	return out
 }

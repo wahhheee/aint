@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wahhheee/yanyi/internal/contextx"
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 	"github.com/wahhheee/yanyi/internal/pkg/ids"
@@ -89,6 +90,10 @@ type DebugSnapshot struct {
 }
 
 type DebugCall struct {
+	Fragments     []contextx.FragmentReport `json:"fragments,omitzero"`
+	Layers        map[string]int            `json:"layers,omitzero"`
+	PrefixHash    string                    `json:"prefix_hash,omitzero"`
+	PrefixChanges []string                  `json:"prefix_changes,omitzero"`
 	DebugSummary
 	Request jsonx.Value        `json:"request"`
 	Steps   []DebugStep        `json:"steps"`
@@ -551,4 +556,66 @@ func debugStream(ctx context.Context, p llm.Provider, model *llm.Model, req *llm
 		return p.Stream(ctx, model, req)
 	}
 	return llm.ObserveStream(ctx, p, model, req, r)
+}
+
+// contextDetails 把组装证据附到调用记录；分层数字是估算值，不用于计费。
+func (r *debugRecorder) contextDetails(b *contextx.Built) {
+	if r == nil {
+		return
+	}
+	r.update(func() {
+		if !r.reserve(len(jsonx.MustMarshal(b.Fragments)) + 512) {
+			return
+		}
+		r.data.Fragments = slices.Clone(b.Fragments)
+		r.data.PrefixHash = b.PrefixHash
+		layers := map[string]int{}
+		for i, block := range b.Request.System {
+			key := "L0"
+			if i > 0 {
+				key = "L1"
+			}
+			layers[key] += contextx.EstimateTokens(block.Text)
+		}
+		layers["L2"] = contextx.EstimateTokens(string(jsonx.MustMarshal(b.Request.Tools)))
+		for i, msg := range b.Request.Messages {
+			if i == 0 && b.HeadParts > 0 {
+				for j, part := range msg.Parts {
+					key := "L3"
+					if j >= b.LoreParts {
+						key = "L4"
+					}
+					layers[key] += contextx.EstimateTokens(string(jsonx.MustMarshal(part)))
+				}
+			} else {
+				layers["L5"] += contextx.EstimateTokens(string(jsonx.MustMarshal(msg)))
+			}
+		}
+		r.data.Layers = layers
+		for i := len(r.store.calls) - 1; i >= 0; i-- {
+			prev := r.store.calls[i]
+			if prev == r || prev.saveID != r.saveID || prev.data.PrefixHash == "" {
+				continue
+			}
+			if prev.data.Model != r.data.Model || prev.data.Protocol != r.data.Protocol {
+				r.data.PrefixChanges = append(r.data.PrefixChanges, "model")
+			}
+			if prev.data.PrefixHash != b.PrefixHash {
+				var old llm.Request
+				if jsonx.Unmarshal(prev.data.Request, &old) == nil {
+					if !bytes.Equal(jsonx.MustMarshal(old.System), jsonx.MustMarshal(b.Request.System)) {
+						r.data.PrefixChanges = append(r.data.PrefixChanges, "system")
+					}
+					if !bytes.Equal(jsonx.MustMarshal(old.Tools), jsonx.MustMarshal(b.Request.Tools)) {
+						r.data.PrefixChanges = append(r.data.PrefixChanges, "tools")
+					}
+				}
+				if len(r.data.PrefixChanges) == 0 {
+					r.data.PrefixChanges = append(r.data.PrefixChanges, "material")
+				}
+			}
+			return
+		}
+		r.data.PrefixChanges = []string{"first"}
+	})
 }

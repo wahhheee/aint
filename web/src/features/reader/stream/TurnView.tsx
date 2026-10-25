@@ -2,6 +2,9 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DisplayItem } from '@/api/types'
+import { ImageViewer } from '@/components/common/ImageViewer'
+import { useContext } from 'react'
+import { MarkupContext, findAsset } from '@/markup/context'
 import { Markup } from '@/markup/render'
 
 import { useReaderContext } from '../ReaderContext'
@@ -25,6 +28,7 @@ interface Props {
 /** 一个回合：玩家输入行 → 正文 → 工具提示 → 选项 / 提示条。已提交回合与草稿回合共用。 */
 export function TurnView({ items, drafting, interactive, selected, noticeActions }: Props) {
   const { t } = useTranslation()
+  const markup = useContext(MarkupContext)
   const { reading } = useReaderContext()
   const lastText = items.findLastIndex((it) => it.t === 'text')
 
@@ -52,9 +56,14 @@ export function TurnView({ items, drafting, interactive, selected, noticeActions
             )
           case 'dice':
             return <DiceCard key={i} item={it} />
-          case 'image':
-            // TODO(M5-2)：插图卡片
-            return <QuietLine key={i}>{t('common.notImplemented')}</QuietLine>
+          case 'image': {
+            const asset = findAsset(it.asset, markup)
+            return asset?.kind === 'image' ? (
+              <ImageViewer key={i} src={asset.url} caption={asset.description ?? ''} />
+            ) : (
+              <QuietLine key={i}>{t('reader.imageMissing')}</QuietLine>
+            )
+          }
         }
       })}
     </article>

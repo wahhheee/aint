@@ -47,6 +47,8 @@ function Slider({
       {Array.from({ length: _values.length }, (_, index) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
+          aria-label={props["aria-label"]}
+          aria-valuetext={props["aria-valuetext"]}
           key={index}
           className="relative block size-4 shrink-0 cursor-grab rounded-full bg-white shadow-[0_0_0_1px_rgb(0_0_0/0.12),0_1px_3px_rgb(0_0_0/0.3)] transition-shadow select-none after:absolute after:-inset-2 hover:ring-4 hover:ring-gold/20 focus-visible:ring-4 focus-visible:ring-ring/40 focus-visible:outline-hidden active:cursor-grabbing disabled:pointer-events-none"
         />

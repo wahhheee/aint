@@ -57,7 +57,9 @@ type Deps struct {
 
 // Manager 管理全部存档会话。
 type Manager struct {
-	d Deps
+	titleMu sync.Mutex
+	titles  map[string]bool
+	d       Deps
 
 	base      context.Context // 进程级 ctx：Shutdown 时取消全部回合
 	cancelAll context.CancelFunc

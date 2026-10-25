@@ -30,7 +30,19 @@ import { displayedInput } from './displayedInput'
 
 type Editing = { kind: 'text' | 'input'; value: string } | null
 
-export function TurnToolbar({ node, latest, disabled }: { node: TimelineNode; latest: boolean; disabled: boolean }) {
+export function TurnToolbar({
+  node,
+  latest,
+  disabled,
+  open,
+  onOpenChange,
+}: {
+  node: TimelineNode
+  latest: boolean
+  disabled: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
   const { t } = useTranslation()
   const { actions, ui, inspect } = useReaderContext()
   const [editing, setEditing] = useState<Editing>(null)
@@ -96,7 +108,7 @@ export function TurnToolbar({ node, latest, disabled }: { node: TimelineNode; la
           </span>
         )}
         {node.edited_from && <span className="px-1 text-xs text-ink-faint">{t('reader.edited')}</span>}
-        <DropdownMenu>
+        <DropdownMenu open={open} onOpenChange={onOpenChange}>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
@@ -154,6 +166,7 @@ export function TurnToolbar({ node, latest, disabled }: { node: TimelineNode; la
               <DialogDescription>{editing?.kind === 'input' ? t('reader.editInputHint') : t('reader.editTextHint')}</DialogDescription>
             </DialogHeader>
             <Textarea
+              aria-label={t(editing?.kind === 'input' ? 'reader.editInputTitle' : 'reader.editTextTitle')}
               value={editing?.value ?? ''}
               onChange={(e) => setEditing((cur) => cur && { ...cur, value: e.target.value })}
               className="max-h-[55dvh] min-h-40 font-serif text-[15px] leading-7"

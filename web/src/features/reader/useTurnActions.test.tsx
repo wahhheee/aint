@@ -12,7 +12,7 @@ import { useReader } from '@/stores/reader'
 
 import { useTurnActions } from './useTurnActions'
 
-vi.mock('@/api/endpoints', () => ({ api: { saves: { submit: vi.fn() } } }))
+vi.mock('@/api/endpoints', () => ({ api: { saves: { submit: vi.fn(), regenerate: vi.fn() } } }))
 vi.mock('@/components/common/confirm', () => ({ confirmAction: vi.fn() }))
 
 const follow: Command = {
@@ -75,5 +75,42 @@ describe('选项提交', () => {
       kind: 'command',
       command: { name: 'follow', args: { who: '林舟' } },
     })
+  })
+})
+
+describe('失败重试', () => {
+  it('已保存中断回合从原父节点重新生成，草稿移除后仍保留重试来源', async () => {
+    const a = actions()
+    await a.current.choose({ id: 'a', label: '拆信' })
+    useReader.getState().setPending(null)
+    useReader.getState().dispatch({
+      id: 1,
+      type: 'turn.failed',
+      data: { turn_id: 'failed', node_id: 'failed', parent_id: 'opening', code: 'network', message: '上游失败', recoverable: true },
+    })
+    expect(await a.current.retry()).toBe(true)
+    expect(api.saves.submit).toHaveBeenCalledTimes(1)
+    expect(api.saves.regenerate).toHaveBeenCalledWith('save', 'failed', undefined)
+    expect(useReader.getState().pendingParent).toBe('opening')
+  })
+  it('未提交内容的普通回合重新提交原选项', async () => {
+    const a = actions()
+    await a.current.choose({ id: 'a', label: '拆信' })
+    useReader
+      .getState()
+      .dispatch({ id: 1, type: 'turn.failed', data: { turn_id: 'failed', code: 'network', message: '上游失败', recoverable: true } })
+    await a.current.retry()
+    expect(api.saves.submit).toHaveBeenCalledTimes(2)
+    expect(api.saves.regenerate).not.toHaveBeenCalled()
+  })
+  it('重新生成失败且未保存内容时仍重试同一分支', async () => {
+    const a = actions()
+    await a.current.regenerate('old', 'parent', { kind: 'free', text: '新输入' })
+    useReader
+      .getState()
+      .dispatch({ id: 1, type: 'turn.failed', data: { turn_id: 'failed', code: 'network', message: '上游失败', recoverable: true } })
+    await a.current.retry()
+    expect(api.saves.regenerate).toHaveBeenLastCalledWith('save', 'old', { kind: 'free', text: '新输入' })
+    expect(api.saves.submit).not.toHaveBeenCalled()
   })
 })

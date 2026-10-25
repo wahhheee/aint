@@ -28,17 +28,11 @@ func builtins() []*Def {
 		{Name: "roll_dice", Kind: KindWrite, Display: DisplayCard, When: prompts.Requires(prompts.FDice),
 			Spec: specRollDice, Handle: handleRollDice},
 		{Name: "delegate", Kind: KindDelegate, Display: DisplaySubtle, When: prompts.Requires(prompts.FHelpers),
-			Spec: specDelegate, Handle: notYet("delegate", "M5-8")},
+			Spec: specDelegate, Handle: delegate},
 	}
 }
 
 // notYet 是尚未实现的工具：返回事实性说明，模型可以据此继续写作。
-func notYet(name, task string) func(context.Context, Env, jsonx.Value) Result {
-	return func(context.Context, Env, jsonx.Value) Result {
-		_ = task // 对应的实施计划任务编号；git grep 该编号可找到全部相关位置
-		return NotExecuted("%s 暂时不可用，可以先依据上下文中已有的信息继续写。", name)
-	}
-}
 
 // ---------------------------------------------------------------------------
 // JSON Schema 的小型构造函数（保持定义紧凑；序列化经 jsonx 确定性输出）
@@ -192,9 +186,14 @@ func handleOfferChoices(_ context.Context, env Env, raw jsonx.Value) Result {
 		}
 		seen[id] = true
 	}
-	// TODO(M5-3)：限时选项（timeout_seconds / default_choice）写入显示项。
+	if a.Timeout < 0 || a.Timeout > 3600 {
+		return NotExecuted("选项时限需在 0–3600 秒之间")
+	}
+	if a.Timeout > 0 && (!env.Features().Has(prompts.FTimed) || !seen[a.Default]) {
+		return NotExecuted("限时选项需要作品启用限时，并填写有效的 default_choice")
+	}
 	env.OfferChoices(save.DisplayItem{
-		T: "choices", Prompt: a.Prompt, Items: a.Choices, Free: env.Features().Has(prompts.FFreeInput),
+		T: "choices", TimeoutSeconds: a.Timeout, DefaultChoice: a.Default, Prompt: a.Prompt, Items: a.Choices, Free: env.Features().Has(prompts.FFreeInput),
 	})
 	return Result{Terminal: true}
 }
@@ -214,4 +213,29 @@ func specDelegate(prompts.FeatureSet, *work.Model) (string, map[string]any) {
 		"kind": map[string]any{"type": "string", "enum": []string{"research", "curate"}},
 		"task": str("任务说明"),
 	})
+}
+
+// delegate 仅在支持委托的回合环境中执行，其他环境不会调用模型。
+func delegate(ctx context.Context, env Env, raw jsonx.Value) Result {
+	var args struct {
+		Kind string `json:"kind"`
+		Task string `json:"task"`
+	}
+	if err := decodeArgs(raw, &args); err != nil {
+		return NotExecuted("参数不正确：%v", err)
+	}
+	if (args.Kind != "research" && args.Kind != "curate") || strings.TrimSpace(args.Task) == "" || len([]rune(args.Task)) > 4000 {
+		return NotExecuted("kind 需为 research 或 curate，task 需为 1–4000 字")
+	}
+	runner, ok := env.(interface {
+		Delegate(context.Context, string, string) (string, error)
+	})
+	if !ok {
+		return NotExecuted("当前环境没有后台助手")
+	}
+	result, err := runner.Delegate(ctx, args.Kind, args.Task)
+	if err != nil {
+		return NotExecuted("助手未完成：%v", err)
+	}
+	return Text("%s", result)
 }

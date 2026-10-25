@@ -1,0 +1,17 @@
+# M5 界面回归：短正文、换行与选项，无真实模型调用。
+responses:
+  - text: |
+      雾散了一些。<br/>远处的灯亮了。
+      你把信收进口袋，继续沿着码头向前走。
+    chunk_runes: 200
+    delay_ms: 1
+    tool_calls:
+      - name: offer_choices
+        args:
+          choices:
+            - {id: a, label: 继续前行}
+            - {id: b, label: 停下观察}
+compact:
+  - text: 玩家沿码头向前，雾渐渐散去。信仍在玩家手里。
+    chunk_runes: 200
+    delay_ms: 1
