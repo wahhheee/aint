@@ -317,6 +317,7 @@ const zhCN = {
     turnIndex: '回合目录',
     findTurn: '搜索已加载回合',
     reconnecting: '连接已断开，正在重连……',
+    syncing: '正在同步游玩进度，请稍候。',
     loadEarlier: '加载更早回合',
     turnNumber: '第 {{no}} 回合',
     backToLibrary: '返回书架',

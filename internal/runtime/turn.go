@@ -26,8 +26,13 @@ import (
 
 // runTurn 是一个回合的完整生命周期（在独立 goroutine 中运行）。
 func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput, slot *turnSlot) {
+	ctx, cancel := context.WithTimeoutCause(ctx, m.d.Budget.WallClock, errTurnTimeout)
+	defer cancel()
 	d, err := m.prepare(ctx, saveID, turnID, parentID, in)
 	if err != nil {
+		if errors.Is(context.Cause(ctx), errTurnTimeout) {
+			err = errTurnTimeout
+		}
 		code, msg, recoverable := describeError(err)
 		slog.WarnContext(ctx, "回合准备失败", "err", err)
 		slot.release()
@@ -201,6 +206,10 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 func (m *Manager) loop(ctx context.Context, d *draft) {
 	choicesNudged := false
 	for {
+		if ctx.Err() != nil {
+			d.stopCanceled(ctx)
+			return
+		}
 		if reason := d.budget.exceeded(d); reason != "" {
 			d.stop = "budget"
 			d.addNotice("warn", "本回合已达上限（"+reason+"），可以点“继续”接着写。")
@@ -231,8 +240,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 		if err != nil {
 			d.status = save.StatusInterrupted
 			if ctx.Err() != nil {
-				d.stop = "canceled"
-				d.addNotice("info", "已停止")
+				d.stopCanceled(ctx)
 			} else {
 				d.stop, d.err, d.errMsg = "error", err, err.Error()
 				_, msg, _ := describeError(err)
@@ -308,6 +316,18 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			}
 			return
 		}
+	}
+}
+
+// stopCanceled 区分主动停止与时长预算耗尽，两者都保留已生成的内容。
+func (d *draft) stopCanceled(ctx context.Context) {
+	d.status = save.StatusInterrupted
+	if errors.Is(context.Cause(ctx), errTurnTimeout) {
+		d.stop = "budget"
+		d.addNotice("warn", errTurnTimeout.Error())
+	} else {
+		d.stop = "canceled"
+		d.addNotice("info", "已停止")
 	}
 }
 
@@ -483,8 +503,11 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	if d.status == save.StatusInterrupted && !d.hasContent() {
 		// 什么也没生成：不产生节点，head 不变。
 		code, msg, recoverable := "canceled", "已停止", true
-		if d.stop == "error" {
+		switch d.stop {
+		case "error":
 			code, msg, recoverable = describeError(d.err)
+		case "budget":
+			code, msg, recoverable = describeError(errTurnTimeout)
 		}
 		slog.InfoContext(ctx, "回合未产生内容，不提交", "stop", d.stop, "err", d.errMsg)
 		d.release()
@@ -514,8 +537,8 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	})
 	// 上下文达到整理阈值：写者槽位直接交给整理任务（玩家阅读期间整理，期间的输入排队）。
 	// 上次整理之后至少要有 3 个回合（整理至少保留 2 个回合，才有可以摘要掉的内容）：预算小于常驻部分加保留原文时，
-	// 不会每个回合都整理一次；出错结束的回合不触发（模型服务多半同样不可用）。
-	compacting := err == nil && d.stop != "error" && contextTokens >= d.threshold && d.sinceCompaction >= 3
+	// 不会每个回合都整理一次；出错或中断的回合不触发，停止与超时后让出存档。
+	compacting := err == nil && d.status != save.StatusInterrupted && d.stop != "error" && contextTokens >= d.threshold && d.sinceCompaction >= 3
 	if compacting {
 		slog.InfoContext(ctx, "上下文达到整理阈值", "context_tokens", contextTokens, "threshold", d.threshold)
 		m.handoffCompaction(d.save.ID, d.slot)

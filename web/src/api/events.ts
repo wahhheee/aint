@@ -4,6 +4,21 @@
 import type { ChoiceItem, CompactStats, DisplayItem, PanelRender, StateChange, TurnInput, Usage } from './types'
 
 export interface EventMap {
+  'session.snapshot': {
+    turn: {
+      turn_id: string
+      parent_id: string
+      input: TurnInput
+      started: boolean
+      items: DisplayItem[]
+      seq: number
+      tools_running: number
+    } | null
+    compacting: boolean
+    helper?: string
+    usage?: EventMap['turn.usage']
+  }
+  'turn.pending': { turn_id: string; parent_id: string; input: TurnInput }
   'turn.started': { turn_id: string; parent_id: string; input: TurnInput }
   'turn.text': { turn_id: string; seq: number; delta: string }
   'turn.tool': { turn_id: string; call_id: string; name: string; phase: 'start' | 'done' | 'error'; display?: string }
@@ -40,6 +55,8 @@ export type EventType = keyof EventMap
 
 /** EventSource 需要逐个登记事件名。新增事件时在这里补充。 */
 export const EVENT_TYPES: EventType[] = [
+  'session.snapshot',
+  'turn.pending',
   'turn.started',
   'turn.text',
   'turn.tool',

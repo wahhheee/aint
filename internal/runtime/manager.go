@@ -68,6 +68,10 @@ type Manager struct {
 	cal   calibration // token 估算的按模型校准
 	debug debugStore
 
+	// liveMu 串行化会话快照更新、事件发布与订阅，保证快照和后续事件之间没有缺口。
+	liveMu sync.Mutex
+	live   map[string]*SessionSnapshot
+
 	mu sync.Mutex
 	// sessions 只保存有任务（回合或整理）在运行的存档：任务结束（让出写者槽位）时删除，空闲存档不占内存。
 	// 加锁顺序固定为 m.mu → session.mu。
@@ -106,7 +110,7 @@ func NewManager(d Deps) *Manager {
 		d.Budget = DefaultBudget
 	}
 	base, cancel := context.WithCancel(context.Background())
-	return &Manager{d: d, base: base, cancelAll: cancel, sessions: map[string]*session{}}
+	return &Manager{d: d, base: base, cancelAll: cancel, sessions: map[string]*session{}, live: map[string]*SessionSnapshot{}}
 }
 
 // lockSession 返回存档的会话（没有则创建）并锁住它；调用方负责 s.mu.Unlock()。
@@ -226,6 +230,7 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 	} else {
 		s.running = j
 	}
+	m.publish(saveID, event.TurnPending, event.TurnStartedData{TurnID: turnID, ParentID: parentID, Input: in})
 
 	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
 	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
@@ -373,6 +378,9 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 }
 
 func (m *Manager) publish(saveID, typ string, data any) {
+	m.liveMu.Lock()
+	defer m.liveMu.Unlock()
+	m.updateSnapshot(saveID, data, typ)
 	m.d.Bus.Publish(event.SaveTopic(saveID), typ, data)
 }
 

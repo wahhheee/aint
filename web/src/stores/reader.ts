@@ -55,6 +55,8 @@ export interface ReaderState {
   pending: TurnInput | null
   /** 重新生成、修改输入时的父节点（等待期间正文流中它之后的回合先隐去） */
   pendingParent: string | null
+  /** 服务端已接受的排队或准备中回合，可在开始生成前停止 */
+  pendingTurnId?: string
   failure: TurnFailure | null
   context: { used: number; threshold: number } | null
   /** 最近一个回合的用量：新回合开始时清空，本页面没有进行过回合时为 null */
@@ -66,19 +68,60 @@ export interface ReaderState {
 
   reset: (saveId: string) => void
   setPending: (input: TurnInput | null, parentId?: string) => void
-  /** 用呈现信息初始化上下文用量与整理状态（打开存档时） */
-  init: (context: { used: number; threshold: number }, compacting: boolean) => void
+  /** 用呈现信息初始化上下文用量；实时会话状态以事件流为准 */
+  init: (context: { used: number; threshold: number }) => void
+  resyncVersion: number
+  resync: () => void
   setConnection: (s: StreamStatus) => void
   dispatch: (ev: AnyEvent) => void
   clearDraft: () => void
   clearFailure: () => void
 }
 
-type Snapshot = Pick<ReaderState, 'draft' | 'pending' | 'pendingParent' | 'failure' | 'context' | 'turnUsage' | 'compacting' | 'helper'>
+type Snapshot = Pick<
+  ReaderState,
+  'draft' | 'pending' | 'pendingParent' | 'pendingTurnId' | 'failure' | 'context' | 'turnUsage' | 'compacting' | 'helper'
+>
 
 /** 处理一条 SSE 事件，返回新状态（纯函数）。 */
 export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
   switch (ev.type) {
+    case 'session.snapshot': {
+      const { turn, compacting, helper, usage } = ev.data
+      return {
+        ...s,
+        draft: turn?.started
+          ? {
+              turnId: turn.turn_id,
+              parentId: turn.parent_id,
+              input: turn.input,
+              items: turn.items,
+              seq: turn.seq,
+              toolsRunning: turn.tools_running,
+              status: 'streaming',
+            }
+          : null,
+        pending: turn && !turn.started ? turn.input : null,
+        pendingParent: turn && !turn.started ? turn.parent_id || null : null,
+        pendingTurnId: turn && !turn.started ? turn.turn_id : undefined,
+        failure: null,
+        compacting,
+        helper,
+        turnUsage: usage ? { turnId: usage.turn_id, usage: usage.usage, costs: usage.costs, unpriced: usage.unpriced } : null,
+        context: usage?.context ?? s.context,
+      }
+    }
+    case 'turn.pending':
+      return {
+        ...s,
+        draft: null,
+        pending: ev.data.input,
+        pendingParent: ev.data.parent_id || null,
+        pendingTurnId: ev.data.turn_id,
+        failure: null,
+        helper: undefined,
+        turnUsage: null,
+      }
     case 'helper.progress':
       return { ...s, helper: ev.data.phase === 'start' ? ev.data.kind : undefined }
     case 'turn.started':
@@ -87,6 +130,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         helper: undefined,
         pending: null,
         pendingParent: null,
+        pendingTurnId: undefined,
         failure: null,
         turnUsage: null,
         draft: {
@@ -141,11 +185,14 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
     case 'compaction.failed':
       return { ...s, compacting: false }
     case 'turn.failed':
+      if (s.pendingTurnId && s.pendingTurnId !== ev.data.turn_id) return s
+      if (s.draft?.status === 'streaming' && s.draft.turnId !== ev.data.turn_id) return s
       return {
         ...s,
         helper: undefined,
         pending: null,
         pendingParent: null,
+        pendingTurnId: undefined,
         // 后端在有内容时先发 committed 再发 failed；仍在 streaming 说明这一回合没有留下任何内容，草稿可以移除
         draft: s.draft?.turnId === ev.data.turn_id && s.draft.status === 'streaming' ? null : s.draft,
         failure: {
@@ -172,6 +219,8 @@ export const useReader = create<ReaderState>((set) => ({
   turnUsage: null,
   compacting: false,
   connection: 'connecting',
+  resyncVersion: 0,
+  resync: () => set((s) => ({ resyncVersion: s.resyncVersion + 1, connection: 'reconnecting' })),
 
   reset: (saveId) =>
     set({
@@ -179,6 +228,7 @@ export const useReader = create<ReaderState>((set) => ({
       draft: null,
       pending: null,
       pendingParent: null,
+      pendingTurnId: undefined,
       failure: null,
       context: null,
       turnUsage: null,
@@ -186,8 +236,9 @@ export const useReader = create<ReaderState>((set) => ({
       helper: undefined,
       connection: 'connecting',
     }),
-  setPending: (pending, parentId) => set({ pending, pendingParent: pending ? (parentId ?? null) : null, failure: null }),
-  init: (context, compacting) => set({ context, compacting }),
+  setPending: (pending, parentId) =>
+    set({ pending, pendingParent: pending ? (parentId ?? null) : null, pendingTurnId: undefined, failure: null }),
+  init: (context) => set((s) => ({ context: s.turnUsage ? s.context : context })),
   setConnection: (connection) => set({ connection }),
   dispatch: (ev) => set((s) => reduceEvent(s, ev)),
   clearDraft: () => set({ draft: null }),

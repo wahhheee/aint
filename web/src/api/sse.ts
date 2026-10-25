@@ -48,7 +48,7 @@ export function openEventStream(path: string, handlers: StreamHandlers): () => v
       es.addEventListener(type, (raw) => {
         const msg = raw as MessageEvent<string>
         const id = Number(msg.lastEventId) || 0
-        if (id > 0) lastId = id
+        if (id > 0 || type === 'session.snapshot') lastId = id
         let data: unknown
         try {
           data = JSON.parse(msg.data)
@@ -64,6 +64,8 @@ export function openEventStream(path: string, handlers: StreamHandlers): () => v
       if (debug) console.debug('[sse] resync')
       lastId = 0
       handlers.onResync?.()
+      // 新建连接以清除浏览器内部的 Last-Event-ID，存档连接随后接收完整会话快照。
+      scheduleReconnect()
     })
   }
 

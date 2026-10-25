@@ -7,7 +7,7 @@
  *        ├─ panels ──────────► 直接写入面板缓存（不额外请求）
  *        ├─ timeline.changed、compaction.done ─► 刷新时间线、累计用量、存档信息、记忆、分支
  *        ├─ compaction.failed ─► 有说明时提示
- *        └─ resync ──────────► 重新拉取时间线与面板（断线太久，补发不了）
+ *        └─ session.snapshot ─► 恢复完整会话状态并刷新已提交数据
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
@@ -19,20 +19,27 @@ import { useReader } from '@/stores/reader'
 
 export function useReaderSession(saveId: string) {
   const qc = useQueryClient()
+  const resyncVersion = useReader((s) => s.resyncVersion)
 
   useEffect(() => {
     const { reset, dispatch, setConnection } = useReader.getState()
     reset(saveId)
+    let initialized = false
     return openEventStream(`/saves/${saveId}/events`, {
-      onStatus: setConnection,
+      onStatus: (status) => setConnection(status === 'open' && !initialized ? 'connecting' : status),
       onResync: () => {
-        void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
-        void qc.invalidateQueries({ queryKey: qk.panels(saveId) })
-        void qc.invalidateQueries({ queryKey: qk.save(saveId) })
+        initialized = false
+        setConnection('reconnecting')
       },
       onEvent: (ev) => {
         dispatch(ev)
         switch (ev.type) {
+          case 'session.snapshot':
+            initialized = true
+            setConnection('open')
+            void qc.invalidateQueries({ queryKey: qk.save(saveId) })
+            void qc.invalidateQueries({ queryKey: qk.recentSaves })
+            break
           case 'turn.committed':
             void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
             void qc.invalidateQueries({ queryKey: qk.save(saveId) })
@@ -62,5 +69,5 @@ export function useReaderSession(saveId: string) {
         }
       },
     })
-  }, [saveId, qc])
+  }, [saveId, qc, resyncVersion])
 }

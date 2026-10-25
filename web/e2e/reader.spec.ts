@@ -1,5 +1,37 @@
 import { test, expect } from '@playwright/test'
 
+test('生成中刷新与换设备可恢复正文、停止并继续', async ({ page, request, browser }) => {
+  const created = await request.post('/api/v1/saves', { data: { work_id: 'yanyi.misty-harbor' } })
+  expect(created.ok()).toBeTruthy()
+  const save = await created.json()
+  await request.patch('/api/v1/settings', { data: { reading: { typewriter: 'instant' }, onboarded: true } })
+  await page.goto(`/play/${save.id}`)
+  const input = page.getByRole('textbox', { name: '写下你的行动……' })
+  await input.fill('/ooc 连接测试')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(page.getByText('重连测试正文', { exact: false })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: '停止', exact: true })).toBeVisible()
+  await expect(page.getByText('重连测试正文', { exact: false })).toBeVisible()
+
+  const device = await browser.newContext()
+  try {
+    const other = await device.newPage()
+    await other.goto(page.url())
+    await expect(other.getByRole('button', { name: '停止', exact: true })).toBeVisible()
+    await expect(other.getByText('重连测试正文', { exact: false })).toBeVisible()
+    await other.getByRole('button', { name: '停止', exact: true }).click()
+    await expect(other.getByRole('button', { name: '停止', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '停止', exact: true })).toHaveCount(0)
+    await other.getByRole('textbox', { name: '写下你的行动……' }).fill('继续向前')
+    await other.getByRole('button', { name: '发送', exact: true }).click()
+    await expect(other.locator('article button').filter({ hasText: '继续前行' }).last()).toBeVisible()
+    await expect(page.locator('article button').filter({ hasText: '继续前行' }).last()).toBeVisible()
+  } finally {
+    await device.close()
+  }
+})
+
 test('阅读、选项、调试、设置、目录与分支', async ({ page, request }) => {
   const created = await request.post('/api/v1/saves', {
     data: { work_id: 'yanyi.first-story', settings: { pace: 'short', reasoning: 'low' } },

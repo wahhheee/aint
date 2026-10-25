@@ -31,15 +31,29 @@ export function useTurnActions(saveId: string, commands: Command[]) {
     void qc.invalidateQueries({ queryKey: qk.tree(saveId) })
   }, [qc, saveId])
 
+  const reportError = useCallback(
+    (err: unknown) => {
+      toast.error(errorMessage(err))
+      if (isApiError(err, 'conflict') && useReader.getState().saveId === saveId) useReader.getState().resync()
+    },
+    [saveId],
+  )
+
   const busy = () => {
     const { pending, draft } = useReader.getState()
     return pending !== null || draft?.status === 'streaming'
   }
 
+  const connected = useCallback(() => {
+    if (useReader.getState().connection === 'open') return true
+    toast(t('reader.syncing'))
+    return false
+  }, [t])
+
   const submit = useCallback(
     async (input: TurnInput) => {
       const { setPending } = useReader.getState()
-      if (busy()) return false
+      if (!connected() || busy()) return false
       lastInput.current = input
       lastRegeneration.current = null
       setPending(input)
@@ -47,24 +61,24 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         await api.saves.submit(saveId, input)
         return true
       } catch (err) {
-        setPending(null)
-        // 409：已有回合在进行（例如另一个标签页提交了），等待它的事件即可
-        if (!isApiError(err, 'conflict')) toast.error(errorMessage(err))
+        if (useReader.getState().saveId === saveId) setPending(null)
+        reportError(err)
         return false
       }
     },
-    [saveId],
+    [saveId, connected, reportError],
   )
 
   /** 手动整理上下文（/compact 与用量环中的按钮）。 */
   const compact = useCallback(async () => {
+    if (!connected()) return
     try {
       await api.saves.compact(saveId)
       toast(t('reader.compactStarted'))
     } catch (err) {
-      toast.error(errorMessage(err))
+      reportError(err)
     }
-  }, [saveId, t])
+  }, [saveId, t, connected, reportError])
 
   /**
    * 提交输入栏文字（含斜杠命令）与附件；返回 true 表示已提交，可以清空输入框。
@@ -107,14 +121,16 @@ export function useTurnActions(saveId: string, commands: Command[]) {
   )
 
   const stop = useCallback(async () => {
-    const { draft } = useReader.getState()
-    if (!draft) return
+    const { draft, pendingTurnId } = useReader.getState()
+    const turnId = draft?.turnId ?? pendingTurnId
+    if (!turnId) return
     try {
-      await api.saves.cancel(saveId, draft.turnId)
+      await api.saves.cancel(saveId, turnId)
     } catch (err) {
-      toast.error(errorMessage(err))
+      reportError(err)
+      if (isApiError(err, 'not_found') && useReader.getState().saveId === saveId) useReader.getState().resync()
     }
-  }, [saveId])
+  }, [saveId, reportError])
 
   /**
    * 重新生成回合 nodeId（input 非空时为修改玩家输入）。parentId 是它的父节点：等待期间正文流只显示到父节点为止；
@@ -123,7 +139,7 @@ export function useTurnActions(saveId: string, commands: Command[]) {
   const regenerate = useCallback(
     async (nodeId: string, parentId: string, input?: TurnInput, shown?: TurnInput) => {
       const { setPending } = useReader.getState()
-      if (busy()) return false
+      if (!connected() || busy()) return false
       lastRegeneration.current = { nodeId, parentId, input, shown }
       const presentation = qc.getQueryData<Presentation>(qk.save(saveId))
       if (presentation && presentation.save.branch_count <= 1 && !sessionStorage.getItem('yanyi.branchHint')) {
@@ -135,12 +151,12 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         await api.saves.regenerate(saveId, nodeId, input)
         return true
       } catch (err) {
-        setPending(null)
-        toast.error(errorMessage(err))
+        if (useReader.getState().saveId === saveId) setPending(null)
+        reportError(err)
         return false
       }
     },
-    [saveId, qc, t],
+    [saveId, qc, t, connected, reportError],
   )
 
   const retry = useCallback(() => {
@@ -156,6 +172,7 @@ export function useTurnActions(saveId: string, commands: Command[]) {
   /** 不调用模型、直接改存档的操作：成功后刷新时间线（同一存档的其他标签页经 timeline.changed 刷新）。 */
   const direct = useCallback(
     async (op: () => Promise<unknown>) => {
+      if (!connected()) return false
       if (busy()) {
         toast(t('reader.busy'))
         return false
@@ -165,11 +182,11 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         refresh()
         return true
       } catch (err) {
-        toast.error(errorMessage(err))
+        reportError(err)
         return false
       }
     },
-    [refresh, t],
+    [refresh, t, connected, reportError],
   )
 
   const rewrite = useCallback((nodeId: string, text: string) => direct(() => api.saves.rewrite(saveId, nodeId, text)), [direct, saveId])

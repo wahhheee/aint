@@ -45,9 +45,10 @@ func (m *Manager) handoffCompaction(saveID string, slot *turnSlot) {
 
 // startCompactionLocked 在写者槽位上开始一个整理任务（调用方持有 s.mu，且槽位空闲或属于即将让出的回合）。
 func (m *Manager) startCompactionLocked(saveID string, s *session, reason compact.Reason) {
-	ctx, cancel := context.WithCancel(m.base)
+	ctx, cancel := context.WithTimeout(m.base, m.d.Budget.WallClock)
 	j := newJob(ids.New(), jobCompaction, cancel)
 	s.running = j
+	m.publish(saveID, event.CompactionStarted, event.CompactionStartedData{Reason: string(reason)})
 	release := sync.OnceFunc(func() { m.release(saveID, s, j) })
 	ctx = logx.With(ctx, "save_id", saveID, "compaction_id", j.id)
 	m.wg.Go(func() {
@@ -73,7 +74,6 @@ func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason co
 		m.publish(saveID, event.CompactionFailed, event.CompactionFailedData{Message: "整理上下文时出错（详见日志）"})
 		return
 	}
-	m.publish(saveID, event.CompactionStarted, event.CompactionStartedData{Reason: string(reason)})
 	node, stats, err := m.compactLine(ctx, sv, line, reason)
 	release()
 	if err != nil {

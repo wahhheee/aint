@@ -129,11 +129,11 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
       onError: (err) => toast.error(errorMessage(err)),
     })
 
-  // 打开存档（或存档信息刷新）时，用呈现信息初始化上下文用量与整理状态；回合中的用量由 turn.usage 更新
+  // 打开存档（或存档信息刷新）时初始化上下文用量；运行状态由事件流及其会话快照恢复。
   const initReader = useReader((s) => s.init)
   useEffect(() => {
-    initReader(presentation.context, presentation.compacting)
-  }, [initReader, presentation.context, presentation.compacting])
+    initReader(presentation.context)
+  }, [initReader, presentation.context])
 
   const markupCtx = useMarkupContext(ui.builtin_tags, ui.tags, ui.characters, ui.assets)
   const theme = workTheme ? ui.theme : undefined

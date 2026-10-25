@@ -2,12 +2,64 @@ import { describe, expect, it } from 'vitest'
 
 import type { AnyEvent } from '@/api/events'
 
-import { reduceEvent } from './reader'
+import { reduceEvent, selectBusy, useReader } from './reader'
 
 const empty = { draft: null, pending: null, pendingParent: null, failure: null, context: null, turnUsage: null, compacting: false }
 const ev = (e: Omit<AnyEvent, 'id'>, id = 1) => ({ ...e, id }) as AnyEvent
 
 describe('reduceEvent', () => {
+  it('中途进入恢复正文、工具与分支位置，后续增量只追加一次', () => {
+    let s = reduceEvent(
+      empty,
+      ev({
+        type: 'session.snapshot',
+        data: {
+          turn: {
+            turn_id: 't',
+            parent_id: 'older',
+            input: { kind: 'free', text: '推门' },
+            started: true,
+            items: [{ t: 'text', markup: '雾' }],
+            seq: 8,
+            tools_running: 1,
+          },
+          compacting: false,
+        },
+      }),
+    )
+    expect(s.draft?.parentId).toBe('older')
+    expect(s.draft?.toolsRunning).toBe(1)
+    s = reduceEvent(s, ev({ type: 'turn.text', data: { turn_id: 't', seq: 8, delta: '雾' } }))
+    s = reduceEvent(s, ev({ type: 'turn.text', data: { turn_id: 't', seq: 9, delta: '很浓' } }))
+    expect(s.draft?.items).toEqual([{ t: 'text', markup: '雾很浓' }])
+  })
+
+  it('空闲快照清除丢失终态事件的草稿、排队和助手状态', () => {
+    useReader.getState().reset('s')
+    useReader.getState().dispatch(ev({ type: 'turn.started', data: { turn_id: 't', parent_id: 'p', input: { kind: 'continue' } } }))
+    expect(selectBusy(useReader.getState())).toBe(true)
+    useReader.getState().dispatch(ev({ type: 'session.snapshot', data: { turn: null, compacting: false } }))
+    expect(selectBusy(useReader.getState())).toBe(false)
+    expect(useReader.getState().draft).toBeNull()
+    expect(useReader.getState().pendingTurnId).toBeUndefined()
+  })
+
+  it('恢复整理期间排队的输入并保留停止所需的回合 ID', () => {
+    const s = reduceEvent(
+      empty,
+      ev({
+        type: 'session.snapshot',
+        data: {
+          compacting: true,
+          turn: { turn_id: 'q', parent_id: '', input: { kind: 'free', text: '继续' }, started: false, items: [], seq: 0, tools_running: 0 },
+        },
+      }),
+    )
+    expect(s.pending?.text).toBe('继续')
+    expect(s.pendingTurnId).toBe('q')
+    expect(s.compacting).toBe(true)
+    expect(s.draft).toBeNull()
+  })
   it('把正文增量拼成同一个正文项，并忽略重复补发的事件', () => {
     let s = reduceEvent(empty, ev({ type: 'turn.started', data: { turn_id: 't1', parent_id: 'p', input: { kind: 'free', text: '推门' } } }))
     s = reduceEvent(s, ev({ type: 'turn.text', data: { turn_id: 't1', seq: 1, delta: '雾' } }))

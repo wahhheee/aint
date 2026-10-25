@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { useReader } from '@/stores/reader'
 
 import { useSaveSettings } from '@/features/save/useSaveSettings'
 
@@ -55,6 +56,7 @@ const PACES = ['short', 'medium', 'long'] as const
 export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({ busy, save, onSubmit, onStop, onHelp }, ref) {
   const { t } = useTranslation()
   const { saveId, ui, vision } = useReaderContext()
+  const connected = useReader((s) => s.connection === 'open')
   const attachments = useAttachments()
   const fileRef = useRef<HTMLInputElement>(null)
   const storageKey = `yanyi.draft.${saveId}`
@@ -108,7 +110,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
     taRef.current?.focus()
   }
 
-  const canSend = (!!text.trim() || attachments.hashes.length > 0) && !attachments.uploading
+  const canSend = connected && (!!text.trim() || attachments.hashes.length > 0) && !attachments.uploading
 
   const send = async () => {
     const value = text.trim()

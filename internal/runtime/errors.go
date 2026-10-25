@@ -1,13 +1,20 @@
 package runtime
 
 import (
+	"errors"
+
 	"github.com/wahhheee/yanyi/internal/llm"
 	"github.com/wahhheee/yanyi/internal/pkg/errs"
 )
 
+var errTurnTimeout = errors.New("本回合已达时长上限，可以继续或重试。")
+
 // describeError 把错误归类为面向玩家的提示（《04-交互与界面设计》8.9、16）：
 // 说明发生了什么、玩家能做什么，不暴露技术细节（细节在日志与节点 meta 中）。
 func describeError(err error) (code, message string, recoverable bool) {
+	if errors.Is(err, errTurnTimeout) {
+		return "budget", errTurnTimeout.Error(), true
+	}
 	if e, ok := errs.As(err); ok {
 		return string(e.Code), e.Message, e.Code != errs.CodeInvalidArgument
 	}

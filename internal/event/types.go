@@ -8,6 +8,9 @@ package event
 
 const (
 	// 存档主题（SaveTopic）
+	// SessionSnapshot 只发送给首次连接或无法续传的订阅者，载荷见 runtime.SessionSnapshot。
+	SessionSnapshot = "session.snapshot"
+	TurnPending     = "turn.pending" // TurnStartedData：输入已接受，正在准备或等待整理
 
 	TurnStarted   = "turn.started"   // TurnStartedData
 	TurnText      = "turn.text"      // TurnTextData：已去重的标记文本增量

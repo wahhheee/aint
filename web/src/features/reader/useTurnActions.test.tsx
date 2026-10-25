@@ -4,15 +4,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 
 import { api } from '@/api/endpoints'
+import { ApiError } from '@/api/errors'
 import type { Command } from '@/api/types'
 import { confirmAction } from '@/components/common/confirm'
 import { useReader } from '@/stores/reader'
 
 import { useTurnActions } from './useTurnActions'
 
-vi.mock('@/api/endpoints', () => ({ api: { saves: { submit: vi.fn(), regenerate: vi.fn() } } }))
+vi.mock('@/api/endpoints', () => ({ api: { saves: { submit: vi.fn(), regenerate: vi.fn(), cancel: vi.fn() } } }))
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }))
 vi.mock('@/components/common/confirm', () => ({ confirmAction: vi.fn() }))
 
 const follow: Command = {
@@ -28,8 +31,35 @@ const follow: Command = {
 beforeEach(() => {
   vi.resetAllMocks()
   useReader.getState().reset('save')
+  useReader.getState().setConnection('open')
   vi.mocked(api.saves.submit).mockResolvedValue({ turn_id: 'turn' })
   vi.mocked(confirmAction).mockResolvedValue(true)
+})
+
+describe('会话恢复', () => {
+  it('提交冲突显示原因并请求完整同步，不清空待发送内容', async () => {
+    const version = useReader.getState().resyncVersion
+    vi.mocked(api.saves.submit).mockRejectedValue(new ApiError('conflict', '上一回合还在进行中', 409, { turn_id: 'other' }))
+    expect(await actions().current.submitText('推门')).toBe(false)
+    expect(toast.error).toHaveBeenCalledWith('上一回合还在进行中')
+    expect(useReader.getState().resyncVersion).toBe(version + 1)
+    expect(useReader.getState().connection).toBe('reconnecting')
+  })
+
+  it('可停止从快照恢复的排队输入', async () => {
+    useReader
+      .getState()
+      .dispatch({ id: 1, type: 'turn.pending', data: { turn_id: 'queued', parent_id: '', input: { kind: 'free', text: '继续' } } })
+    await actions().current.stop()
+    expect(api.saves.cancel).toHaveBeenCalledWith('save', 'queued')
+  })
+
+  it('事件连接尚未同步时不提交新回合', async () => {
+    useReader.getState().setConnection('connecting')
+    expect(await actions().current.submitText('推门')).toBe(false)
+    expect(api.saves.submit).not.toHaveBeenCalled()
+    expect(toast).toHaveBeenCalled()
+  })
 })
 afterEach(cleanup)
 
