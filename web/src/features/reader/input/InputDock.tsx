@@ -261,6 +261,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
         </div>
         <div className="mt-1 flex min-w-0 items-center gap-0.5" role="group" aria-label={t('playSettings.toolbar')}>
           <ModelSettings save={save} />
+          <div className="flex-1" aria-hidden />
           <BudgetSettings save={save} />
           <DropdownMenu>
             <Tooltip>

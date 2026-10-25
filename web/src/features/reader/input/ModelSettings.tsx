@@ -30,7 +30,7 @@ export function ModelSettings({ save }: { save: Save }) {
         <Button
           variant="ghost"
           size="sm"
-          className="min-w-0 flex-1 justify-start gap-1 px-2 font-normal text-ink-muted"
+          className="min-w-0 shrink justify-start gap-1 px-2 font-normal text-ink-muted"
           aria-label={t('playSettings.model')}
           title={label}
         >
