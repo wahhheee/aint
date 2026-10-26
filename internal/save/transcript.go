@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/markup"
+	"github.com/wahhheee/aint/internal/markup"
 )
 
 // 原文（《02-技术方案》12.4）：每个回合一个虚拟文件 /transcript/NNNN，内容是

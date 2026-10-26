@@ -15,10 +15,10 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // PreviewDirectory 从服务所在电脑读取目录，确认前只暂存快照。

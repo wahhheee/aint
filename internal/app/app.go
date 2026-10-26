@@ -18,32 +18,32 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wahhheee/yanyi/examples"
-	"github.com/wahhheee/yanyi/internal/access"
-	"github.com/wahhheee/yanyi/internal/buildinfo"
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/media"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/logx"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/provider"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/server"
-	"github.com/wahhheee/yanyi/internal/settings"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/tools"
-	"github.com/wahhheee/yanyi/internal/usage"
-	"github.com/wahhheee/yanyi/internal/work"
-	"github.com/wahhheee/yanyi/web"
+	"github.com/wahhheee/aint/examples"
+	"github.com/wahhheee/aint/internal/access"
+	"github.com/wahhheee/aint/internal/buildinfo"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/media"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/logx"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/provider"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/server"
+	"github.com/wahhheee/aint/internal/settings"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/tools"
+	"github.com/wahhheee/aint/internal/usage"
+	"github.com/wahhheee/aint/internal/work"
+	"github.com/wahhheee/aint/web"
 )
 
-// Options 是 `yanyi serve` 的启动参数。
+// Options 是 `aint serve` 的启动参数。
 type Options struct {
-	DataDir   string // --data：数据目录（默认程序旁的 yanyi-data/）
+	DataDir   string // --data：数据目录（默认程序旁的 aint-data/）
 	Listen    string // --listen：监听地址（默认 127.0.0.1）
 	Port      int    // --port：端口（0 = 从 7860 起自动选择空闲端口）
 	NoBrowser bool   // --no-browser：不自动打开浏览器
@@ -80,7 +80,7 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	bi := buildinfo.Get()
-	slog.Info("演义启动中", "version", bi.Version, "commit", bi.Commit, "data", dirs.Root, "fake_llm", opts.FakeLLM != "")
+	slog.Info("AINT 启动中", "version", bi.Version, "commit", bi.Commit, "data", dirs.Root, "fake_llm", opts.FakeLLM != "")
 
 	db, err := store.Open(ctx, dirs.DB)
 	if err != nil {
@@ -137,7 +137,7 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	}()
 
-	slog.Info("演义已就绪", "url", url)
+	slog.Info("AINT 已就绪", "url", url)
 	if ip := net.ParseIP(hostOf(ln.Addr().String())); ip != nil && !ip.IsLoopback() && !svc.access.Enabled() {
 		slog.Warn("正在监听非本机地址且未设置访问密码：当前网络中的其他人可以访问你的存档与模型额度，建议设置访问密码")
 	}
@@ -241,7 +241,7 @@ func wire(ctx context.Context, db *store.DB, dirs Dirs, opts Options, info serve
 	return &services{server: srv, runtime: rt, tmpl: tm, closeDev: closeDev, access: accessSvc}, nil
 }
 
-// TemplateWorkerCommand 是模板渲染工作进程的隐藏子命令（cmd/yanyi 中登记）。
+// TemplateWorkerCommand 是模板渲染工作进程的隐藏子命令（cmd/aint 中登记）。
 const TemplateWorkerCommand = "__tmpl-worker"
 
 // isolatedTemplates 创建在隔离工作进程中渲染作者模板的渲染器（D-46）：工作进程是本程序自身。

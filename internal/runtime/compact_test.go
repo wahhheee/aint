@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/settings"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/settings"
 )
 
 // compactScript：每回合写一段较长的正文并给出选项；整理时先写一份章节纪要，再给出交接摘要。
@@ -43,7 +43,7 @@ func TestCompaction(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(compactScript()), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story",
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story",
 		Settings: save.Settings{Pace: "short", ContextBudget: 4000, KeepRecent: 300}})
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +185,7 @@ func TestCompactionSeparateAndPrefix(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = e.close() })
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story",
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story",
 		Settings: save.Settings{Pace: "short", ContextBudget: 4000, KeepRecent: 300}})
 	if err != nil {
 		t.Fatal(err)
@@ -293,7 +293,7 @@ func TestOverflowCompaction(t *testing.T) {
 	hit := 0
 	e := setupWith(t, overflowProvider{Provider: fake.New(compactScript()), limit: 12, hit: &hit})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short", KeepRecent: 300}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short", KeepRecent: 300}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +322,7 @@ func TestOverflowCompaction(t *testing.T) {
 func TestCompactionNotEveryTurn(t *testing.T) {
 	e := setup(t, compactScript())
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story",
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story",
 		Settings: save.Settings{Pace: "short", ContextBudget: 1000, KeepRecent: 100}})
 	if err != nil {
 		t.Fatal(err)

@@ -1,9 +1,11 @@
-# 演义（Yanyi）
+# AINT
+
+**AINT Is Not Tavern**，也读作 **Agentic Interactive Narrative Theatre**。
 
 以"作品"为单位、本地独立运行、模型供应商自由的 AI 互动小说运行时。
 
 - **作品**是一个普通文件夹：执笔指令、设定、状态、命令、界面、素材，纯文本 + 图片/音频，可以 git 管理、打包分发；
-- **玩家**下载一个可执行文件，配置自己的 API，导入作品即可游玩——无账号、无云端依赖，数据都在程序旁的 `yanyi-data/`；
+- **玩家**下载一个可执行文件，配置自己的 API，导入作品即可游玩——无账号、无云端依赖，数据都在程序旁的 `aint-data/`；
 - **运行时**以现代 Agent 技术栈驱动 AI 执笔：工具调用、按需读取资料、自主维护记忆、自动整理上下文、精细的缓存与 token 控制。
 
 > **当前状态：开发预览。** 可以用自己的模型（Anthropic Messages、OpenAI Responses、Gemini 三种协议，含中转站与兼容接口）
@@ -42,12 +44,12 @@ task dev
 | `task build` | 构建单文件可执行程序到 `bin/`（前端已嵌入） |
 | `task prompt -- <作品目录>` | 打印 AI 实际收到的完整提示词与工具定义（调试提示词组装） |
 | `task validate -- <作品目录>` | 校验作品，输出带行号的问题列表 |
-| `yanyi --help` | 可执行文件的全部子命令与参数 |
+| `aint --help` | 可执行文件的全部子命令与参数 |
 
 ## 目录
 
 ```
-cmd/yanyi/        命令行入口：serve | work validate|prompt | version
+cmd/aint/         命令行入口：serve | work validate|prompt | version
 internal/         后端（分层见 docs/architecture.md）
 web/              前端（React + Vite），构建产物嵌入二进制
 examples/works/   内置示例作品（同时是测试夹具）

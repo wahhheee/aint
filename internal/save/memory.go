@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/vfs"
 )
 
 // MemoryEntry 是记忆目录中的一项（阶段块 <memory_index>，《02-技术方案》12.6）。

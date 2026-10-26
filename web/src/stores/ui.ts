@@ -16,6 +16,6 @@ export const useUI = create<UIState>()(
       sidebarOpen: true,
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
     }),
-    { name: 'yanyi.ui' },
+    { name: 'aint.ui' },
   ),
 )

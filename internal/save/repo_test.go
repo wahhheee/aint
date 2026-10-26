@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 func TestProgressLineMissingHead(t *testing.T) {

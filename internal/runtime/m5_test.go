@@ -6,14 +6,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/settings"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/settings"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
 
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 func TestRetryInterruptedChoice(t *testing.T) {
@@ -23,7 +23,7 @@ func TestRetryInterruptedChoice(t *testing.T) {
 		{Text: "重试成功", ChunkRunes: 100, DelayMS: 1},
 	}})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Form: map[string]any{"player.name": "阿遥"}, Settings: save.Settings{NarratorModel: "fake", Pace: "short", Reasoning: "low"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Form: map[string]any{"player.name": "阿遥"}, Settings: save.Settings{NarratorModel: "fake", Pace: "short", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestSaveSettingsBusyAndBudget(t *testing.T) {
 	p := &purposeProvider{Provider: gatedProvider{Provider: fake.New(quickScript()), open: gate}}
 	e := setupWith(t, p)
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{NarratorModel: "fake", Pace: "short", Reasoning: "low"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{NarratorModel: "fake", Pace: "short", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestHelperPermissionsAndUsage(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = e.close() })
 			ctx := context.Background()
-			sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{NarratorModel: "fake", Pace: "short", Reasoning: "low", Helpers: true}})
+			sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{NarratorModel: "fake", Pace: "short", Reasoning: "low", Helpers: true}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -204,7 +204,7 @@ func TestTitleDefaultOffAndManual(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = e.close() })
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Form: map[string]any{"player.name": "阿遥"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Form: map[string]any{"player.name": "阿遥"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestAutomaticTitleDeduplicatesAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = e.close() })
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Form: map[string]any{"player.name": "阿遥"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Form: map[string]any{"player.name": "阿遥"}})
 	if err != nil {
 		t.Fatal(err)
 	}

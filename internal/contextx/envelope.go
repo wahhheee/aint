@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // Envelope 是一个回合的玩家消息（《02-技术方案》8.3）：

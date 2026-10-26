@@ -13,9 +13,9 @@ export function BrandMark({ className }: { className?: string }) {
 /** 侧栏与窄屏顶栏的品牌：标识 + 字标，点击回到书架。 */
 export function Brand() {
   return (
-    <Link to="/" className="group inline-flex items-center gap-3 rounded-md outline-offset-4" aria-label="演义 · 书架">
+    <Link to="/" className="group inline-flex items-center gap-3 rounded-md outline-offset-4" aria-label="AINT · 书架">
       <BrandMark />
-      <span className="font-serif text-[17px] font-semibold tracking-[0.28em] text-ink">演义</span>
+      <span className="font-serif text-[17px] font-semibold tracking-[0.28em] text-ink">AINT</span>
     </Link>
   )
 }

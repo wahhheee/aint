@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 func serveData(t *testing.T, data string, check func(r *http.Request, body []byte)) *Provider {

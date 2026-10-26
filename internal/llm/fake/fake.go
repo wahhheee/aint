@@ -2,7 +2,7 @@
 //
 // 用途（实施计划原则 2"假模型先行"）：
 //   - 运行器、存档树、整理、分支等逻辑的自动化测试；
-//   - 前端开发与端到端测试：yanyi --fake-llm demo（内置演示脚本）或 --fake-llm path/to/script.yaml；
+//   - 前端开发与端到端测试：aint --fake-llm demo（内置演示脚本）或 --fake-llm path/to/script.yaml；
 //   - 复现问题：把出问题的模型输出写成脚本，稳定重放。
 //
 // 脚本格式见 script.go；内置演示脚本见 demo.yaml。
@@ -18,9 +18,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // ModelName 是假模型在供应商侧的名字。

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func upgradeVersion(t *testing.T, e *env, version, stateDef string, opening bool) *work.ImportResult {

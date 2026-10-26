@@ -1,6 +1,6 @@
 package llm
 
-import "github.com/wahhheee/yanyi/internal/pkg/jsonx"
+import "github.com/wahhheee/aint/internal/pkg/jsonx"
 
 // Stream 是一次流式调用的结果。Next 在结束时返回 io.EOF；调用方必须 Close。
 type Stream interface {

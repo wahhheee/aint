@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // CollectStorage 以作品文件和全部历史节点为根，递归标记记忆文件、消息图片与附件。

@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/vfs"
 )
 
 // 玩家修改状态或记忆（《02-技术方案》6.2"改状态/记忆"）：在 head 下创建 edit 节点，写入新的状态快照或记忆清单，

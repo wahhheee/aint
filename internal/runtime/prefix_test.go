@@ -12,14 +12,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/anthropic"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/llm/gemini"
-	"github.com/wahhheee/yanyi/internal/llm/openai"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/anthropic"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/llm/gemini"
+	"github.com/wahhheee/aint/internal/llm/openai"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 func TestPrefixStableAcrossTurns(t *testing.T) {
@@ -42,7 +42,7 @@ func TestPrefixStableAcrossTurns(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "short", Reasoning: "low"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Settings: save.Settings{Pace: "short", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
 	}

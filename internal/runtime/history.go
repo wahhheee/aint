@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // epochContext 是请求开头的阶段块（L4）与其后的历史回合（L5，《02-技术方案》8.1）。

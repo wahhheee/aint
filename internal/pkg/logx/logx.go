@@ -10,7 +10,7 @@
 //
 // 输出：
 //   - 终端（stderr）：人类可读的文本格式；
-//   - 文件（<数据目录>/logs/yanyi-YYYY-MM-DD.log）：JSON 行格式，便于 grep / jq 分析。
+//   - 文件（<数据目录>/logs/aint-YYYY-MM-DD.log）：JSON 行格式，便于 grep / jq 分析。
 //
 // 默认不记录请求正文与模型输出；需要时用 --trace-llm 单独落盘（见 llm/trace.go）。
 package logx
@@ -44,7 +44,7 @@ func Setup(opts Options) (*slog.Logger, func() error, error) {
 		if keep <= 0 {
 			keep = 14
 		}
-		w, err := newDailyFile(opts.Dir, "yanyi", keep)
+		w, err := newDailyFile(opts.Dir, "aint", keep)
 		if err != nil {
 			return nil, nil, err
 		}

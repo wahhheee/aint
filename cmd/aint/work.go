@@ -10,21 +10,21 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/tools"
-	"github.com/wahhheee/yanyi/internal/vfs"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/tools"
+	"github.com/wahhheee/aint/internal/vfs"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func runWork(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("用法：yanyi work validate|prompt|init|pack <目录>")
+		return fmt.Errorf("用法：aint work validate|prompt|init|pack <目录>")
 	}
 	sub, args := args[0], args[1:]
 	switch sub {
@@ -78,13 +78,13 @@ func readWorkFiles(p string) (*work.FileSet, error) {
 	return work.FromZip(f, info.Size(), work.DefaultLimits)
 }
 
-// workValidate：yanyi work validate <目录或 zip 包> [--json]
+// workValidate：aint work validate <目录或 zip 包> [--json]
 func workValidate(args []string) error {
 	fs := flag.NewFlagSet("work validate", flag.ExitOnError)
 	asJSON := fs.Bool("json", false, "以 JSON 输出校验报告")
 	_ = fs.Parse(reorderFlags(args))
 	if fs.NArg() != 1 {
-		return fmt.Errorf("用法：yanyi work validate <目录或 zip 包> [--json]")
+		return fmt.Errorf("用法：aint work validate <目录或 zip 包> [--json]")
 	}
 	m, rep, err := loadWorkDir(fs.Arg(0))
 	if err != nil {
@@ -108,7 +108,7 @@ func workValidate(args []string) error {
 	return nil
 }
 
-// workPrompt：yanyi work prompt <目录> [--vision] [--helpers] [--json]
+// workPrompt：aint work prompt <目录> [--vision] [--helpers] [--json]
 // 打印主笔实际收到的系统提示词与工具定义，以及每个片段的启用情况（创作者与平台开发者的调试利器）。
 func workPrompt(args []string) error {
 	fs := flag.NewFlagSet("work prompt", flag.ExitOnError)
@@ -117,7 +117,7 @@ func workPrompt(args []string) error {
 	asJSON := fs.Bool("json", false, "以 JSON 输出完整请求（含工具 schema）")
 	_ = fs.Parse(reorderFlags(args))
 	if fs.NArg() != 1 {
-		return fmt.Errorf("用法：yanyi work prompt <目录> [--vision] [--helpers] [--json]")
+		return fmt.Errorf("用法：aint work prompt <目录> [--vision] [--helpers] [--json]")
 	}
 	m, rep, set, err := loadWorkFiles(fs.Arg(0))
 	if err != nil {
@@ -187,7 +187,7 @@ func workPrompt(args []string) error {
 	return nil
 }
 
-// reorderFlags 让标志可以写在位置参数之后（yanyi work validate ./dir --json）。
+// reorderFlags 让标志可以写在位置参数之后（aint work validate ./dir --json）。
 func reorderFlags(args []string, valueFlags ...string) []string {
 	var flags, rest []string
 	for i := 0; i < len(args); i++ {

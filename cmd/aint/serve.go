@@ -7,13 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/wahhheee/yanyi/internal/app"
+	"github.com/wahhheee/aint/internal/app"
 )
 
 func runServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	var o app.Options
-	fs.StringVar(&o.DataDir, "data", "", "数据目录（默认：程序所在目录下的 yanyi-data/）")
+	fs.StringVar(&o.DataDir, "data", "", "数据目录（默认：程序所在目录下的 aint-data/）")
 	fs.StringVar(&o.Listen, "listen", "", "监听地址（默认沿用设置，首次为 127.0.0.1）；0.0.0.0 允许局域网访问")
 	fs.IntVar(&o.Port, "port", 0, "端口（默认从 7860 起自动选择）")
 	fs.BoolVar(&o.NoBrowser, "no-browser", false, "启动后不自动打开浏览器")

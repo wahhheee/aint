@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
 )
 
 // 原始报文追踪（--trace-llm）：每次调用写两个文件

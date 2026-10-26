@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/text/encoding/simplifiedchinese"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 // zip 炸弹判定：解压后超过 bombMinSize、且压缩比超过 bombRatio 的条目视为异常。

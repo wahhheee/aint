@@ -3,9 +3,9 @@ package server
 import (
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
 )
 
 // 分支操作（《02-技术方案》6.2）与玩家对记忆、状态的修改。直接改存档的操作经 Runtime.Exclusive 执行：

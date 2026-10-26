@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func TestCreateValidateAndPack(t *testing.T) {

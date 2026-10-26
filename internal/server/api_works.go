@@ -6,8 +6,8 @@ import (
 	"mime"
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func (s *Server) listWorks(w http.ResponseWriter, r *http.Request) error {

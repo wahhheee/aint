@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 var paceRange = regexp.MustCompile(`^[1-9][0-9]{0,4}-[1-9][0-9]{0,4}$`)

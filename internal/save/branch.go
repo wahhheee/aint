@@ -9,11 +9,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // 分支操作（《02-技术方案》6.2）。这里的操作只改节点树与 head，不调用模型；需要调用模型的重新生成、

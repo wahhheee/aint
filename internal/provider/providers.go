@@ -7,12 +7,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/pkg/logx"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/logx"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // ProviderView 是前端看到的供应商（密钥只给掩码）。

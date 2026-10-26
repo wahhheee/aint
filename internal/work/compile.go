@@ -12,10 +12,10 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/wahhheee/yanyi/internal/media"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/aint/internal/media"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/vfs"
 )
 
 var (
@@ -30,7 +30,7 @@ var (
 // Compile 把文件集编译为 Model 并给出校验报告。
 //
 // 报告有 error 时仍尽量返回 Model（开发目录需要展示"哪里错了"），调用方据 Report.HasErrors 决定是否接受。
-// 编译是纯函数：不读写数据库与磁盘，便于测试与 `yanyi work validate`。
+// 编译是纯函数：不读写数据库与磁盘，便于测试与 `aint work validate`。
 func Compile(fs *FileSet) (*Model, *Report) {
 	c := &compiler{
 		fs: fs,
@@ -177,7 +177,7 @@ func (c *compiler) manifest() bool {
 		case err != nil:
 			c.r.Errorf(CodeEngine, file, 0, `写法如 ">=1.0 <2.0" 或 "^1.0"`, "engine 范围不合法：%v", err)
 		case !ok:
-			c.r.Errorf(CodeEngine, file, 0, "请升级演义，或调整 engine 范围",
+			c.r.Errorf(CodeEngine, file, 0, "请升级 AINT，或调整 engine 范围",
 				"作品需要的能力版本为 %s，当前程序为 %s", mf.Engine, EngineVersion)
 		}
 	}

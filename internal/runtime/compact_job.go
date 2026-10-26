@@ -6,14 +6,14 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/wahhheee/yanyi/internal/compact"
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/logx"
-	"github.com/wahhheee/yanyi/internal/vfs"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/compact"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/logx"
+	"github.com/wahhheee/aint/internal/vfs"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // 后台整理任务：回合提交后上下文达到阈值时（玩家阅读期间），以及玩家手动整理（按钮或 /compact）。

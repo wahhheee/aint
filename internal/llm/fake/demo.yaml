@@ -1,4 +1,4 @@
-# 内置演示脚本（yanyi --fake-llm demo）。
+# 内置演示脚本（aint --fake-llm demo）。
 # 内容配合内置示例《雾港来信》，覆盖：场景标记、台词、作品样式标签、场景分隔、状态更新（面板随之刷新）、掷骰、选项、场外回应。
 responses:
   - first_delay_ms: 700

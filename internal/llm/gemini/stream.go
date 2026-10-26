@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/wire"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/wire"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // stream 把 streamGenerateContent 的分块转为中立事件，并把分块中的部件合并为完整的模型消息（Native）。

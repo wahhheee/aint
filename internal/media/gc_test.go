@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 func TestCollectCacheProtectsExistingAndRecentImages(t *testing.T) {

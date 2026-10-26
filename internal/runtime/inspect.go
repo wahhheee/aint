@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/tools"
-	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/tools"
+	"github.com/wahhheee/aint/internal/vfs"
 )
 
 // 调试只在进程内保存：总计至多 100 次调用、64 MiB，单次至多 8 MiB。

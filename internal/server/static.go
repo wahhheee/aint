@@ -47,15 +47,14 @@ func (s *Server) staticHandler() http.Handler {
 }
 
 const placeholderPage = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><title>演义 · 前端未构建</title>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>AINT · 前端未构建</title>
 <style>
 body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f7f5f0;color:#1f1e1c;
 max-width:40em;margin:12vh auto;padding:0 1.5em;line-height:1.8}
 h1{font-family:"Noto Serif SC","Songti SC",serif;font-weight:600;letter-spacing:.1em}
 code{background:#efe8dc;padding:.15em .4em;border-radius:4px}
-.seal{display:inline-block;background:#b5452f;color:#fff;font-family:serif;padding:.1em .35em;border-radius:3px;margin-right:.4em}
 </style></head><body>
-<h1><span class="seal">演</span>演义</h1>
+<h1>AINT</h1>
 <p>后端已在运行，但这个可执行文件里没有内嵌前端页面。</p>
 <p><b>开发时</b>：运行 <code>task dev</code>（或 <code>pnpm -C web dev</code>），然后访问 <code>http://localhost:5173</code>。</p>
 <p><b>发布构建</b>：先 <code>task build:web</code> 再 <code>task build</code>，前端会被嵌入可执行文件。</p>

@@ -9,12 +9,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/provider"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/provider"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 func protocolText(protocol llm.Protocol, text string, truncated bool) string {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // Budget 是每回合的预算（《02-技术方案》9.5），存档可覆盖调用次数与单次输出上限。

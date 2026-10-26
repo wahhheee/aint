@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // Protocol 是支持的协议（决策 D-05：不支持 Chat Completions）。

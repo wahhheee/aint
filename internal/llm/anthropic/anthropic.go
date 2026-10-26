@@ -28,9 +28,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/wire"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/wire"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // DefaultBaseURL 是官方地址（可在供应商配置中改为兼容网关，如 https://api.deepseek.com/anthropic）。

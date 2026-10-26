@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // RemoteRequest 指定链接来源与下载预算；显式 ref 与 subdir 用于消除 GitHub tree 链接的歧义。
@@ -121,7 +121,7 @@ func (rs *remoteSource) get(ctx context.Context, rawURL, etag string) (*http.Res
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Yanyi")
+	req.Header.Set("User-Agent", "AINT")
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
 	}

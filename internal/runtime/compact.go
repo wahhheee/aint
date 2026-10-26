@@ -10,18 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/compact"
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/tools"
-	"github.com/wahhheee/yanyi/internal/usage"
-	"github.com/wahhheee/yanyi/internal/vfs"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/compact"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/tools"
+	"github.com/wahhheee/aint/internal/usage"
+	"github.com/wahhheee/aint/internal/vfs"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // 上下文整理的执行（《02-技术方案》第 13 节；参数与规则见 compact 包）。
@@ -329,7 +329,7 @@ func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Mo
 		Messages:  []llm.Message{{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(body.String())}}},
 		MaxOutput: maxOutput(model),
 		Reasoning: llm.ReasoningLow,
-		CacheKey:  "yanyi:compact:" + sv.ID,
+		CacheKey:  "aint:compact:" + sv.ID,
 		CacheTTL:  sv.Settings.CacheTTL,
 	}, nil
 }

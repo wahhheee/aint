@@ -10,14 +10,14 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/wahhheee/yanyi/internal/access"
-	"github.com/wahhheee/yanyi/internal/app"
-	"github.com/wahhheee/yanyi/internal/provider"
+	"github.com/wahhheee/aint/internal/access"
+	"github.com/wahhheee/aint/internal/app"
+	"github.com/wahhheee/aint/internal/provider"
 )
 
 func runPassword(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("用法：yanyi password set|clear [--data 目录] [--stdin]")
+		return fmt.Errorf("用法：aint password set|clear [--data 目录] [--stdin]")
 	}
 	sub := args[0]
 	if sub != "set" && sub != "clear" {
@@ -37,7 +37,7 @@ func runPassword(args []string) error {
 		return err
 	}
 	if app.RunningInstance(context.Background(), dirs) != "" {
-		return fmt.Errorf("请先停止此数据目录的演义服务，再修改访问密码")
+		return fmt.Errorf("请先停止此数据目录的 AINT 服务，再修改访问密码")
 	}
 	secrets, err := provider.OpenSecrets(dirs.Secrets)
 	if err != nil {

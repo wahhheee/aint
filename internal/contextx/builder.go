@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/pkg/lru"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/lru"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // Builder 构建模型请求。组装结果（L0、L1、L3）按稳定输入缓存。并发安全。
@@ -108,7 +108,7 @@ func (b *Builder) Build(ctx context.Context, in BuildInput) (*Built, error) {
 		Messages:  msgs,
 		MaxOutput: maxOut,
 		Reasoning: llm.ReasoningLevel(in.Settings.Reasoning),
-		CacheKey:  "yanyi:" + in.SaveID,
+		CacheKey:  "aint:" + in.SaveID,
 		CacheTTL:  in.Settings.CacheTTL,
 		Purpose:   "narrate",
 	}

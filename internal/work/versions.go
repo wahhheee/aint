@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 func (s *Service) Versions(ctx context.Context, workID string) ([]VersionInfo, error) {

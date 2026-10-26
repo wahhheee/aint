@@ -23,7 +23,7 @@ export const IMPORT_LIMITS = {
 
 /**
  * 始终忽略的文件与文件夹名（任意层级），与后端 internal/work/ignore.go 的 alwaysIgnored 一致。
- * 选择文件夹时直接不上传：.git、node_modules 里常有成千上万个文件。作品的 .yanyiignore 由后端处理。
+ * 选择文件夹时直接不上传：.git、node_modules 里常有成千上万个文件。作品的 .aintignore 由后端处理。
  */
 export const ALWAYS_IGNORED = ['.git', '.github', '.DS_Store', 'Thumbs.db', 'desktop.ini', 'node_modules', '__MACOSX']
 
@@ -93,7 +93,7 @@ export function inputSize(input: ImportInput): number {
 export function checkInput(input: ImportInput): InputProblem | null {
   const size = inputSize(input)
   if (input.kind === 'zip') return size > IMPORT_LIMITS.maxTotal + IMPORT_LIMITS.uploadSlack ? 'tooLarge' : null
-  // .yanyiignore 由后端处理，这里只能按上传的总量算；条目数与后端一样留出十倍余量
+  // .aintignore 由后端处理，这里只能按上传的总量算；条目数与后端一样留出十倍余量
   if (size > IMPORT_LIMITS.maxTotal) return 'tooLarge'
   if (input.entries.length > IMPORT_LIMITS.maxFiles * 10) return 'tooManyFiles'
   return null

@@ -3,7 +3,7 @@ package tools
 import (
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // decodeArgs 解码工具参数。

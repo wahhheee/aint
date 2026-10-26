@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 type memorySecrets struct {

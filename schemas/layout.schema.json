@@ -1,8 +1,8 @@
 {
-  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/layout.schema.json",
+  "$id": "https://raw.githubusercontent.com/wahhheee/aint/main/schemas/layout.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
-  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "description": "编辑器补全与结构校验；完整校验请运行 aint work validate。未知字段由运行时报告警告。",
   "properties": {
     "command_bar": {
       "items": {
@@ -55,6 +55,6 @@
       "type": "array"
     }
   },
-  "title": "演义作品：layout",
+  "title": "AINT 作品：layout",
   "type": "object"
 }

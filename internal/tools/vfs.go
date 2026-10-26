@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/vfs"
 )
 
 // read / list 的结果格式（《02-技术方案》10.2）：首行"# read 路径（第 a–b 行，共 n 行）"，随后是内容；

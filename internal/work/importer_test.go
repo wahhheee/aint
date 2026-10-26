@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // newTestImporter 创建使用临时数据库的作品服务与导入器。
@@ -18,7 +18,7 @@ func newTestImporter(t *testing.T) (*Service, *Importer) {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := store.Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

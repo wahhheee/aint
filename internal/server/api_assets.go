@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/media"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/media"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 // asset 提供作品素材：GET /api/v1/assets/{hash}?w=（《02-技术方案》18.2）。

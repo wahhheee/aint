@@ -25,7 +25,7 @@ task dev
 - 访问 <http://localhost:5173>（Vite，热更新）；后端在 7860 端口，`/api` 由 Vite 代理过去。
 - 后端默认使用**假模型**（`--fake-llm demo`），不需要 API Key；数据在 `.devdata/`，删掉即可从头开始。
 - 改了 Go 代码需要重启后端（`task dev:server`）；VS Code 用户可以直接用 `.vscode/launch.json` 里的配置断点调试。
-- 只想看构建后的效果：`task build`，然后运行 `bin/yanyi --data .devdata --fake-llm demo`。
+- 只想看构建后的效果：`task build`，然后运行 `bin/aint --data .devdata --fake-llm demo`。
 
 ### 2.1 使用真实模型
 
@@ -47,12 +47,12 @@ task dev:server:real
 
 ### 3.1 日志
 
-- 终端是人类可读的文本；`<数据目录>/logs/yanyi-YYYY-MM-DD.log` 是 JSON 行，便于 `grep` / `jq`。
+- 终端是人类可读的文本；`<数据目录>/logs/aint-YYYY-MM-DD.log` 是 JSON 行，便于 `grep` / `jq`。
 - `--log-level debug` 打开调试日志（`task dev` 默认开启）。
 - **关联 ID**：每个请求有 `request_id`（响应头 `X-Request-ID`、错误响应体里都有），每个回合的日志都带 `save_id` 与 `turn_id`：
 
   ```bash
-  grep 01a159a8-cfad-770a .devdata/logs/yanyi-*.log
+  grep 01a159a8-cfad-770a .devdata/logs/aint-*.log
   ```
 
 - 新代码写日志请用 `slog.InfoContext(ctx, …)`，并在入口处用 `logx.With(ctx, "key", value)` 放入关联字段。
@@ -84,7 +84,7 @@ VFS 快照固定在调用前和工具执行后，记忆内容不会随之后的�
 把出问题的模型输出写成脚本（格式见 `internal/llm/fake/script.go`），稳定重放：
 
 ```bash
-go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
+go run ./cmd/aint serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 ```
 
 脚本可以模拟：任意正文与叙事标记、工具调用、截断（`stop: max_tokens`）、错误（`error: rate_limited`）、首字延迟；
@@ -94,7 +94,7 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 ### 3.4 上下文整理与分支
 
 - **很快触发整理**：新建存档时把预算调低（存档设置覆盖全局设置），例如
-  `POST /api/v1/saves {"work_id": "yanyi.misty-harbor", "settings": {"context_budget": 9000, "keep_recent": 2000}}`，
+  `POST /api/v1/saves {"work_id": "aint.misty-harbor", "settings": {"context_budget": 9000, "keep_recent": 2000}}`，
   假模型下十来个回合就会整理；也可以点用量环里的"立即整理"或输入 `/compact`。全局默认值在设置 → 上下文。
 - **整理做了什么**：日志 `上下文整理完成`（原因、方式、摘要掉的回合区间、保留起点、落盘写了几个文件、整理前后的上下文规模、调用次数）；
   整理节点的 `epoch_block` 是新阶段块（blob，文本），`messages` 是整理过程的全部消息（不进入之后的上下文）；`--trace-llm` 中用途为 `compact` 的调用。
@@ -112,12 +112,12 @@ go run ./cmd/yanyi serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 
 ### 3.6 数据
 
-- `yanyi.db` 是普通 SQLite（WAL），可以用任意 SQLite 工具只读打开查看；表结构见 `internal/store/migrations/`。
+- `aint.db` 是普通 SQLite（WAL），可以用任意 SQLite 工具只读打开查看；表结构见 `internal/store/migrations/`。
 - 大于 64 KiB 的 blob 在 `blobs/ab/cd/<sha256>`，小的内联在 `blobs` 表。
 - 结构迁移前会自动备份到 `backup/`；用旧程序打开新数据会拒绝启动（防止破坏数据）。
 - `instance.json` 用于单实例检测；进程异常退出后残留的文件会在下次启动时被识别并覆盖。
 - 导入作品是两段式的：解析后的文件暂存在 `tmp/imports/<任务 ID>/`（按内容哈希命名），确认、放弃或 30 分钟后删除，启动时整个清空。
-  想知道一个 zip 包为什么导入失败，用 `yanyi work validate <zip 包>`：与导入走同一条流水线（作品根定位、忽略规则、安全限制、校验）。
+  想知道一个 zip 包为什么导入失败，用 `aint work validate <zip 包>`：与导入走同一条流水线（作品根定位、忽略规则、安全限制、校验）。
 
 ### 3.7 常见问题
 
@@ -147,12 +147,12 @@ task test
   测试使用 `t.TempDir()` 中的独立数据库。
 - 前端：Vitest（叙事标记与共享向量 `testdata/markup/`、事件 reducer、命令解析、导入、供应商设置）。
 - 真实模型冒烟测试（会产生费用，默认跳过）：在 `.local/secrets/live.json`（不入库）写好供应商，
-  `YANYI_LIVE=<live.json 的绝对路径> go test ./internal/provider -run TestLive -v`；`YANYI_LIVE_ONLY=名称` 只跑某一个，
-  `YANYI_LIVE_TRACE=<目录>` 同时录制原始报文。
+  `AINT_LIVE=<live.json 的绝对路径> go test ./internal/provider -run TestLive -v`；`AINT_LIVE_ONLY=名称` 只跑某一个，
+  `AINT_LIVE_TRACE=<目录>` 同时录制原始报文。
 - 测试作品评测（会产生费用，默认跳过）：按 `testdata/eval/<作品>.yaml` 的行动序列用真实模型游玩一遍，检查每回合提交、工具调用、
   交还选项、状态维护与面板渲染，并以场外提问检查事实召回（答案写进报告，人工核对）：
-  `YANYI_EVAL=<live.json 的绝对路径> YANYI_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
-  报告在 `.local/eval/<时间>/story.md`（`YANYI_EVAL_OUT` 可指定），`YANYI_EVAL_TRACE=<目录>` 录制原始报文。
+  `AINT_EVAL=<live.json 的绝对路径> AINT_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
+  报告在 `.local/eval/<时间>/story.md`（`AINT_EVAL_OUT` 可指定），`AINT_EVAL_TRACE=<目录>` 录制原始报文。
 - Playwright 端到端：在 `web/` 首次执行 `pnpm exec playwright install chromium`，之后在仓库根执行 `task test:e2e`。测试使用独立临时目录、7879 / 5179 端口与假模型，不读取真实密钥；失败追踪位于 `web/test-results/`，CI 会上传。
 - 尚缺：测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
 
@@ -161,7 +161,7 @@ task test
 日常回归使用离线夹具：`go test ./internal/llm/... ./internal/provider ./internal/runtime`。
 真实录制与手工边界场景的来源见 [回放说明](../internal/provider/testdata/README.md)。
 
-精简真实评测仅在设置 `YANYI_M4_LIVE=<配置绝对路径>` 后运行：
+精简真实评测仅在设置 `AINT_M4_LIVE=<配置绝对路径>` 后运行：
 
 ```bash
 go test ./internal/runtime -run TestM4Live -count=1 -v -timeout 15m
@@ -169,7 +169,7 @@ go test ./internal/runtime -run TestM4Live -count=1 -v -timeout 15m
 
 配置与 `live.json` 格式相同，但恰好包含三个供应商，每协议一个。按配置顺序循环切换到下一协议，在 T1、T3 各运行两回合：
 有选项就作答，无选项则继续。每回合最多四次调用、每次最多 2048 输出 token，正文目标 100–180 字，不自动重试；一个场景失败即停止。
-`YANYI_M4_ONLY=anthropic|openai-responses|gemini` 选择起始协议；`YANYI_M4_OUT` 指定报告目录，默认 `.local/eval/m4/`。
+`AINT_M4_ONLY=anthropic|openai-responses|gemini` 选择起始协议；`AINT_M4_OUT` 指定报告目录，默认 `.local/eval/m4/`。
 输出包括正文、工具执行、协议报文与逐次 `usage.json`，可将原始 API usage 与入库统计逐项对照。
 
 供应商出错时先用 curl 或 Python 对同一地址发送最小请求，判断是否为鉴权、余额或上游故障。
@@ -216,9 +216,9 @@ task check
 ## 7. 分发与创作者工具调试
 
 ```bash
-go run ./cmd/yanyi work init /path/to/new-story
-go run ./cmd/yanyi work validate /path/to/new-story --json
-go run ./cmd/yanyi work pack /path/to/new-story -o /path/to/story.zip
+go run ./cmd/aint work init /path/to/new-story
+go run ./cmd/aint work validate /path/to/new-story --json
+go run ./cmd/aint work pack /path/to/new-story -o /path/to/story.zip
 go run ./cmd/schema-gen
 ```
 
@@ -226,6 +226,6 @@ go run ./cmd/schema-gen
 
 GitHub 导入只支持公开仓库，带斜杠的 ref 可自动消歧（最多五次尝试）；深层路径在高级选项明确填写 ref 和子目录。下载失败先用 curl 验证 API 与 codeload 的状态及 DNS；不要把令牌输出到日志或放进 URL。测试可使用临时公开仓库里的合成作品。默认下载预算为 120 秒 / 528 MiB，解压仍受原有 512 MiB / 5,000 文件限制。
 
-密码排查只查看 `/api/v1/auth/status`，不打印 secrets.json。服务停止后可运行 `yanyi password set|clear --data <目录>`；设置通过隐藏输入读取，`--stdin` 只供自动化。密码错误 401，登录过频 429，跨站请求 403。密码修改会撤销全部会话；开放局域网而未设密码时显示警告。
+密码排查只查看 `/api/v1/auth/status`，不打印 secrets.json。服务停止后可运行 `aint password set|clear --data <目录>`；设置通过隐藏输入读取，`--stdin` 只供自动化。密码错误 401，登录过频 429，跨站请求 403。密码修改会撤销全部会话；开放局域网而未设密码时显示警告。
 
 分发回归集中在 `work/remote_test.go`、`work/dev_test.go`、`work/schemas_test.go`、`save/gc_test.go`、`runtime/upgrade_test.go`、`server/api_access_test.go` 与 `web/e2e/distribution.spec.ts`；均不调用付费模型。

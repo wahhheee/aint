@@ -62,7 +62,7 @@ function upload<T>(path: string, body: FormData, { onProgress, signal }: UploadO
 }
 
 function networkError(cause: unknown): ApiError {
-  return new ApiError('network', '无法连接到演义服务，请确认程序仍在运行。', 0, String(cause))
+  return new ApiError('network', '无法连接到 AINT 服务，请确认程序仍在运行。', 0, String(cause))
 }
 
 /** 解析响应：成功时返回数据，失败时抛出 ApiError（fetch 与 XMLHttpRequest 共用）。 */
@@ -71,7 +71,7 @@ function parseResponse<T>(method: Method, path: string, status: number, text: st
   const data: unknown = text ? safeParse(text) : undefined
 
   if (status < 200 || status >= 300) {
-    if (status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event('yanyi:unauthorized'))
+    if (status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event('aint:unauthorized'))
     const e = (data as { error?: { code?: ErrorCode; message?: string; details?: unknown; request_id?: string } })?.error
     const err = new ApiError(
       e?.code ?? 'internal',

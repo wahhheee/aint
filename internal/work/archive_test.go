@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/text/encoding/simplifiedchinese"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 const minimalManifest = "format: 1\nid: test.import\nversion: 0.1.0\ntitle: 导入测试\n"
@@ -70,7 +70,7 @@ func TestZipRootAndIgnore(t *testing.T) {
 		zf{name: "misty/lore/a.md", data: "甲"},
 		zf{name: "misty/drafts/old.md", data: "草稿"},
 		zf{name: "misty/art/cover.psd", data: "psd"},
-		zf{name: "misty/.yanyiignore", data: "drafts/\n*.psd\n"},
+		zf{name: "misty/.aintignore", data: "drafts/\n*.psd\n"},
 		zf{name: "misty/.git/config", data: "[core]"},
 		zf{name: "misty/.DS_Store", data: "x"},
 		zf{name: "misty/node_modules/.bin/tool", data: "../tool/cli.js", mode: fs.ModeSymlink | 0o777}, // 被忽略的符号链接无妨
@@ -81,7 +81,7 @@ func TestZipRootAndIgnore(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := strings.Join(set.Paths(), ",")
-	if want := ".yanyiignore,lore/a.md,work.yaml"; got != want {
+	if want := ".aintignore,lore/a.md,work.yaml"; got != want {
 		t.Fatalf("文件集应为 %s，得到 %s", want, got)
 	}
 }
@@ -262,13 +262,13 @@ func TestFolderUpload(t *testing.T) {
 	add(u, "misty/work.yaml", minimalManifest[:60])
 	add(u, "misty/lore/a.md", "甲")
 	add(u, "misty/.git/objects/ab", strings.Repeat("x", 1000)) // 始终忽略：不读取、不计数
-	add(u, "misty/raw/master.wav", strings.Repeat("x", 1000))  // 超过单文件上限，但被 .yanyiignore 忽略
-	add(u, "misty/.yanyiignore", "raw/\n")
+	add(u, "misty/raw/master.wav", strings.Repeat("x", 1000))  // 超过单文件上限，但被 .aintignore 忽略
+	add(u, "misty/.aintignore", "raw/\n")
 	set, err := u.FileSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(set.Paths(), ","); got != ".yanyiignore,lore/a.md,work.yaml" {
+	if got := strings.Join(set.Paths(), ","); got != ".aintignore,lore/a.md,work.yaml" {
 		t.Fatalf("文件集不对：%s", got)
 	}
 	if u.Folder() != "misty" {

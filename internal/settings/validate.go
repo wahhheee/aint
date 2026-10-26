@@ -5,7 +5,7 @@ import (
 	"net"
 	"slices"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 // Validate 检查完整设置；拒绝非法值，避免界面或模型请求落入无法操作的状态。

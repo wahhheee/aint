@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/tmpl"
+	"github.com/wahhheee/aint/internal/tmpl"
 )
 
 // reTemplateRef 找出模板中以字面量写出的 {% render 'x' %} / {% include 'x' %}（检查引用是否存在）。

@@ -9,17 +9,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 func newService(t *testing.T) (*Service, string) {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := store.Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

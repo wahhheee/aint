@@ -10,7 +10,7 @@ import type { ReadingSettings, ThemePreference } from '@/api/types'
 
 export type ResolvedTheme = 'light' | 'dark'
 
-const STORAGE_KEY = 'yanyi.theme'
+const STORAGE_KEY = 'aint.theme'
 const media = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : undefined
 
 function resolve(pref: ThemePreference): ResolvedTheme {

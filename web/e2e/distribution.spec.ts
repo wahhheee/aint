@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 function fixture(id: string) {
-  const dir = mkdtempSync(join(tmpdir(), 'yanyi-work-'))
+  const dir = mkdtempSync(join(tmpdir(), 'aint-work-'))
   mkdirSync(join(dir, 'prompts'))
   writeFileSync(join(dir, 'work.yaml'), `format: 1\nid: ${id}\nversion: 1.0.0\ntitle: 创作测试\n`)
   writeFileSync(join(dir, 'prompts/narrator.md'), '与玩家共同讲述一个故事。')
@@ -94,10 +94,10 @@ test('设置密码、登录与撤销其他设备', async ({ page, request, brows
       .filter({ has: page.getByLabel('再次输入新密码') })
       .getByRole('button', { name: '保存', exact: true })
       .click()
-    await expect(page.getByRole('heading', { name: '进入演义' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '进入 AINT' })).toBeVisible()
     const device = await other.newPage()
     await device.goto(page.url())
-    await expect(device.getByRole('heading', { name: '进入演义' })).toBeVisible()
+    await expect(device.getByRole('heading', { name: '进入 AINT' })).toBeVisible()
     await page.screenshot({ path: info.outputPath('login.png'), fullPage: true })
     await page.getByLabel('访问密码', { exact: true }).fill(password)
     await page.getByRole('button', { name: '登录', exact: true }).click()
@@ -107,8 +107,8 @@ test('设置密码、登录与撤销其他设备', async ({ page, request, brows
     await expect(device.getByRole('button', { name: '退出所有设备' })).toBeVisible()
     await page.getByRole('button', { name: '退出所有设备' }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: '确定', exact: true }).click()
-    await expect(page.getByRole('heading', { name: '进入演义' })).toBeVisible()
-    await expect(device.getByRole('heading', { name: '进入演义' })).toBeVisible({ timeout: 20000 })
+    await expect(page.getByRole('heading', { name: '进入 AINT' })).toBeVisible()
+    await expect(device.getByRole('heading', { name: '进入 AINT' })).toBeVisible({ timeout: 20000 })
   } finally {
     await request.post('/api/v1/auth/login', { data: { password } })
     const cleared = await request.put('/api/v1/auth/password', { data: { current_password: password, password: '' } })

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // 隔离工作进程（D-46）。
@@ -46,7 +46,7 @@ type workerResponse struct {
 }
 
 // ServeWorker 是工作进程的主循环：从 r 逐行读请求，渲染后把结果写到 w，直到 r 结束。
-// 由隐藏子命令 yanyi __tmpl-worker 调用（cmd/yanyi）。
+// 由隐藏子命令 aint __tmpl-worker 调用（cmd/aint）。
 func ServeWorker(r io.Reader, w io.Writer) error {
 	rd := newRenderer()
 	in := bufio.NewReaderSize(r, 64<<10)

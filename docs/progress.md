@@ -68,7 +68,7 @@ git grep -nE "M3-1([^0-9]|$)"
   时间线与分支抽屉（切换、删除分支、复制为新存档）；记忆抽屉（查看、编辑、新建、删除，修改在下一回合告知执笔者）；状态抽屉（开发者工具）
 - **设置**：阅读与外观（实时预览）、上下文（预算、保留原文、整理方式）、存储位置、开发者选项、关于；**模型**：添加供应商向导（协议 → 地址与密钥 → 勾选或手动添加模型 →
   连接测试）、价格倍率、模型设置（窗口、能力、推理映射、缓存方式、价格）、设为主笔、设为轻量模型
-- **创作者工具**：链接本机开发目录、递归监听与去抖校验，成功后原地更新开发版本并推送页面；10 个 JSON Schema 与编辑器配置说明。命令行：`yanyi serve`、`work init`、`work validate [--json]`、`work pack`（确定性 zip）、`work prompt`、`password`、`version`
+- **创作者工具**：链接本机开发目录、递归监听与去抖校验，成功后原地更新开发版本并推送页面；10 个 JSON Schema 与编辑器配置说明。命令行：`aint serve`、`work init`、`work validate [--json]`、`work pack`（确定性 zip）、`work prompt`、`password`、`version`
 - **升级与存储**：存档选择目标版本后先整理再迁移，旧分支保留；新字段取默认值，不兼容旧值可在迁移记录中查看。删除受存档与历史分支保护，设置页可清理无引用存储；删除内置示例后不自动恢复
 - **访问与分发**：访问密码、登录与节流、退出全部设备、监听地址与局域网无密码警告；六平台发布包含可执行文件、使用说明、Schema 与示例 zip
 - **游玩参数与演出**：游玩中切换模型 / 推理与预算、左侧回合目录、触屏长按菜单、插图大图、音频 / 停顿 / 限时选项；默认关闭的后台助手与标题生成。
@@ -128,10 +128,10 @@ git grep -nE "M3-1([^0-9]|$)"
 | M1-1 | 仓库骨架：Go 模块、Vite 工程、embed、Taskfile、CI | ✅ 完成 | Taskfile、CI、lint 配置、VS Code 配置、预览服务配置 | — |
 | M1-2 | `app` / `server`：数据目录、单实例、Host/Origin 校验、静态资源、错误格式 | ✅ 完成 | `internal/app`、`internal/server` | — |
 | M1-3 | `store`：迁移框架、表结构、blob（内联 / 文件）、事务 | ✅ 完成 | `internal/store`（读写分池、迁移前备份） | 引用标记 GC 已接入 M6-5 |
-| M1-4 | `work`：解析、目录与 zip 导入、树哈希、基础校验 | ✅ 完成 | zip 与文件夹两种来源同一流水线；安全解压与限制（总量 512 MiB、5,000 文件、单文件 64 MiB、深度 16、zip slip / 符号链接 / zip 炸弹）、NFC 规范化冲突、作品根定位、忽略规则与 `.yanyiignore`、LFS 指针（E-LFS）、两段式导入（暂存 30 分钟，最多 8 个）、同哈希复用；无 UTF-8 标记的 zip 文件名按 GB18030 解码 | 浏览器选文件夹时被 `.yanyiignore` 忽略的文件仍会上传 |
+| M1-4 | `work`：解析、目录与 zip 导入、树哈希、基础校验 | ✅ 完成 | zip 与文件夹两种来源同一流水线；安全解压与限制（总量 512 MiB、5,000 文件、单文件 64 MiB、深度 16、zip slip / 符号链接 / zip 炸弹）、NFC 规范化冲突、作品根定位、忽略规则与 `.aintignore`、LFS 指针（E-LFS）、两段式导入（暂存 30 分钟，最多 8 个）、同哈希复用；无 UTF-8 标记的 zip 文件名按 GB18030 解码 | 浏览器选文件夹时被 `.aintignore` 忽略的文件仍会上传 |
 | M1-5 | `save`：root / turn 节点、状态快照、记忆清单、head、时间线 | ✅ 完成 | 建档（含静态开场）、单事务提交、进度线、时间线分页；记忆清单随回合提交（M3-2）；存档带分支数（M3-5） | — |
 | M1-6 | `llm`：中立类型、Provider 接口、假模型、一个真实适配器 | ✅ 完成 | 三个真实适配器（D-44）；能力矩阵加推理映射 `ReasoningMap`；缓存方式 breakpoints / implicit / none；缓存保留时长 short / long | — |
-| M1-7 | `contextx`：片段注册与按需组装、L0–L5 分层、玩家消息封装 | ✅ 完成 | 能力画像、片段启用原因、`yanyi work prompt`；系统提示词包含原生调用规则与从实际工具定义生成的逐项自然语言用法；独立整理按其可用工具生成说明；前缀组装缓存为 64 条的 LRU，键包含工具定义；CacheMark 只标稳定层边界（滚动断点由适配器放置） | — |
+| M1-7 | `contextx`：片段注册与按需组装、L0–L5 分层、玩家消息封装 | ✅ 完成 | 能力画像、片段启用原因、`aint work prompt`；系统提示词包含原生调用规则与从实际工具定义生成的逐项自然语言用法；独立整理按其可用工具生成说明；前缀组装缓存为 64 条的 LRU，键包含工具定义；CacheMark 只标稳定层边界（滚动断点由适配器放置） | — |
 | M1-8 | `runtime`：会话、回合循环（文本 + `offer_choices` + `read`）、预算、取消、提交、事件 | ✅ 完成 | 单一写者会话（只在回合运行时存在）、流式循环、read / list、截断续写、预算、停止保留内容、单事务提交、SSE 事件；回合与后台整理有可取消的墙钟时限，回合超时保留正文并释放写者；失败提示按原始错误分类；作品可通过 `features.force_choices` 开启正文自然结束后的选项补调用，每回合最多追加一次提示，沿用预算与取消机制 | — |
 | M1-9 | SSE 端点与续传；REST：作品、存档、回合、时间线 | ✅ 完成 | Last-Event-ID 续传与 resync、全局事件流；首次连接与无法续传时原子恢复完整会话快照，排队输入具有可停止的回合 ID | — |
 | M1-10 | 前端最小阅读页：书架、导入、开局、流式、选项、自由输入、停止 | ✅ 完成 | 主路径全部可用；重新进入或换设备恢复生成正文与停止入口，空闲快照清除遗留草稿，409 提示并重新同步；导入对话框（选 zip / 文件夹、拖放、上传进度、校验报告、确认后查看作品） | — |
@@ -233,7 +233,7 @@ git grep -nE "M3-1([^0-9]|$)"
 
 **测试分布**：Go 测试在 `compact` `contextx` `event` `llm/*` `markup` `media` `panel` `pkg/lru` `provider` `runtime` `server` `state` `store` `tmpl` `tools` `usage` `vfs` `work`；
 前端测试在 `reader/useTypewriter`、`reader/stream/ChoiceList`、`reader/stage/StageAudio`、`markup`、`lib`（格式化）、`stores/reader`、`reader/commands`、`reader/panels`（面板净化）、`features/library`（导入）、`features/settings/providers`。
-真实模型冒烟测试：`YANYI_LIVE=<live.json> go test ./internal/provider -run TestLive -v`；测试作品评测：`YANYI_EVAL=<live.json> YANYI_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v`
+真实模型冒烟测试：`AINT_LIVE=<live.json> go test ./internal/provider -run TestLive -v`；测试作品评测：`AINT_EVAL=<live.json> AINT_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v`
 （都会产生费用，默认跳过，见 development.md 第 4 节）。
 存档提交与分支的集成测试集中在 `runtime`；`save` 另覆盖进度不存在的边界；`settings` 覆盖取值校验。浏览器端到端位于 `web/e2e/`。
 
@@ -257,6 +257,10 @@ git grep -nE "M3-1([^0-9]|$)"
 ## 8. 进度日志
 
 新的在上。每条写日期、变更事项、对应提交；写法见 [AGENTS.md](../AGENTS.md#注释与文档写法)。
+
+### 2026-10-26
+
+- 项目定名 AINT（AINT Is Not Tavern / Agentic Interactive Narrative Theatre）：可执行文件与命令 `aint`、Go 模块 `github.com/wahhheee/aint`、数据目录 `aint-data/` 与数据库 `aint.db`、环境变量前缀 `AINT_`、作品忽略文件 `.aintignore`、内置示例 ID `aint.first-story` / `aint.misty-harbor`，界面与文档统一使用 AINT。提示词文本未变，版本仍为 2026.10.25-3。`task check`（Go 26 个包、前端 432 项）与 18 项浏览器回归通过（本提交：`refactor: 项目定名 AINT`）。
 
 ### 2026-10-25
 

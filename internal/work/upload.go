@@ -5,14 +5,14 @@ import (
 	"io"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 // FolderUpload 收集浏览器上传的文件夹（<input webkitdirectory> 或拖入的文件夹：多个文件，各带相对路径）。
 //
 // HTTP 层按顺序对每个文件调用 Add，内容暂存在内存中，总量受 Limits 约束；全部收到后由 FileSet
 // 走与目录、zip 相同的流程（collect）。始终忽略的路径（.git/ 等）不读取；超过单文件上限的文件只记大小、
-// 不保留内容——它若被 .yanyiignore 忽略则无妨，否则在 collect 中报"文件过大"。
+// 不保留内容——它若被 .aintignore 忽略则无妨，否则在 collect 中报"文件过大"。
 type FolderUpload struct {
 	lim   Limits
 	files []srcFile

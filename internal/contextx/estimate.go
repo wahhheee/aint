@@ -7,12 +7,12 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // token 估算（《02-技术方案》8.5）：CJK 字符 × 1.0 + 其他字符 × 0.3；图片按 Anthropic 的公式（宽 × 高 ÷ 750，

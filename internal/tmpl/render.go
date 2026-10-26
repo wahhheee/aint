@@ -13,7 +13,7 @@ import (
 
 	"github.com/osteele/liquid"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // renderer 是渲染核心：进程内实现（New）与工作进程（ServeWorker）共用这一份代码——

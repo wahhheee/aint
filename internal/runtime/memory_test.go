@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // play 提交一个输入并等待回合提交，返回提交后的节点 ID。
@@ -38,7 +38,7 @@ func TestMemoryWrites(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestTranscriptAndSearch(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}

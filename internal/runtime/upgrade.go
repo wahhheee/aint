@@ -3,13 +3,13 @@ package runtime
 import (
 	"context"
 
-	"github.com/wahhheee/yanyi/internal/compact"
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/compact"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // Upgrade 在单一写者槽位中用旧作品整理，再原子提交新版本、迁移后的状态与阶段块。

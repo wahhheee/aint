@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // instanceInfo 写在 <数据目录>/instance.json，用于"同一数据目录只运行一个实例"（SET-06）。

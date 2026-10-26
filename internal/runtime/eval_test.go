@@ -6,10 +6,10 @@ package runtime_test
 //
 // 运行：
 //
-//	YANYI_EVAL=.local/secrets/live.json YANYI_EVAL_MODEL=claude@gemai go test ./internal/runtime -run TestEval -v -timeout 60m
+//	AINT_EVAL=.local/secrets/live.json AINT_EVAL_MODEL=claude@gemai go test ./internal/runtime -run TestEval -v -timeout 60m
 //
-// 可选：YANYI_EVAL_SCRIPT（默认 testdata/eval/misty-harbor.yaml）、YANYI_EVAL_OUT（报告目录，默认 .local/eval/<时间>）、
-// YANYI_EVAL_TRACE（协议原始报文目录）、YANYI_EVAL_REASONING（默认 low）。live.json 的格式见 provider/live_test.go。
+// 可选：AINT_EVAL_SCRIPT（默认 testdata/eval/misty-harbor.yaml）、AINT_EVAL_OUT（报告目录，默认 .local/eval/<时间>）、
+// AINT_EVAL_TRACE（协议原始报文目录）、AINT_EVAL_REASONING（默认 low）。live.json 的格式见 provider/live_test.go。
 
 import (
 	"context"
@@ -22,12 +22,12 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/provider"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/provider"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 type evalScript struct {
@@ -65,11 +65,11 @@ func (l lazyBlobs) ReadBlob(ctx context.Context, hash string) ([]byte, error) {
 }
 
 func TestEval(t *testing.T) {
-	cfgPath, modelName := os.Getenv("YANYI_EVAL"), os.Getenv("YANYI_EVAL_MODEL")
+	cfgPath, modelName := os.Getenv("AINT_EVAL"), os.Getenv("AINT_EVAL_MODEL")
 	if cfgPath == "" || modelName == "" {
-		t.Skip("评测：设置 YANYI_EVAL=<live.json> 与 YANYI_EVAL_MODEL=<名称> 后运行（会产生费用）")
+		t.Skip("评测：设置 AINT_EVAL=<live.json> 与 AINT_EVAL_MODEL=<名称> 后运行（会产生费用）")
 	}
-	scriptPath := envOr("YANYI_EVAL_SCRIPT", "../../testdata/eval/misty-harbor.yaml")
+	scriptPath := envOr("AINT_EVAL_SCRIPT", "../../testdata/eval/misty-harbor.yaml")
 	var script evalScript
 	readYAML(t, scriptPath, &script)
 
@@ -96,7 +96,7 @@ func TestEval(t *testing.T) {
 			continue
 		}
 		adapter, err := provider.NewAdapter(llm.ProviderConfig{Protocol: lp.Protocol, BaseURL: lp.BaseURL, APIKey: lp.Key,
-			Blobs: lazyBlobs{&e}, TraceDir: os.Getenv("YANYI_EVAL_TRACE")})
+			Blobs: lazyBlobs{&e}, TraceDir: os.Getenv("AINT_EVAL_TRACE")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -122,14 +122,14 @@ func TestEval(t *testing.T) {
 
 	ctx := context.Background()
 	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: script.Work, Form: script.Form,
-		Settings: save.Settings{NarratorModel: "eval", Pace: "medium", Reasoning: envOr("YANYI_EVAL_REASONING", "low"), CacheTTL: "short"}})
+		Settings: save.Settings{NarratorModel: "eval", Pace: "medium", Reasoning: envOr("AINT_EVAL_REASONING", "low"), CacheTTL: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	sub, _, _ := e.bus.Subscribe(event.SaveTopic(sv.ID), 0)
 	defer sub.Close()
 
-	out := envOr("YANYI_EVAL_OUT", filepath.Join("..", "..", ".local", "eval", time.Now().Format("20060102-150405")))
+	out := envOr("AINT_EVAL_OUT", filepath.Join("..", "..", ".local", "eval", time.Now().Format("20060102-150405")))
 	if err := os.MkdirAll(out, 0o750); err != nil {
 		t.Fatal(err)
 	}

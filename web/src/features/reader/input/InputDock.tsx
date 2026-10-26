@@ -59,7 +59,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
   const connected = useReader((s) => s.connection === 'open')
   const attachments = useAttachments()
   const fileRef = useRef<HTMLInputElement>(null)
-  const storageKey = `yanyi.draft.${saveId}`
+  const storageKey = `aint.draft.${saveId}`
   const [text, setText] = useState(() => localStorage.getItem(storageKey) ?? '')
   const [mode, setMode] = useState<Command | null>(null)
   const pace = save.settings.pace || ui.pace

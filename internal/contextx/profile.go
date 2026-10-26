@@ -16,10 +16,10 @@
 package contextx
 
 import (
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // Profile 计算能力画像（《02-技术方案》8.6）：作品用到了哪些功能、模型能做什么、存档开了什么。

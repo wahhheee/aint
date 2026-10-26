@@ -6,17 +6,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/markup"
-	"github.com/wahhheee/yanyi/internal/media"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/tools"
-	"github.com/wahhheee/yanyi/internal/usage"
-	"github.com/wahhheee/yanyi/internal/vfs"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/markup"
+	"github.com/wahhheee/aint/internal/media"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/tools"
+	"github.com/wahhheee/aint/internal/usage"
+	"github.com/wahhheee/aint/internal/vfs"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // draft 是进行中回合的内存草稿。只由回合 goroutine 访问（工具的读并行只读取不可变字段）。

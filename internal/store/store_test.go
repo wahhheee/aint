@@ -12,7 +12,7 @@ func openTest(t *testing.T) (*DB, string) {
 	t.Helper()
 	dir := t.TempDir()
 	ctx := context.Background()
-	db, err := Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

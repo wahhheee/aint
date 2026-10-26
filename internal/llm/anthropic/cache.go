@@ -3,7 +3,7 @@ package anthropic
 import (
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // markRolling 在最后一个可缓存内容块放断点；thinking 块不能显式标记。

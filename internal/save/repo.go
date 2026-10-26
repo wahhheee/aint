@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // 本文件集中存档与节点相关的 SQL。表结构见 store/migrations。

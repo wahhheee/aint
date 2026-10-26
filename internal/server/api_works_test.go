@@ -13,9 +13,9 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 const testManifest = "format: 1\nid: test.upload\nversion: 0.1.0\ntitle: 上传测试\n"
@@ -24,7 +24,7 @@ func newImportServer(t *testing.T, lim work.Limits) http.Handler {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := store.Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

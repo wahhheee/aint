@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/provider"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/provider"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // TestM4Live 验证 T1/T3 短流程及循环换协议：每个起始协议两部作品，各两回合。
 // 默认跳过；配置只选三个供应商。每回合最多四次调用、每次 2048 输出 token，不自动重试。
-// YANYI_M4_LIVE=配置，YANYI_M4_OUT=报告目录；YANYI_M4_ONLY 可只跑一个起始协议。
+// AINT_M4_LIVE=配置，AINT_M4_OUT=报告目录；AINT_M4_ONLY 可只跑一个起始协议。
 func TestM4Live(t *testing.T) {
-	path := os.Getenv("YANYI_M4_LIVE")
+	path := os.Getenv("AINT_M4_LIVE")
 	if path == "" {
-		t.Skip("设置 YANYI_M4_LIVE 后执行精简真实评测（会产生费用）")
+		t.Skip("设置 AINT_M4_LIVE 后执行精简真实评测（会产生费用）")
 	}
 	var cfg struct {
 		Providers []struct {
@@ -44,14 +44,14 @@ func TestM4Live(t *testing.T) {
 		t.Fatal("精简评测配置须各协议一个供应商，共三个")
 	}
 	for i, source := range cfg.Providers {
-		if only := os.Getenv("YANYI_M4_ONLY"); only != "" && only != string(source.Protocol) {
+		if only := os.Getenv("AINT_M4_ONLY"); only != "" && only != string(source.Protocol) {
 			continue
 		}
-		for _, workID := range []string{"yanyi.first-story", "yanyi.misty-harbor"} {
+		for _, workID := range []string{"aint.first-story", "aint.misty-harbor"} {
 			if !t.Run(string(source.Protocol)+"/"+workID, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 4*time.Minute)
 				defer cancel()
-				out := filepath.Join(envOr("YANYI_M4_OUT", "../../.local/eval/m4"), string(source.Protocol), workID)
+				out := filepath.Join(envOr("AINT_M4_OUT", "../../.local/eval/m4"), string(source.Protocol), workID)
 				if err := os.MkdirAll(out, 0o750); err != nil {
 					t.Fatal(err)
 				}
@@ -93,7 +93,7 @@ func TestM4Live(t *testing.T) {
 				}()
 				for turn := range 2 {
 					input := save.TurnInput{Kind: save.InputFree, Text: "我检查眼前最重要的线索。请简短推进故事，然后用 offer_choices 给两个选项。"}
-					if workID == "yanyi.misty-harbor" && turn == 0 {
+					if workID == "aint.misty-harbor" && turn == 0 {
 						input.Text = "我检查邮局的信件柜。请先用 read 查看 /work/lore/characters/zhou.md，再用 update_state 把 situation 设为“正在检查信件柜”，简短叙述后用 offer_choices 给两个选项。"
 					}
 					if turn == 1 {
@@ -152,7 +152,7 @@ func TestM4Live(t *testing.T) {
 						t.Fatal("面板渲染失败")
 					}
 				}
-				if workID == "yanyi.misty-harbor" && (toolSuccess["read"] == 0 || toolSuccess["update_state"] == 0) {
+				if workID == "aint.misty-harbor" && (toolSuccess["read"] == 0 || toolSuccess["update_state"] == 0) {
 					t.Error("T3 未完成资料读取或状态更新")
 				}
 				var rows []map[string]any

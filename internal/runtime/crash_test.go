@@ -39,18 +39,18 @@ import (
 	"modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // 子进程模式的环境变量。
 const (
-	envCrashPhase = "YANYI_TEST_CRASH_PHASE"
-	envCrashDir   = "YANYI_TEST_CRASH_DIR"
-	envCrashSave  = "YANYI_TEST_CRASH_SAVE"
+	envCrashPhase = "AINT_TEST_CRASH_PHASE"
+	envCrashDir   = "AINT_TEST_CRASH_DIR"
+	envCrashSave  = "AINT_TEST_CRASH_SAVE"
 )
 
 func TestMain(m *testing.M) {
@@ -184,7 +184,7 @@ func seedCrashSave(t *testing.T, dir string) (string, storeSnapshot) {
 			t.Error(err)
 		}
 	}()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}

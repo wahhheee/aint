@@ -117,7 +117,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           export GOOS=${TARGET%/*} GOARCH=${TARGET#*/}
-          go build -trimpath -ldflags "-s -w" -o /tmp/yanyi ./cmd/yanyi
+          go build -trimpath -ldflags "-s -w" -o /tmp/aint ./cmd/aint
         shell: bash
     env:
       TARGET: ${{ matrix.target }}

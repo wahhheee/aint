@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 func sensitiveHeader(name string) bool {

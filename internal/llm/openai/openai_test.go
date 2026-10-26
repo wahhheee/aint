@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // 夹具来自真实调用（M0 探针）："先说一句话，再同时查询两地天气"，
@@ -134,7 +134,7 @@ func TestBody(t *testing.T) {
 				Native: map[string]jsonx.Value{key: native}},
 			{Role: llm.RoleUser, Parts: []llm.Part{{Kind: llm.PartToolResult, ToolResult: &llm.ToolResult{CallID: "call_1", Parts: []llm.Part{llm.Text("内容")}}}, llm.Text("<input>继续</input>")}},
 		},
-		MaxOutput: 1000, Reasoning: llm.ReasoningLow, CacheKey: "yanyi:s1", CacheTTL: llm.CacheLong,
+		MaxOutput: 1000, Reasoning: llm.ReasoningLow, CacheKey: "aint:s1", CacheTTL: llm.CacheLong,
 	}
 
 	// GPT-5.6 起：断点模式
@@ -150,7 +150,7 @@ func TestBody(t *testing.T) {
 		string(native)[1 : len(native)-1], // Native 原样展开
 		`{"type":"function_call_output","call_id":"call_1","output":"内容"},{"role":"user","content":[{"type":"input_text","text":"<input>继续</input>"}]}`,
 		`"reasoning":{"effort":"low"},"include":["reasoning.encrypted_content"]`,
-		`"prompt_cache_key":"yanyi:s1","prompt_cache_options":{"mode":"implicit","ttl":"12h"},"store":false,"stream":true`,
+		`"prompt_cache_key":"aint:s1","prompt_cache_options":{"mode":"implicit","ttl":"12h"},"store":false,"stream":true`,
 		`"tools":[{"type":"function","name":"read","description":"读取","parameters":{"type":"object"},"strict":false}]`,
 	} {
 		if !strings.Contains(s, want) {
@@ -171,7 +171,7 @@ func TestBody(t *testing.T) {
 	for _, want := range []string{
 		`"instructions":"L0\n\nL1"`,
 		`{"role":"assistant","content":[{"type":"output_text","text":"旧正文"}]},{"type":"function_call","call_id":"call_1","name":"read","arguments":"{\"path\":\"/a\"}"}`,
-		`"prompt_cache_key":"yanyi:s1","store":false`,
+		`"prompt_cache_key":"aint:s1","store":false`,
 	} {
 		if !strings.Contains(s2, want) {
 			t.Fatalf("请求体缺少 %s\n实际：%s", want, s2)

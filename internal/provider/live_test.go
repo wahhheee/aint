@@ -4,14 +4,14 @@ package provider
 //
 // 运行：
 //
-//	YANYI_LIVE=.local/secrets/live.json go test ./internal/provider -run TestLive -v
-//	YANYI_LIVE=… YANYI_LIVE_ONLY=claude go test ./internal/provider -run "TestLive/claude/roundtrip" -v
+//	AINT_LIVE=.local/secrets/live.json go test ./internal/provider -run TestLive -v
+//	AINT_LIVE=… AINT_LIVE_ONLY=claude go test ./internal/provider -run "TestLive/claude/roundtrip" -v
 //
 // live.json（不入库，含密钥与中转站地址）：
 //
 //	{"providers": [{"name": "…", "protocol": "anthropic", "base_url": "…", "key": "…", "model": "…"}]}
 //
-// YANYI_LIVE_TRACE=目录 时记录协议原始报文（录制回放夹具的来源）。
+// AINT_LIVE_TRACE=目录 时记录协议原始报文（录制回放夹具的来源）。
 // 每个子测试都只发最少的请求，并在日志中输出用量，结论汇总在 docs/notes/api-verification.md。
 
 import (
@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 type liveProvider struct {
@@ -43,9 +43,9 @@ var liveBlobs = memBlobReader{
 }
 
 func TestLive(t *testing.T) {
-	path := os.Getenv("YANYI_LIVE")
+	path := os.Getenv("AINT_LIVE")
 	if path == "" {
-		t.Skip("真实模型测试：设置 YANYI_LIVE=<live.json> 后运行（会产生费用）")
+		t.Skip("真实模型测试：设置 AINT_LIVE=<live.json> 后运行（会产生费用）")
 	}
 	b, err := os.ReadFile(path) //nolint:gosec // G703：测试配置文件路径由开发者通过环境变量指定
 	if err != nil {
@@ -57,14 +57,14 @@ func TestLive(t *testing.T) {
 	if err := jsonx.Unmarshal(b, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	only := os.Getenv("YANYI_LIVE_ONLY")
+	only := os.Getenv("AINT_LIVE_ONLY")
 	for _, lp := range cfg.Providers {
 		if only != "" && !strings.Contains(","+only+",", ","+lp.Name+",") {
 			continue
 		}
 		t.Run(lp.Name, func(t *testing.T) {
 			adapter, err := NewAdapter(llm.ProviderConfig{
-				Protocol: lp.Protocol, BaseURL: lp.BaseURL, APIKey: lp.Key, Blobs: liveBlobs, TraceDir: os.Getenv("YANYI_LIVE_TRACE"),
+				Protocol: lp.Protocol, BaseURL: lp.BaseURL, APIKey: lp.Key, Blobs: liveBlobs, TraceDir: os.Getenv("AINT_LIVE_TRACE"),
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -156,7 +156,7 @@ func (lt *liveT) roundtrip(t *testing.T) {
 	req := &llm.Request{System: []llm.SystemBlock{{Text: "你是简洁的中文助手。需要信息时调用工具，可以一次并行调用多个工具。"}},
 		Tools:     []llm.ToolSpec{weatherTool},
 		Messages:  []llm.Message{user(llm.Text("先用一句话说你要做什么，然后同时查询杭州和北京的天气，最后告诉我哪里更暖和。"))},
-		MaxOutput: 4000, Reasoning: llm.ReasoningLow, CacheKey: "yanyi:live-roundtrip"}
+		MaxOutput: 4000, Reasoning: llm.ReasoningLow, CacheKey: "aint:live-roundtrip"}
 	done := lt.call(t, req)
 	calls := done.Message.ToolCalls()
 	if done.Stop != llm.StopToolUse || len(calls) == 0 {
@@ -257,7 +257,7 @@ func (lt *liveT) cache(t *testing.T) {
 	}
 	sys := []llm.SystemBlock{{Text: "你是互动小说的执笔者，回答尽量简短。"}, {Text: long.String(), CacheMark: true}}
 	req := &llm.Request{System: sys, Messages: []llm.Message{user(llm.Text("第 7 号码头的铃声间隔是多少分钟？只回答数字。"))},
-		MaxOutput: 2000, Reasoning: llm.ReasoningLow, CacheKey: "yanyi:live-cache", CacheTTL: llm.CacheShort}
+		MaxOutput: 2000, Reasoning: llm.ReasoningLow, CacheKey: "aint:live-cache", CacheTTL: llm.CacheShort}
 	first := lt.call(t, req)
 	time.Sleep(3 * time.Second) // 让缓存写入生效（DeepSeek 硬盘缓存需要一点时间）
 	req.Messages = append(req.Messages, first.Message, user(llm.Text("第 12 号码头呢？只回答数字。")))

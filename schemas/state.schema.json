@@ -50,10 +50,10 @@
       ]
     }
   },
-  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/state.schema.json",
+  "$id": "https://raw.githubusercontent.com/wahhheee/aint/main/schemas/state.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
-  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "description": "编辑器补全与结构校验；完整校验请运行 aint work validate。未知字段由运行时报告警告。",
   "properties": {
     "fields": {
       "additionalProperties": {
@@ -65,6 +65,6 @@
   "required": [
     "fields"
   ],
-  "title": "演义作品：state",
+  "title": "AINT 作品：state",
   "type": "object"
 }

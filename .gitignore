@@ -2,7 +2,7 @@
 /.local/
 
 # 运行时数据目录（含 API Key 与存档，绝不能提交）
-yanyi-data/
+aint-data/
 /.devdata/
 
 # Go 构建产物

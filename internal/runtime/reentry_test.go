@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // stalledProvider 的首个流输出可选正文后等待上下文结束，之后的调用使用假模型。
@@ -48,7 +48,7 @@ func (s *stalledStream) Close() error { return nil }
 func TestReentryCanCancelRunningTurn(t *testing.T) {
 	e := setupWith(t, &stalledProvider{Provider: fake.New(quickScript()), text: "雾中有人推开了门。"})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor"})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestTurnDeadlineReleasesWriter(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = e.close() })
-			sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor"})
+			sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor"})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -66,9 +66,9 @@ func JSONSchemas() map[string]schemaObject {
 	}
 	for name, schema := range schemas {
 		schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-		schema["$id"] = "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/" + name + ".schema.json"
-		schema["title"] = "演义作品：" + name
-		schema["description"] = "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。"
+		schema["$id"] = "https://raw.githubusercontent.com/wahhheee/aint/main/schemas/" + name + ".schema.json"
+		schema["title"] = "AINT 作品：" + name
+		schema["description"] = "编辑器补全与结构校验；完整校验请运行 aint work validate。未知字段由运行时报告警告。"
 	}
 	return schemas
 }

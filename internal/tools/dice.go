@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // 掷骰（《02-技术方案》10.2）：表达式由若干项以 + / - 相连，每项是骰子 NdM（N 省略为 1，d% 即 d100）或整数。

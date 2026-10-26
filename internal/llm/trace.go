@@ -12,14 +12,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // WithTrace 包装 Provider：把每次调用的"中立请求 + 全部流事件 + 错误"写成一个 JSON 文件。
 //
 // 用于排查"模型为什么这样写""适配器转换是否正确""缓存为什么没命中"等问题。
-// 启用方式：yanyi --trace-llm（文件写到 <数据目录>/logs/llm-trace/）。
+// 启用方式：aint --trace-llm（文件写到 <数据目录>/logs/llm-trace/）。
 // 文件只包含中立格式，不含 API Key；但包含完整正文，分享前请注意内容。
 func WithTrace(p Provider, dir string) Provider {
 	return &traceProvider{Provider: p, dir: dir}

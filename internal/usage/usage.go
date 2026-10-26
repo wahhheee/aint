@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // Record 是一次模型调用的用量。

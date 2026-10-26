@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
 )
 
 var timeZero time.Time
 
-// dailyFile 是按天滚动的日志文件写入器：yanyi-2026-10-20.log。
+// dailyFile 是按天滚动的日志文件写入器：aint-2026-10-20.log。
 // 只用标准库实现，够用即可；不做按大小切分。
 type dailyFile struct {
 	mu     sync.Mutex

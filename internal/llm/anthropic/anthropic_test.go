@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // 夹具来自真实调用（M0 探针）：同一个"先说一句话，再同时查询两地天气"的请求，

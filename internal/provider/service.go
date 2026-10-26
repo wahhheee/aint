@@ -18,13 +18,13 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/anthropic"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/llm/gemini"
-	"github.com/wahhheee/yanyi/internal/llm/openai"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/anthropic"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/llm/gemini"
+	"github.com/wahhheee/aint/internal/llm/openai"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // Options 是供应商服务的选项。

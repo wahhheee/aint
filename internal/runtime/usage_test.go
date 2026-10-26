@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/usage"
 )
 
 // pricedModels 让所有存档都使用配置了价格的假模型。
@@ -35,7 +35,7 @@ func TestTurnUsageCost(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = e.close() })
 
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}

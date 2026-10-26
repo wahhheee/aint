@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/examples"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/examples"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func TestRenderExamplePanels(t *testing.T) {

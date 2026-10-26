@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 // Kind 是助手类型。

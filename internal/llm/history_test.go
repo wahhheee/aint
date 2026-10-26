@@ -3,7 +3,7 @@ package llm
 import (
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 func TestRepairToolHistory(t *testing.T) {

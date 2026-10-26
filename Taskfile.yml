@@ -1,4 +1,4 @@
-# 演义的任务编排（https://taskfile.dev）。`task --list` 查看全部任务。
+# AINT 的任务编排（https://taskfile.dev）。`task --list` 查看全部任务。
 # go-task 内置 POSIX shell 解释器，Windows / macOS / Linux 行为一致。
 version: "3"
 
@@ -11,7 +11,7 @@ vars:
     sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
   # golangci-lint 版本（与 .github/workflows/ci.yml 保持一致；版本不同检查结果可能不同）
   GOLANGCI_VERSION: 2.15.0
-  PKG: github.com/wahhheee/yanyi/internal/buildinfo
+  PKG: github.com/wahhheee/aint/internal/buildinfo
   LDFLAGS: -s -w -X {{.PKG}}.Version={{.VERSION}} -X {{.PKG}}.Commit={{.COMMIT}}
 
 tasks:
@@ -43,12 +43,12 @@ tasks:
   dev:server:
     desc: 启动后端（假模型、调试日志、模型调用追踪），数据在 .devdata/
     cmds:
-      - go run ./cmd/yanyi serve --data {{.DATA}} --port {{.PORT}} --no-browser --fake-llm demo --trace-llm --log-level debug {{.CLI_ARGS}}
+      - go run ./cmd/aint serve --data {{.DATA}} --port {{.PORT}} --no-browser --fake-llm demo --trace-llm --log-level debug {{.CLI_ARGS}}
 
   dev:server:real:
     desc: 启动后端（使用设置中配置的真实模型）
     cmds:
-      - go run ./cmd/yanyi serve --data {{.DATA}} --port {{.PORT}} --no-browser --trace-llm --log-level debug {{.CLI_ARGS}}
+      - go run ./cmd/aint serve --data {{.DATA}} --port {{.PORT}} --no-browser --trace-llm --log-level debug {{.CLI_ARGS}}
 
   dev:web:
     desc: 启动前端开发服务器（/api 代理到后端 {{.PORT}} 端口）
@@ -61,12 +61,12 @@ tasks:
   prompt:
     desc: 打印作品按需组装后的完整提示词，如 task prompt -- examples/works/misty-harbor --vision
     cmds:
-      - go run ./cmd/yanyi work prompt {{.CLI_ARGS}}
+      - go run ./cmd/aint work prompt {{.CLI_ARGS}}
 
   validate:
     desc: 校验作品，如 task validate -- examples/works/misty-harbor
     cmds:
-      - go run ./cmd/yanyi work validate {{.CLI_ARGS}}
+      - go run ./cmd/aint work validate {{.CLI_ARGS}}
 
   # ---------------------------------------------------------------- 质量
 
@@ -137,7 +137,7 @@ tasks:
     env:
       CGO_ENABLED: "0"
     cmds:
-      - go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/yanyi{{exeExt}} ./cmd/yanyi
+      - go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/aint{{exeExt}} ./cmd/aint
 
   build:cross:
     desc: 交叉编译六个目标平台（发布前检查；发布打包见 docs/release.md）
@@ -148,7 +148,7 @@ tasks:
       - for: [windows/amd64, windows/arm64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64]
         cmd: |
           GOOS=$(echo {{.ITEM}} | cut -d/ -f1) GOARCH=$(echo {{.ITEM}} | cut -d/ -f2) \
-            go build -trimpath -ldflags "{{.LDFLAGS}}" -o "dist/yanyi-$(echo {{.ITEM}} | tr / -)$( [ "$(echo {{.ITEM}} | cut -d/ -f1)" = windows ] && echo .exe)" ./cmd/yanyi
+            go build -trimpath -ldflags "{{.LDFLAGS}}" -o "dist/aint-$(echo {{.ITEM}} | tr / -)$( [ "$(echo {{.ITEM}} | cut -d/ -f1)" = windows ] && echo .exe)" ./cmd/aint
 
   clean:
     desc: 清理构建产物与开发数据（不会动 web/dist/.gitkeep）

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // InlineMax 是内联存储的上限：不超过它的 blob 直接存在 blobs.inline 列中。

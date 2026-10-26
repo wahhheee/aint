@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // longScript：每回合写一段正文、把玩家输入记进 /memory/log.md、给出选项；整理时写一份纪要再给出摘要。
@@ -45,7 +45,7 @@ func TestLongPlayInvariants(t *testing.T) {
 	e := setupWith(t, recordingProvider{Provider: fake.New(longScript()), reqs: &reqs})
 	ctx := context.Background()
 	const budget = 6000
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story",
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story",
 		Settings: save.Settings{Pace: "short", ContextBudget: budget, KeepRecent: 600}})
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +223,7 @@ func TestLongPlayInvariants(t *testing.T) {
 	}
 
 	// 存档不膨胀：游玩、重新生成、分支都在存档内部进行
-	if list, _ := e.saves.ListByWork(ctx, "yanyi.first-story"); len(list) != 1 {
+	if list, _ := e.saves.ListByWork(ctx, "aint.first-story"); len(list) != 1 {
 		t.Fatalf("存档条目应只有一个：%d", len(list))
 	}
 	t.Logf("200 步：进度线 %d 回合、整理 %d 次、分支 %d 个、检查前缀 %d 对、其他分支的回合 %d 个",
@@ -248,7 +248,7 @@ func TestCompactionInterrupted(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story",
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story",
 		Settings: save.Settings{Pace: "short", ContextBudget: 4000, KeepRecent: 300}})
 	if err != nil {
 		t.Fatal(err)

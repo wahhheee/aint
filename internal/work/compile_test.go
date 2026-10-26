@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/examples"
+	"github.com/wahhheee/aint/examples"
 )
 
 func compileExample(t *testing.T, name string) (*Model, *Report) {

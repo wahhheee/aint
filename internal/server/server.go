@@ -17,17 +17,17 @@ import (
 	"io/fs"
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/access"
+	"github.com/wahhheee/aint/internal/access"
 
-	"github.com/wahhheee/yanyi/internal/buildinfo"
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/media"
-	"github.com/wahhheee/yanyi/internal/provider"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/settings"
-	"github.com/wahhheee/yanyi/internal/usage"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/buildinfo"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/media"
+	"github.com/wahhheee/aint/internal/provider"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/settings"
+	"github.com/wahhheee/aint/internal/usage"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // SystemInfo 是运行环境信息（/api/v1/system/info；设置页"关于"与"存储"、排查问题时使用）。

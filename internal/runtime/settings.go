@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // PatchSettings 在回合与整理都空闲时修改存档参数，下一回合使用新设置。

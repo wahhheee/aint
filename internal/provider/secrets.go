@@ -6,14 +6,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // Secrets 是 <数据目录>/secrets.json：API Key 与访问密码哈希。永不导出、永不发给前端（不变量 7）。
 //
 // 单独成文件而不放进数据库，是为了备份或分享数据时可以简单地排除它。
-// Unix 下权限 0600；Windows 下依赖用户目录的 ACL（文件位于程序旁的 yanyi-data/ 中）。
+// Unix 下权限 0600；Windows 下依赖用户目录的 ACL（文件位于程序旁的 aint-data/ 中）。
 type Secrets struct {
 	path string
 	mu   sync.Mutex

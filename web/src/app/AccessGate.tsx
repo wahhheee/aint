@@ -19,8 +19,8 @@ export function AccessGate({ children }: { children: ReactNode }) {
     const expired = () => {
       void qc.invalidateQueries({ queryKey: qk.access })
     }
-    window.addEventListener('yanyi:unauthorized', expired)
-    return () => window.removeEventListener('yanyi:unauthorized', expired)
+    window.addEventListener('aint:unauthorized', expired)
+    return () => window.removeEventListener('aint:unauthorized', expired)
   }, [qc])
   if (status.data?.authenticated)
     return (

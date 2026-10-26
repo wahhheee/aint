@@ -6,12 +6,12 @@
  */
 const zhCN = {
   access: {
-    title: '进入演义',
+    title: '进入 AINT',
     password: '访问密码',
     login: '登录',
     configure: '设置访问密码',
     exposed: '当前网络中的其他人可以访问你的存档与模型额度，建议设置访问密码。',
-    hint: '密码用于限制其他设备访问。修改或清除密码会退出所有设备；忘记密码时，先停止服务，再运行 yanyi password clear。',
+    hint: '密码用于限制其他设备访问。修改或清除密码会退出所有设备；忘记密码时，先停止服务，再运行 aint password clear。',
     current: '当前密码',
     newPassword: '新密码（至少 8 位）',
     repeat: '再次输入新密码',
@@ -24,7 +24,7 @@ const zhCN = {
     revokeConfirm: '退出所有设备，包括当前设备？',
     listen: '监听地址',
     listenHint: '127.0.0.1 仅本机；0.0.0.0 允许局域网。重启后生效；命令行 --listen 优先。',
-    restart: '已保存，重启演义后生效',
+    restart: '已保存，重启 AINT 后生效',
     github: 'GitHub 令牌（可选）',
     githubHint: '仅用于 GitHub API 请求以提高访问限额；只支持公开作品仓库，不会发送到下载站点。',
     configured: '已设置令牌',
@@ -37,7 +37,7 @@ const zhCN = {
     timeout: '下载时限（秒）',
     downloadLimit: '下载大小上限（MiB）',
     devHint:
-      '填写运行演义的电脑上的目录路径。文件保存后自动重载；校验失败时保留上一份可用内容。开发版本随目录变化，固定版本请先打包再导入。',
+      '填写运行 AINT 的电脑上的目录路径。文件保存后自动重载；校验失败时保留上一份可用内容。开发版本随目录变化，固定版本请先打包再导入。',
     checkUpdate: '检查更新',
     noUpdate: '作品内容没有变化',
     export: '导出 zip',
@@ -206,7 +206,7 @@ const zhCN = {
     image: '模型上下文中的图片',
   },
   app: {
-    name: '演义',
+    name: 'AINT',
     fakeBadge: '演示模型',
     fakeHint: '正在使用内置的演示模型（--fake-llm），不会调用真实的模型服务。',
   },
@@ -536,7 +536,7 @@ const zhCN = {
       separate: '轻量模型',
     },
     providers: {
-      intro: '演义不附带任何模型。连接一个你自己的模型服务，支持 OpenAI Responses、Anthropic 与 Gemini 三种协议。',
+      intro: 'AINT 不附带任何模型。连接一个你自己的模型服务，支持 OpenAI Responses、Anthropic 与 Gemini 三种协议。',
       add: '添加供应商',
       empty: '还没有连接任何模型服务。',
       services: '模型服务',
@@ -664,8 +664,7 @@ const zhCN = {
     },
     storage: {
       dataDir: '数据目录',
-      dataDirHint:
-        '迁移或备份时，整体拷贝程序所在的文件夹即可。把程序分享给别人时，不要附带 yanyi-data 文件夹——里面有你的 API Key 与存档。',
+      dataDirHint: '迁移或备份时，整体拷贝程序所在的文件夹即可。把程序分享给别人时，不要附带 aint-data 文件夹——里面有你的 API Key 与存档。',
       logDir: '日志目录',
       cleanup: '清理未使用的数据',
       cleanupAction: '清理',
@@ -689,7 +688,7 @@ const zhCN = {
     loadFailed: '加载失败',
     notFound: '没有找到这个页面',
     backHome: '回到书架',
-    offline: '无法连接到演义服务，请确认程序仍在运行。',
+    offline: '无法连接到 AINT 服务，请确认程序仍在运行。',
   },
   time: {
     justNow: '刚刚',

@@ -6,13 +6,13 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
-// 后端地址：`task dev` 会在 7860 端口启动后端；也可用环境变量 YANYI_API 指向其他实例。
-const api = process.env.YANYI_API ?? 'http://127.0.0.1:7860'
+// 后端地址：`task dev` 会在 7860 端口启动后端；也可用环境变量 AINT_API 指向其他实例。
+const api = process.env.AINT_API ?? 'http://127.0.0.1:7860'
 
 // 构建会清空 dist/，这里补回 .gitkeep：保证未构建前端时 Go 的 //go:embed 仍能编译（见 web/embed.go）。
 function keepGitkeep(): Plugin {
   return {
-    name: 'yanyi-keep-gitkeep',
+    name: 'aint-keep-gitkeep',
     apply: 'build',
     closeBundle() {
       writeFileSync(fileURLToPath(new URL('./dist/.gitkeep', import.meta.url)), '')

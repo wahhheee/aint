@@ -142,9 +142,9 @@ export function useTurnActions(saveId: string, commands: Command[]) {
       if (!connected() || busy()) return false
       lastRegeneration.current = { nodeId, parentId, input, shown }
       const presentation = qc.getQueryData<Presentation>(qk.save(saveId))
-      if (presentation && presentation.save.branch_count <= 1 && !sessionStorage.getItem('yanyi.branchHint')) {
+      if (presentation && presentation.save.branch_count <= 1 && !sessionStorage.getItem('aint.branchHint')) {
         toast(t('reader.firstBranchHint'), { duration: 8000 })
-        sessionStorage.setItem('yanyi.branchHint', '1')
+        sessionStorage.setItem('aint.branchHint', '1')
       }
       setPending(input ?? shown ?? { kind: 'continue' }, parentId)
       try {

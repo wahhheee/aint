@@ -22,9 +22,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/wire"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/wire"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // DefaultBaseURL 是官方地址（含 /v1，与官方 SDK 的 base_url 写法一致；兼容接口按其文档填写，如 https://api.deepseek.com）。

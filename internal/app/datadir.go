@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
 )
 
 // Dirs 是数据目录的布局（《02-技术方案》4.1）。
 //
-//	yanyi-data/
-//	├── yanyi.db          SQLite（WAL）：作品、存档、全部设置
+//	aint-data/
+//	├── aint.db           SQLite（WAL）：作品、存档、全部设置
 //	├── blobs/            大于 64 KiB 的 blob
 //	├── secrets.json      API Key 与访问密码哈希（永不导出）
 //	├── backup/           结构迁移前的自动备份（最近 3 份）
@@ -33,7 +33,7 @@ type Dirs struct {
 	Instance string `json:"instance"`
 }
 
-// ResolveDirs 确定数据目录：默认在可执行文件旁的 yanyi-data/（决策 D-19），--data 可指定其他目录。
+// ResolveDirs 确定数据目录：默认在可执行文件旁的 aint-data/（决策 D-19），--data 可指定其他目录。
 // 目录不可写时拒绝启动并说明原因，不静默改用其他位置。
 func ResolveDirs(flagDir string) (Dirs, error) {
 	root := flagDir
@@ -49,7 +49,7 @@ func ResolveDirs(flagDir string) (Dirs, error) {
 		if strings.Contains(dir, "go-build") {
 			return Dirs{}, fmt.Errorf("检测到通过 go run 启动（可执行文件位于临时目录 %s）：请用 --data 指定数据目录，例如 --data ./.devdata", dir)
 		}
-		root = filepath.Join(dir, "yanyi-data")
+		root = filepath.Join(dir, "aint-data")
 	}
 	root, err := filepath.Abs(root)
 	if err != nil {
@@ -60,7 +60,7 @@ func ResolveDirs(flagDir string) (Dirs, error) {
 	}
 	d := Dirs{
 		Root:     root,
-		DB:       filepath.Join(root, "yanyi.db"),
+		DB:       filepath.Join(root, "aint.db"),
 		Blobs:    filepath.Join(root, "blobs"),
 		Secrets:  filepath.Join(root, "secrets.json"),
 		Backup:   filepath.Join(root, "backup"),

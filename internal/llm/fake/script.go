@@ -7,7 +7,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 // Script 是假模型脚本。

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 // 手工协议夹具覆盖难以低成本稳定触发的截断、暂停、拒答与隐藏推理。

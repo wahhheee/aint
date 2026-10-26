@@ -14,8 +14,8 @@
 package save
 
 import (
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/state"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/state"
 )
 
 // NodeKind 是节点类型。

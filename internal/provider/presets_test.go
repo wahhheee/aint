@@ -3,8 +3,8 @@ package provider
 import (
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 func TestModelPresetPreview(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // L1 作品指令（《02-技术方案》20.2）：由作品内容生成，每节一个片段，没有内容的节整节省略。

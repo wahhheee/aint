@@ -1,6 +1,6 @@
 package work
 
-import "github.com/wahhheee/yanyi/internal/state"
+import "github.com/wahhheee/aint/internal/state"
 
 // Model 是作品某个版本编译后的只读内存模型。创建后不得修改（多个存档并发读取）。
 type Model struct {

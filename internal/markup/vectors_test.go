@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // 共享测试向量（testdata/markup/*.json，格式见 testdata/README.md）：前端 parse.test.ts 运行同一份。

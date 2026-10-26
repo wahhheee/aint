@@ -1,4 +1,4 @@
-module github.com/wahhheee/yanyi
+module github.com/wahhheee/aint
 
 go 1.27
 

@@ -3,7 +3,7 @@ package media
 import (
 	"context"
 
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 func insertUpload(ctx context.Context, q store.Querier, u *Upload) error {

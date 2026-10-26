@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 var safeID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)

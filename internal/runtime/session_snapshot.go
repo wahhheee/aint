@@ -3,8 +3,8 @@ package runtime
 import (
 	"slices"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // SessionSnapshot 是已发布事件的当前会话投影，仅在回合或整理进行期间保留。

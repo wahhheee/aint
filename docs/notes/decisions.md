@@ -45,7 +45,7 @@
 | --- | --- | --- |
 | D-44 | 三协议适配器用**标准库手写**（`net/http` + 自写 SSE 解析），不使用官方 SDK；回合运行器自研，不引入 Agent 框架（D-06）。原因：请求体由 `jsonx` 确定性序列化，前缀字节完全可控；`Native` 原样存取协议内容块（推理签名、带签名的空文本都不丢）；中转站的非标字段与新特性（`between_tools`、`prompt_cache_options` 等）不受 SDK 版本限制；不引入 genai 带来的 grpc / cloud auth 等依赖；录制夹具就是原始 SSE 字节 | `internal/llm/wire`、`internal/llm/{anthropic,openai,gemini}` |
 | D-45 | 真实模型验证**以最少的调用完成**：缓存用"同前缀连续两次请求"验证；真实调用测试默认跳过、按需运行；密钥与中转站地址只放 `.local/secrets/`（不入库），文档中中转站只写代号 | `internal/provider/live_test.go`、`docs/notes/api-verification.md` |
-| D-46 | 作者模板（Liquid）在**可终止的隔离工作进程**中渲染：yanyi 自身以隐藏子命令 `__tmpl-worker` 运行，超时（1 秒）即杀掉并重启；渲染核心进程内与工作进程共用，语义一致；模板由 Go 服务端渲染 | `internal/tmpl` |
+| D-46 | 作者模板（Liquid）在**可终止的隔离工作进程**中渲染：aint 自身以隐藏子命令 `__tmpl-worker` 运行，超时（1 秒）即杀掉并重启；渲染核心进程内与工作进程共用，语义一致；模板由 Go 服务端渲染 | `internal/tmpl` |
 | D-47 | OpenAI Responses 的缓存：GPT-5.6 起（Caps.Cache = breakpoints）用 `prompt_cache_options {mode: implicit, ttl}`（隐式断点自动落在最新消息末尾，相当于滚动断点），并在 L1 / L3 / L4 末尾加显式断点；顶层 `instructions` 不能带断点，所以 L0+L1 放首条 developer 消息。早期模型与兼容接口（如 DeepSeek）用 `instructions` + `prompt_cache_key`（DeepSeek 把 developer 当 user）。缓存保留时长使用中立的 short / long（Anthropic 5m / 1h、OpenAI 30m / 12h） | `internal/llm/openai`、`llm.CacheShort/CacheLong` |
 | D-48 | 供应商支持**价格倍率**（中转站的分组倍率）：模型单价照抄站点标价，实际费用 = 单价 × 倍率；运行时解析模型时已乘好，设置页显示单价与倍率 | `providers.price_multiplier`、`llm.Price.Scaled` |
 

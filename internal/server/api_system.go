@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) error {

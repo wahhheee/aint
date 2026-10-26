@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/aint/internal/usage"
 )
 
 // usageSummary 统计累计用量：?save_id= 存档、?work_id= 作品、?node_id= 某个回合或整理节点，可组合；都省略时为全局累计。

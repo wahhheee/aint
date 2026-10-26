@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 // 手工 SSE 覆盖无法稳定通过真实调用触发的供应商停止原因与流中错误。

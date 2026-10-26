@@ -2,8 +2,8 @@
 //
 // 发布构建通过 -ldflags 注入：
 //
-//	-X github.com/wahhheee/yanyi/internal/buildinfo.Version=1.0.0
-//	-X github.com/wahhheee/yanyi/internal/buildinfo.Commit=abc1234
+//	-X github.com/wahhheee/aint/internal/buildinfo.Version=1.0.0
+//	-X github.com/wahhheee/aint/internal/buildinfo.Commit=abc1234
 //
 // 未注入时（go run / 开发构建）从 debug.ReadBuildInfo 的 VCS 信息兜底。
 package buildinfo
@@ -20,7 +20,7 @@ var (
 	Date    = ""
 )
 
-// Info 汇总版本信息，用于 `yanyi version`、/api/v1/system/info 与日志。
+// Info 汇总版本信息，用于 `aint version`、/api/v1/system/info 与日志。
 type Info struct {
 	Version   string `json:"version"`
 	Commit    string `json:"commit"`

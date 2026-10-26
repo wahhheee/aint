@@ -1,13 +1,13 @@
 version: 2
-project_name: yanyi
+project_name: aint
 
 before:
   hooks:
     - go run ./cmd/release-assets
 
 builds:
-  - main: ./cmd/yanyi
-    binary: yanyi
+  - main: ./cmd/aint
+    binary: aint
     env: [CGO_ENABLED=0]
     goos: [windows, darwin, linux]
     goarch: [amd64, arm64]
@@ -15,9 +15,9 @@ builds:
     ldflags:
       - >-
         -s -w
-        -X github.com/wahhheee/yanyi/internal/buildinfo.Version={{.Version}}
-        -X github.com/wahhheee/yanyi/internal/buildinfo.Commit={{.Commit}}
-        -X github.com/wahhheee/yanyi/internal/buildinfo.Date={{.Date}}
+        -X github.com/wahhheee/aint/internal/buildinfo.Version={{.Version}}
+        -X github.com/wahhheee/aint/internal/buildinfo.Commit={{.Commit}}
+        -X github.com/wahhheee/aint/internal/buildinfo.Date={{.Date}}
 
 archives:
   - name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'

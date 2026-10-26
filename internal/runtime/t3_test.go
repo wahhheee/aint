@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 func TestT3Primitives(t *testing.T) {
@@ -42,7 +42,7 @@ func TestT3Primitives(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor",
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor",
 		Form: map[string]any{"player.name": "阿遥", "player.trait": "记忆"}, Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)

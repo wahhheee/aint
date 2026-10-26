@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 // branchScript：每个回合两次调用——先写一行正文、把玩家输入记进 /memory/log.md 并检索"乙"，再写"（完）"。
@@ -84,7 +84,7 @@ func TestBranches(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(branchScript()), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestEditNotesAndDiscard(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(branchScript()), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}

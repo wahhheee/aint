@@ -7,18 +7,18 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/wahhheee/yanyi/examples"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/examples"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func TestDebugAPI(t *testing.T) {
 	ctx := t.Context()
 	dir := t.TempDir()
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := store.Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestDebugAPI(t *testing.T) {
 	works := work.NewService(db, blobs)
 	works.EnsureBuiltins(ctx, examples.Works())
 	saves := save.NewService(db, blobs, works, tmpl.New())
-	sv, err := saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story"})
+	sv, err := saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story"})
 	if err != nil {
 		t.Fatal(err)
 	}

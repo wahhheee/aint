@@ -14,8 +14,8 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // Limits 是读取作品文件时的安全限制（《02-技术方案》5.1，默认值可配置）。
@@ -244,7 +244,7 @@ func readError(p string, err error) error {
 	return errs.Wrap(err, errs.CodeWorkInvalid, "读取文件失败：%s（文件可能已损坏）", p)
 }
 
-// readIgnore 读取作品根的 .yanyiignore；不存在时返回空规则。
+// readIgnore 读取作品根的 .aintignore；不存在时返回空规则。
 func readIgnore(f *srcFile) (*Ignore, error) {
 	if f == nil || !f.mode.IsRegular() {
 		return nil, nil

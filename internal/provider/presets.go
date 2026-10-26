@@ -5,7 +5,7 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 // Preset 是内置的模型预设：添加模型时按名字匹配，预填上下文窗口、输出上限、能力与官方价格（用户可修改）。

@@ -59,4 +59,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/wahhheee/yanyi
+        - github.com/wahhheee/aint

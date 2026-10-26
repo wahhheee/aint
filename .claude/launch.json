@@ -6,7 +6,7 @@
       "runtimeExecutable": "go",
       "runtimeArgs": [
         "run",
-        "./cmd/yanyi",
+        "./cmd/aint",
         "serve",
         "--data",
         "./.devdata",
@@ -25,7 +25,7 @@
       "runtimeExecutable": "go",
       "runtimeArgs": [
         "run",
-        "./cmd/yanyi",
+        "./cmd/aint",
         "serve",
         "--data",
         "./.devdata",

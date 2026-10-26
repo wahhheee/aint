@@ -6,9 +6,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/wire"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/wire"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // stream 把 Messages 流式事件转为中立事件。

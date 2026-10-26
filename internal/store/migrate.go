@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
 )
 
 //go:embed migrations/*.sql
@@ -53,7 +53,7 @@ func (db *DB) Migrate(ctx context.Context, backupDir string) error {
 	}
 	latest := all[len(all)-1].version
 	if current > latest {
-		return fmt.Errorf("数据目录的结构版本（%d）比当前程序支持的版本（%d）新：请使用更新版本的 yanyi 打开", current, latest)
+		return fmt.Errorf("数据目录的结构版本（%d）比当前程序支持的版本（%d）新：请使用更新版本的 aint 打开", current, latest)
 	}
 
 	pending := slices.DeleteFunc(slices.Clone(all), func(m migration) bool { return m.version <= current })
@@ -115,14 +115,14 @@ func (db *DB) backup(ctx context.Context, dir string, version int) error {
 	if err := os.MkdirAll(dir, fsx.DirPerm); err != nil {
 		return err
 	}
-	name := fmt.Sprintf("yanyi-v%04d-%s.db", version, time.Now().Format("20060102-150405"))
+	name := fmt.Sprintf("aint-v%04d-%s.db", version, time.Now().Format("20060102-150405"))
 	dst := filepath.Join(dir, name)
 	if _, err := db.write.ExecContext(ctx, `VACUUM INTO ?`, dst); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "已备份数据库", "path", dst)
 
-	matches, _ := filepath.Glob(filepath.Join(dir, "yanyi-v*.db"))
+	matches, _ := filepath.Glob(filepath.Join(dir, "aint-v*.db"))
 	slices.SortFunc(matches, func(a, b string) int {
 		ia, _ := os.Stat(a)
 		ib, _ := os.Stat(b)

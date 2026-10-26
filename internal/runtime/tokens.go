@@ -6,15 +6,15 @@ import (
 	"math"
 	"sync"
 
-	"github.com/wahhheee/yanyi/internal/compact"
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/settings"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/compact"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/settings"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // SettingsSource 提供全局设置（整理参数、轻量模型）；由 settings.Service 实现。为空时使用默认值。

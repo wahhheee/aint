@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/llm"
+	"github.com/wahhheee/aint/internal/llm"
 )
 
 // RenderToolGuide 用本次请求的工具描述生成自然语言用法，顺序与 API 工具定义一致。

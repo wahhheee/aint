@@ -7,16 +7,16 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/usage"
 )
 
 func TestUsageSummary(t *testing.T) {
 	ctx := t.Context()
 	dir := t.TempDir()
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := store.Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

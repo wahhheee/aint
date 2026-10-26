@@ -12,7 +12,7 @@ import (
 )
 
 // 测试中的工作进程是测试二进制自身：TestMain 见到环境变量后进入工作进程循环。
-const envWorker = "YANYI_TMPL_TEST_WORKER"
+const envWorker = "AINT_TMPL_TEST_WORKER"
 
 func TestMain(m *testing.M) {
 	switch os.Getenv(envWorker) {

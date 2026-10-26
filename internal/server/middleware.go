@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/logx"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/logx"
 )
 
 // middleware 组装中间件链（外层先执行）：

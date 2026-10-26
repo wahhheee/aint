@@ -1,10 +1,10 @@
 format: 1
-id: yanyi.misty-harbor
+id: aint.misty-harbor
 version: 0.1.0
 title: 雾港来信
 subtitle: 一座被雾封住的港口，一封寄错的信
 authors:
-  - name: 演义示例
+  - name: AINT 示例
 language: zh-CN
 description: 你在雾港的邮局醒来，手里攥着一封写给“明天的你”的信。
 tags: [悬疑, 群像, 推理]

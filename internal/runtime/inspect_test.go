@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/llm/openai"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/llm/openai"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 func TestDebugSnapshotsAndToggle(t *testing.T) {
@@ -26,7 +26,7 @@ func TestDebugSnapshotsAndToggle(t *testing.T) {
 		{DelayMS: 1, Text: "新的篇章。"},
 	}})
 	ctx := t.Context()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story"})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestDebugCancelAndCompaction(t *testing.T) {
 	t.Run("取消保留失败记录", func(t *testing.T) {
 		gate := make(chan struct{})
 		e := setupWith(t, gatedProvider{Provider: fake.New(quickScript()), open: gate})
-		sv, err := e.saves.Create(t.Context(), save.CreateParams{WorkID: "yanyi.first-story"})
+		sv, err := e.saves.Create(t.Context(), save.CreateParams{WorkID: "aint.first-story"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +106,7 @@ func TestDebugCancelAndCompaction(t *testing.T) {
 	})
 	t.Run("整理工具与快照", func(t *testing.T) {
 		e := setup(t, compactScript())
-		sv, err := e.saves.Create(t.Context(), save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{ContextBudget: 100000, KeepRecent: 100}})
+		sv, err := e.saves.Create(t.Context(), save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{ContextBudget: 100000, KeepRecent: 100}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -175,7 +175,7 @@ func TestDebugHTTPRetriesAndReasoning(t *testing.T) {
 	defer srv.Close()
 	p := openai.New(llm.ProviderConfig{BaseURL: srv.URL + "/v1", APIKey: "private-key", Headers: map[string]string{"X-Trace-Token": "private-token"}, HTTP: srv.Client()})
 	e := setupWith(t, llm.WithRetry(p, llm.RetryPolicy{MaxRetries: 1, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond}))
-	sv, err := e.saves.Create(t.Context(), save.CreateParams{WorkID: "yanyi.first-story"})
+	sv, err := e.saves.Create(t.Context(), save.CreateParams{WorkID: "aint.first-story"})
 	if err != nil {
 		t.Fatal(err)
 	}

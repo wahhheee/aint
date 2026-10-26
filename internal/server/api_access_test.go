@@ -11,8 +11,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/access"
-	"github.com/wahhheee/yanyi/internal/provider"
+	"github.com/wahhheee/aint/internal/access"
+	"github.com/wahhheee/aint/internal/provider"
 )
 
 func TestAccessProtectsAllData(t *testing.T) {

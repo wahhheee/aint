@@ -5,7 +5,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/wahhheee/yanyi/internal/prompts"
+	"github.com/wahhheee/aint/internal/prompts"
 )
 
 // FragmentReport 是一个片段的组装结果（检查器"上下文"页，USG-03）。

@@ -3,8 +3,8 @@ package contextx
 import (
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // 状态说明：object 子字段、list / map 中 object 元素的字段与元素本身的说明都列出来；简单类型的元素不多占一行。

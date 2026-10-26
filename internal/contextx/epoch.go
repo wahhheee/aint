@@ -5,9 +5,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
 )
 
 // RenderEpoch0 渲染第 0 阶段（开局）的阶段块（《02-技术方案》13.4）：

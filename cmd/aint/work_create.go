@@ -6,14 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wahhheee/yanyi/internal/pkg/fsx"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/pkg/fsx"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func workInit(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("用法：yanyi work init <新目录或空目录>")
+		return fmt.Errorf("用法：aint work init <新目录或空目录>")
 	}
 	dir := args[0]
 	entries, err := os.ReadDir(dir)
@@ -33,7 +33,7 @@ func workInit(args []string) error {
 	if err := os.WriteFile(filepath.Join(dir, "prompts", "narrator.md"), []byte("# 执笔指令\n\n与玩家共同讲述一个故事。描写人物、环境与行动的后果，在需要玩家决定时给出选项。\n\n在这里补充世界、人物、文风与故事的走向。\n"), fsx.PrivateFilePerm); err != nil { //nolint:gosec // 固定文件名写入本机命令行指定的空目录。
 		return err
 	}
-	fmt.Printf("已创建作品：%s\n使用 yanyi work validate 校验，或在书架中链接为开发目录。\n", dir)
+	fmt.Printf("已创建作品：%s\n使用 aint work validate 校验，或在书架中链接为开发目录。\n", dir)
 	return nil
 }
 
@@ -44,7 +44,7 @@ func workPack(args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return fmt.Errorf("用法：yanyi work pack <目录> [-o file.zip]")
+		return fmt.Errorf("用法：aint work pack <目录> [-o file.zip]")
 	}
 	dir, err := filepath.Abs(fs.Arg(0))
 	if err != nil {

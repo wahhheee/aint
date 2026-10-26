@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/state"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/state"
 )
 
 // get_state / update_state 的结果格式（《02-技术方案》10.2）：

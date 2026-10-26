@@ -11,8 +11,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func TestStorageCollectionPreservesBranchesAndUploads(t *testing.T) {

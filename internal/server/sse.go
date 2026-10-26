@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // heartbeat 是 SSE 心跳间隔：保持连接（代理、浏览器的空闲超时），也让客户端及时发现断线。

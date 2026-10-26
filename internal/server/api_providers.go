@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
-	"github.com/wahhheee/yanyi/internal/provider"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/provider"
 )
 
 func (s *Server) listProviders(w http.ResponseWriter, r *http.Request) error {

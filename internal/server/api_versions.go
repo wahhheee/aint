@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 func (s *Server) listVersions(w http.ResponseWriter, r *http.Request) error {

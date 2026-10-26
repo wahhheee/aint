@@ -13,9 +13,9 @@ import (
 
 	"github.com/yuin/goldmark"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/ids"
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/ids"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // Source 记录作品版本的来源（work_versions.source）。

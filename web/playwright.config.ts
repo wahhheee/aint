@@ -3,7 +3,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const data = mkdtempSync(join(tmpdir(), 'yanyi-e2e-'))
+const data = mkdtempSync(join(tmpdir(), 'aint-e2e-'))
 
 export default defineConfig({
   testDir: './e2e',
@@ -18,7 +18,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `go run ./cmd/yanyi serve --data "${data}" --port 7879 --no-browser --fake-llm testdata/fake/m5.yaml`,
+      command: `go run ./cmd/aint serve --data "${data}" --port 7879 --no-browser --fake-llm testdata/fake/m5.yaml`,
       cwd: '..',
       url: 'http://127.0.0.1:7879/api/v1/works',
       reuseExistingServer: false,
@@ -27,7 +27,7 @@ export default defineConfig({
     {
       command: 'pnpm dev --host 127.0.0.1 --port 5179 --strictPort',
       url: 'http://127.0.0.1:5179',
-      env: { YANYI_API: 'http://127.0.0.1:7879' },
+      env: { AINT_API: 'http://127.0.0.1:7879' },
       reuseExistingServer: false,
     },
   ],

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/aint/internal/usage"
 )
 
 // TitleCurrent 表示当前进度已有一次成功的标题调用。

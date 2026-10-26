@@ -11,19 +11,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wahhheee/yanyi/examples"
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/llm/fake"
-	"github.com/wahhheee/yanyi/internal/media"
-	"github.com/wahhheee/yanyi/internal/runtime"
-	"github.com/wahhheee/yanyi/internal/save"
-	"github.com/wahhheee/yanyi/internal/state"
-	"github.com/wahhheee/yanyi/internal/store"
-	"github.com/wahhheee/yanyi/internal/tmpl"
-	"github.com/wahhheee/yanyi/internal/tools"
-	"github.com/wahhheee/yanyi/internal/work"
+	"github.com/wahhheee/aint/examples"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/fake"
+	"github.com/wahhheee/aint/internal/media"
+	"github.com/wahhheee/aint/internal/runtime"
+	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
+	"github.com/wahhheee/aint/internal/store"
+	"github.com/wahhheee/aint/internal/tmpl"
+	"github.com/wahhheee/aint/internal/tools"
+	"github.com/wahhheee/aint/internal/work"
 )
 
 // fakeModels 让所有存档都使用同一个假模型。
@@ -81,7 +81,7 @@ func openEnv(ctx context.Context, dir string, provider llm.Provider) (*env, erro
 
 // openEnvWith 同 openEnv，模型由 models 解析（评测用真实模型）；opts 可以调整运行器的依赖（如全局设置）。
 func openEnvWith(ctx context.Context, dir string, models runtime.ModelResolver, opts ...func(*runtime.Deps)) (*env, error) {
-	db, err := store.Open(ctx, filepath.Join(dir, "yanyi.db"))
+	db, err := store.Open(ctx, filepath.Join(dir, "aint.db"))
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func TestTurnVerticalSlice(t *testing.T) {
 	e := setupWith(t, gatedProvider{Provider: fake.New(quickScript()), open: gate})
 	ctx := context.Background()
 
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Form: map[string]any{"player.name": "阿遥"},
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Form: map[string]any{"player.name": "阿遥"},
 		Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +216,7 @@ func TestCancelKeepsContent(t *testing.T) {
 	slow := &fake.Script{Responses: []fake.Response{{Text: strings.Repeat("雾越来越浓。", 200), ChunkRunes: 2, DelayMS: 5}}}
 	e := setup(t, slow)
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestContinuationDedup(t *testing.T) {
 	}}
 	e := setup(t, script)
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.first-story", Settings: save.Settings{Pace: "short"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.first-story", Settings: save.Settings{Pace: "short"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func TestReadAndListTools(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestStateTools(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,7 +419,7 @@ func TestAttachments(t *testing.T) {
 	var reqs []*llm.Request
 	e := setupWith(t, recordingProvider{Provider: fake.New(script), reqs: &reqs})
 	ctx := context.Background()
-	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "yanyi.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
+	sv, err := e.saves.Create(ctx, save.CreateParams{WorkID: "aint.misty-harbor", Settings: save.Settings{Pace: "medium", Reasoning: "low"}})
 	if err != nil {
 		t.Fatal(err)
 	}

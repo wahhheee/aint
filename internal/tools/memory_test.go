@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/vfs"
+	"github.com/wahhheee/aint/internal/vfs"
 )
 
 func memoryEnv() *fakeEnv {

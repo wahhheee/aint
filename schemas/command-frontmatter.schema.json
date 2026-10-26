@@ -1,8 +1,8 @@
 {
-  "$id": "https://raw.githubusercontent.com/wahhheee/yanyi/main/schemas/command-frontmatter.schema.json",
+  "$id": "https://raw.githubusercontent.com/wahhheee/aint/main/schemas/command-frontmatter.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
-  "description": "编辑器补全与结构校验；完整校验请运行 yanyi work validate。未知字段由运行时报告警告。",
+  "description": "编辑器补全与结构校验；完整校验请运行 aint work validate。未知字段由运行时报告警告。",
   "properties": {
     "ai_visible": {
       "type": "boolean"
@@ -61,6 +61,6 @@
       "type": "string"
     }
   },
-  "title": "演义作品：command-frontmatter",
+  "title": "AINT 作品：command-frontmatter",
   "type": "object"
 }

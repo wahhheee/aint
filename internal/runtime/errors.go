@@ -3,8 +3,8 @@ package runtime
 import (
 	"errors"
 
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
 var errTurnTimeout = errors.New("本回合已达时长上限，可以继续或重试。")

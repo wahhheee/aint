@@ -1,6 +1,6 @@
 package llm
 
-import "github.com/wahhheee/yanyi/internal/pkg/jsonx"
+import "github.com/wahhheee/aint/internal/pkg/jsonx"
 
 // Role 是消息角色。系统提示放在 Request.System，不作为消息。
 type Role string

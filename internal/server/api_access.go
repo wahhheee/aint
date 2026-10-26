@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/wahhheee/yanyi/internal/access"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/access"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
-const sessionCookie = "yanyi_session"
+const sessionCookie = "aint_session"
 
 func sessionToken(r *http.Request) string {
 	c, err := r.Cookie(sessionCookie)

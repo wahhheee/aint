@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/store"
+	"github.com/wahhheee/aint/internal/store"
 )
 
 // CollectCache 清除原图已回收且超过一小时的缩略图缓存。

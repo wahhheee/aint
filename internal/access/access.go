@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 const secretKey = "access"
@@ -49,14 +49,14 @@ func New(secrets Secrets) (*Service, error) {
 	raw, err := secrets.Resolve(secretKey)
 	if err == nil && raw != "" {
 		if err := jsonx.Unmarshal([]byte(raw), &s.data); err != nil {
-			return nil, errs.Invalid("访问密码记录损坏，请使用 yanyi password clear 重置")
+			return nil, errs.Invalid("访问密码记录损坏，请使用 aint password clear 重置")
 		}
 	}
 	if s.data.Hash != "" {
 		h, e1 := hex.DecodeString(s.data.Hash)
 		salt, e2 := hex.DecodeString(s.data.Salt)
 		if e1 != nil || e2 != nil || len(h) != 32 || len(salt) != 16 {
-			return nil, errs.Invalid("访问密码记录损坏，请使用 yanyi password clear 重置")
+			return nil, errs.Invalid("访问密码记录损坏，请使用 aint password clear 重置")
 		}
 	}
 	return s, nil

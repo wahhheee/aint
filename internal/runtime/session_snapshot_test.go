@@ -3,8 +3,8 @@ package runtime
 import (
 	"testing"
 
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/save"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/save"
 )
 
 func TestSessionSnapshotBoundary(t *testing.T) {

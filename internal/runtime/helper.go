@@ -8,13 +8,13 @@ import (
 	"slices"
 	"time"
 
-	"github.com/wahhheee/yanyi/internal/contextx"
-	"github.com/wahhheee/yanyi/internal/event"
-	"github.com/wahhheee/yanyi/internal/helper"
-	"github.com/wahhheee/yanyi/internal/llm"
-	"github.com/wahhheee/yanyi/internal/pkg/errs"
-	"github.com/wahhheee/yanyi/internal/prompts"
-	"github.com/wahhheee/yanyi/internal/usage"
+	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/helper"
+	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/pkg/errs"
+	"github.com/wahhheee/aint/internal/prompts"
+	"github.com/wahhheee/aint/internal/usage"
 )
 
 func (m *Manager) delegate(ctx context.Context, d *draft, kind, task string) (string, error) {
@@ -46,7 +46,7 @@ func (m *Manager) delegate(ctx context.Context, d *draft, kind, task string) (st
 	if err != nil {
 		return "", err
 	}
-	req := &llm.Request{CacheKey: "yanyi:helper:" + d.save.ID + ":" + d.id, System: []llm.SystemBlock{{Text: system + "\n" + contextx.RenderToolGuide(specs)}}, Tools: specs, Messages: []llm.Message{{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(task)}}}, MaxOutput: min(4000, model.MaxOutput), Reasoning: llm.ReasoningLow, Purpose: "helper", CacheTTL: d.save.Settings.CacheTTL}
+	req := &llm.Request{CacheKey: "aint:helper:" + d.save.ID + ":" + d.id, System: []llm.SystemBlock{{Text: system + "\n" + contextx.RenderToolGuide(specs)}}, Tools: specs, Messages: []llm.Message{{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(task)}}}, MaxOutput: min(4000, model.MaxOutput), Reasoning: llm.ReasoningLow, Purpose: "helper", CacheTTL: d.save.Settings.CacheTTL}
 	var inspection *debugRecorder
 	call := func(ctx context.Context, req *llm.Request) (llm.Message, llm.StopReason, error) {
 		if d.helperCalls >= 10 {

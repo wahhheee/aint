@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"text/template"
 
-	"github.com/wahhheee/yanyi/internal/prompts"
+	"github.com/wahhheee/aint/internal/prompts"
 )
 
 // RenderBackgroundPrompt 按当前模型能力渲染助手或标题提示词，不携带主笔对话。

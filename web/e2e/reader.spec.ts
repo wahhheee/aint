@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('生成中刷新与换设备可恢复正文、停止并继续', async ({ page, request, browser }) => {
-  const created = await request.post('/api/v1/saves', { data: { work_id: 'yanyi.misty-harbor' } })
+  const created = await request.post('/api/v1/saves', { data: { work_id: 'aint.misty-harbor' } })
   expect(created.ok()).toBeTruthy()
   const save = await created.json()
   await request.patch('/api/v1/settings', { data: { reading: { typewriter: 'instant' }, onboarded: true } })
@@ -34,7 +34,7 @@ test('生成中刷新与换设备可恢复正文、停止并继续', async ({ pa
 
 test('阅读、选项、调试、设置、目录与分支', async ({ page, request }) => {
   const created = await request.post('/api/v1/saves', {
-    data: { work_id: 'yanyi.first-story', settings: { pace: 'short', reasoning: 'low' } },
+    data: { work_id: 'aint.first-story', settings: { pace: 'short', reasoning: 'low' } },
   })
   expect(created.ok()).toBeTruthy()
   const save = await created.json()

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/wahhheee/yanyi/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
 // Segment 是分支视图中的一段：一串没有分叉的节点（《04-交互与界面设计》8.11）。
