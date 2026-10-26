@@ -46,6 +46,7 @@ import { hasPanels } from './panels/layout'
 import { FloatPanels, SidebarPanels, TopbarPanels } from './panels/Panels'
 import { PanelSheet } from './panels/PanelSheet'
 import { ReaderContext, type ReaderContextValue } from './ReaderContext'
+import { OpeningSwitcher } from './OpeningSwitcher'
 import { stageCues } from './stage/scene'
 import { StageAudio } from './stage/StageAudio'
 import { StageBackground } from './stage/StageBackground'
@@ -140,14 +141,21 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
   const readingStyle = useReadingStyle(reading, theme?.reading)
   useWorkStyles(workTagCSS(ui.tags) + (theme?.css ? '\n' + theme.css : ''))
 
-  // 还没有任何回合（生成式开场或作品没有开场）：自动开始故事
-  const openedRef = useRef(false)
+  // 每个开场起点最多自动提交一次；切换后使用新的 head，失败时由玩家重试。
+  const openedRef = useRef('')
   useEffect(() => {
-    if (connection === 'open' && presentation.needs_opening && !presentation.running_turn_id && !openedRef.current) {
-      openedRef.current = true
-      void actions.submit({ kind: 'opening' })
+    if (
+      connection === 'open' &&
+      presentation.needs_opening &&
+      !presentation.running_turn_id &&
+      !busy &&
+      !presentation.compacting &&
+      openedRef.current !== save.head_node_id
+    ) {
+      openedRef.current = save.head_node_id
+      void actions.submit({ kind: 'opening', expected_head_id: save.head_node_id })
     }
-  }, [connection, presentation.needs_opening, presentation.running_turn_id, actions])
+  }, [connection, presentation.needs_opening, presentation.running_turn_id, presentation.compacting, busy, save.head_node_id, actions])
 
   // 快捷键：Esc 停止；/ 聚焦输入栏并打开命令面板
   useEffect(() => {
@@ -233,7 +241,7 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
               (reading?.reduce_motion !== 'off' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
             }
           />
-          <StageAudio cues={cues} draftId={draft?.turnId} assets={ui.assets} />
+          <StageAudio key={save.opening_id} cues={cues} draftId={draft?.turnId} assets={ui.assets} />
 
           <div className="relative flex min-w-0 flex-1 flex-col">
             {connection === 'reconnecting' && (
@@ -269,6 +277,7 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
             />
             <TopbarPanels meta={ui.panels} rendered={panels} />
             <Stream
+              opening={<OpeningSwitcher presentation={presentation} />}
               loadEarlier={loadEarlier}
               loadingEarlier={loadingEarlier}
               timeline={timeline}

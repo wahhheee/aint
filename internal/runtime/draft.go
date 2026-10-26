@@ -36,6 +36,7 @@ type draft struct {
 	initState map[string]any // 存档的初始状态（执笔指令中的 Liquid 以它渲染）
 	turnNo    int
 	input     save.TurnInput
+	opening   bool // 开场及中断开场的续写，不计为玩家首轮交互
 	work      *work.Model
 	features  prompts.FeatureSet
 	provider  llm.Provider

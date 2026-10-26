@@ -10,7 +10,7 @@ import (
 //
 // 只在作品可用的能力增加时递增次版本（例如新增 <act> 标签 → 1.1），出现不兼容变化时递增主版本；
 // 与程序的发布版本无关——程序修 bug、改界面不需要改它。作品在 work.yaml 的 engine 中声明所需范围。
-const EngineVersion = "1.1"
+const EngineVersion = "2.0"
 
 // engineSatisfies 判断 version 是否满足范围表达式。
 //

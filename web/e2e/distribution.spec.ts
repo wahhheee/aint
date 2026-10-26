@@ -6,7 +6,10 @@ import { join } from 'node:path'
 function fixture(id: string) {
   const dir = mkdtempSync(join(tmpdir(), 'aint-work-'))
   mkdirSync(join(dir, 'prompts'))
-  writeFileSync(join(dir, 'work.yaml'), `format: 1\nid: ${id}\nversion: 1.0.0\ntitle: 创作测试\n`)
+  writeFileSync(
+    join(dir, 'work.yaml'),
+    `format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: static, file: prompts/opening.md}\nid: ${id}\nversion: 1.0.0\ntitle: 创作测试\n`,
+  )
   writeFileSync(join(dir, 'prompts/narrator.md'), '与玩家共同讲述一个故事。')
   writeFileSync(join(dir, 'prompts/opening.md'), '旅程开始了。')
   writeFileSync(join(dir, 'state.yaml'), 'fields:\n  old: {type: string, default: 旧值}\n')
@@ -36,7 +39,10 @@ test('开发目录预览、重载、版本导出和删除', async ({ page, reque
   await page.getByRole('button', { name: '导入', exact: true }).click()
   await page.getByRole('button', { name: '查看作品', exact: true }).click()
   await expect(page.getByRole('heading', { name: '创作测试', exact: true })).toBeVisible()
-  writeFileSync(join(dir, 'work.yaml'), `format: 1\nid: ${id}\nversion: 1.0.1\ntitle: 热重载已生效\n`)
+  writeFileSync(
+    join(dir, 'work.yaml'),
+    `format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: static, file: prompts/opening.md}\nid: ${id}\nversion: 1.0.1\ntitle: 热重载已生效\n`,
+  )
   await expect(page.getByRole('heading', { name: '热重载已生效' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('tab', { name: '版本', exact: true }).click()
   const download = page.waitForEvent('download')
@@ -58,7 +64,10 @@ test('存档升级与迁移记录', async ({ page, request }, info) => {
   const created = await request.post('/api/v1/saves', { data: { work_id: id, version_id: old.version_id } })
   expect(created.ok()).toBeTruthy()
   const save = await created.json()
-  writeFileSync(join(dir, 'work.yaml'), `format: 1\nid: ${id}\nversion: 2.0.0\ntitle: 创作测试\nchangelog: 新增旅程记录。\n`)
+  writeFileSync(
+    join(dir, 'work.yaml'),
+    `format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: static, file: prompts/opening.md}\nid: ${id}\nversion: 2.0.0\ntitle: 创作测试\nchangelog: 新增旅程记录。\n`,
+  )
   writeFileSync(join(dir, 'state.yaml'), 'fields:\n  added: {type: number, default: 42}\n')
   const next = await importDirectory(request, dir)
   await page.goto(`/works/${id}`)

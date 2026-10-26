@@ -47,8 +47,8 @@ func seed(t *testing.T, db *store.DB) {
 			`INSERT INTO works (id, title, created_at, updated_at) VALUES ('w1', '作品一', 0, 0), ('w2', '作品二', 0, 0)`,
 			`INSERT INTO work_versions (id, work_id, version, tree_hash, source, manifest, imported_at)
 			 VALUES ('v1', 'w1', '1.0.0', 'h1', '{}', '{}', 0), ('v2', 'w2', '1.0.0', 'h2', '{}', '{}', 0)`,
-			`INSERT INTO saves (id, work_id, work_version_id, settings, created_at, updated_at)
-			 VALUES ('s1', 'w1', 'v1', '{}', 0, 0), ('s2', 'w1', 'v1', '{}', 0, 0), ('s3', 'w2', 'v2', '{}', 0, 0)`,
+			`INSERT INTO saves (id, work_id, work_version_id, settings, opening_id, initial_form, created_at, updated_at)
+			 VALUES ('s1', 'w1', 'v1', '{}', 'default', '{}', 0, 0), ('s2', 'w1', 'v1', '{}', 'default', '{}', 0, 0), ('s3', 'w2', 'v2', '{}', 'default', '{}', 0, 0)`,
 			`INSERT INTO providers (id, name, protocol, base_url, secret_ref, created_at) VALUES ('p', '供应商', 'anthropic', 'https://x', 'k', 0)`,
 			`INSERT INTO models (id, provider_id, model, display_name, context_window, max_output, caps)
 			 VALUES ('main', 'p', 'main-model', '主笔模型', 1000, 100, '{}'), ('light', 'p', 'light-model', NULL, 1000, 100, '{}')`,

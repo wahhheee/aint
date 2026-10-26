@@ -52,6 +52,9 @@ CREATE TABLE saves (
   title_node      TEXT,                  -- 生成标题时的 head 节点
   forked_from     TEXT,                  -- JSON：{save_id, node_id, turn_no}（P1 复制为新存档）
   head_node_id    TEXT,
+  opening_id      TEXT NOT NULL,
+  opening_locked INTEGER NOT NULL DEFAULT 0, -- 首次玩家交互成功后永久锁定
+  initial_form    TEXT NOT NULL,         -- JSON：建档时有效的开局表单
   settings        TEXT NOT NULL,         -- JSON：模型角色、篇幅、推理、助手开关、上下文策略覆盖
   created_at      INTEGER NOT NULL,
   updated_at      INTEGER NOT NULL,

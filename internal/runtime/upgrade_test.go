@@ -16,11 +16,12 @@ import (
 func upgradeVersion(t *testing.T, e *env, version, stateDef string, opening bool) *work.ImportResult {
 	t.Helper()
 	files := fstest.MapFS{
-		"work.yaml":           {Data: []byte("format: 1\nid: test.upgrade\nversion: " + version + "\ntitle: 升级故事\nchangelog: 更新说明\n")},
+		"work.yaml":           {Data: []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.upgrade\nversion: " + version + "\ntitle: 升级故事\nchangelog: 更新说明\n")},
 		"prompts/narrator.md": {Data: []byte("指令版本：" + version)},
 		"state.yaml":          {Data: []byte(stateDef)},
 	}
 	if opening {
+		files["work.yaml"].Data = []byte(strings.Replace(string(files["work.yaml"].Data), "mode: generate}", "mode: static, file: prompts/opening.md}", 1))
 		files["prompts/opening.md"] = &fstest.MapFile{Data: []byte("故事开始。")}
 	}
 	set, err := work.FromFS(files, work.DefaultLimits)

@@ -10,11 +10,11 @@ type Model struct {
 	IsDev     bool // 来自开发目录（D-37）；阅读页据此默认显示开发者工具（D-31）
 	Manifest  Manifest
 
-	Narrator        string   // 执笔指令原文（prompts/narrator.md）
-	Opening         *Opening // nil 表示没有开场文件：以生成式开场开始
-	MemoryGuide     string   // prompts/memory.md
-	CompactionGuide string   // prompts/compaction.md
-	Readme          string   // README.md（只展示给玩家，不发给 AI）
+	Narrator        string    // 执笔指令原文（prompts/narrator.md）
+	Openings        []Opening // 与清单顺序一致，第一项为默认开场
+	MemoryGuide     string    // prompts/memory.md
+	CompactionGuide string    // prompts/compaction.md
+	Readme          string    // README.md（只展示给玩家，不发给 AI）
 
 	Docs     []Doc         // lore/ 下的设定文档，按路径排序
 	State    *state.Schema // 未定义状态时为空 Schema（Empty() 为真）
@@ -115,10 +115,10 @@ func (m *Model) Asset(ref string) (Asset, bool) {
 	return Asset{}, false
 }
 
-// Opening 是开场（prompts/opening.md）。
+// Opening 是编译后的开场，正文为静态叙事或生成指引。
 type Opening struct {
-	Mode    string   `json:"mode"` // static | generate
-	Body    string   `json:"body"` // Liquid 模板，建档时以初始状态渲染一次（save.Service.Create）
+	OpeningConf
+	Body    string   `json:"body"` // Liquid 模板，以所选开场的初始状态渲染
 	Choices []Choice `json:"choices,omitzero"`
 }
 

@@ -11,17 +11,53 @@ import (
 
 // 本文件集中存档与节点相关的 SQL。表结构见 store/migrations。
 
+func lockOpening(ctx context.Context, q store.Querier, saveID string) error {
+	_, err := q.ExecContext(ctx, `UPDATE saves SET opening_locked = 1 WHERE id = ?`, saveID)
+	return err
+}
+
+func hasUnfinishedInteraction(ctx context.Context, q store.Querier, saveID string) (bool, error) {
+	var exists bool
+	err := q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM nodes WHERE save_id = ? AND kind = 'turn'
+		AND COALESCE(json_extract(meta, '$.opening'), 0) = 0)`, saveID).Scan(&exists)
+	return exists, err
+}
+
+func resetOpening(ctx context.Context, q store.Querier, saveID, openingID, expectedHead string) error {
+	result, err := q.ExecContext(ctx, `UPDATE saves SET opening_id = ?, head_node_id = NULL, title_node = NULL
+		WHERE id = ? AND opening_locked = 0 AND head_node_id = ?`, openingID, saveID, expectedHead)
+	if err != nil {
+		return err
+	}
+	if n, err := result.RowsAffected(); err != nil || n != 1 {
+		if err != nil {
+			return err
+		}
+		return errs.Conflict("存档已变化或开场已锁定，请刷新后重试")
+	}
+	if _, err := q.ExecContext(ctx, `DELETE FROM transcript_fts WHERE save_id = ?`, saveID); err != nil {
+		return err
+	}
+	_, err = q.ExecContext(ctx, `DELETE FROM nodes WHERE save_id = ?`, saveID)
+	return err
+}
+
 func insertSave(ctx context.Context, q store.Querier, s *Save) error {
 	settings, err := jsonx.Marshal(s.Settings)
 	if err != nil {
 		return err
 	}
+	form, err := jsonx.Marshal(s.InitialForm)
+	if err != nil {
+		return err
+	}
 	_, err = q.ExecContext(ctx, `
 		INSERT INTO saves (id, work_id, work_version_id, title, title_source, forked_from, head_node_id, settings,
-		                   created_at, updated_at, last_played_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                   created_at, updated_at, last_played_at, opening_id, opening_locked, initial_form)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		s.ID, s.WorkID, s.WorkVersionID, store.NullString(s.Title), store.NullString(s.TitleSource), marshalFork(s.ForkedFrom),
-		store.NullString(s.HeadNodeID), string(settings), s.CreatedAt, s.UpdatedAt, s.LastPlayedAt)
+		store.NullString(s.HeadNodeID), string(settings), s.CreatedAt, s.UpdatedAt, s.LastPlayedAt,
+		s.OpeningID, s.OpeningLocked, string(form))
 	return err
 }
 
@@ -45,16 +81,17 @@ const saveColumns = `s.id, s.work_id, s.work_version_id, w.title, COALESCE(s.tit
 	COALESCE(s.head_node_id, ''), COALESCE(n.turn_no, 0),
 	(SELECT COUNT(*) FROM nodes c WHERE c.save_id = s.id
 		AND NOT EXISTS (SELECT 1 FROM nodes k WHERE k.save_id = c.save_id AND k.parent_id = c.id)),
-	s.forked_from, s.settings, s.created_at, s.updated_at, COALESCE(s.last_played_at, 0)`
+	s.forked_from, s.settings, s.created_at, s.updated_at, COALESCE(s.last_played_at, 0), s.opening_id, s.opening_locked, s.initial_form`
 
 const saveFrom = ` FROM saves s JOIN works w ON w.id = s.work_id LEFT JOIN nodes n ON n.id = s.head_node_id `
 
 func scanSave(sc interface{ Scan(...any) error }) (*Save, error) {
 	s := &Save{}
-	var settings string
+	var settings, form string
 	var fork sql.NullString
 	if err := sc.Scan(&s.ID, &s.WorkID, &s.WorkVersionID, &s.WorkTitle, &s.Title, &s.TitleSource, &s.HeadNodeID,
-		&s.TurnCount, &s.BranchCount, &fork, &settings, &s.CreatedAt, &s.UpdatedAt, &s.LastPlayedAt); err != nil {
+		&s.TurnCount, &s.BranchCount, &fork, &settings, &s.CreatedAt, &s.UpdatedAt, &s.LastPlayedAt,
+		&s.OpeningID, &s.OpeningLocked, &form); err != nil {
 		return nil, err
 	}
 	if fork.Valid {
@@ -64,6 +101,9 @@ func scanSave(sc interface{ Scan(...any) error }) (*Save, error) {
 		}
 	}
 	if err := jsonx.Unmarshal([]byte(settings), &s.Settings); err != nil {
+		return nil, err
+	}
+	if err := jsonx.Unmarshal([]byte(form), &s.InitialForm); err != nil {
 		return nil, err
 	}
 	return s, nil

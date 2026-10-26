@@ -178,6 +178,19 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
       if (!d || d.turnId !== ev.data.turn_id) return s
       return { ...s, draft: { ...d, status: ev.data.status, nodeId: ev.data.node_id, toolsRunning: 0 } }
     }
+    case 'timeline.changed':
+      if (ev.data.reason !== 'opening') return s
+      return {
+        ...s,
+        draft: null,
+        pending: null,
+        pendingParent: null,
+        pendingTurnId: undefined,
+        failure: null,
+        helper: undefined,
+        turnUsage: null,
+        context: null,
+      }
     case 'compaction.started':
       return { ...s, compacting: true }
     case 'compaction.done':

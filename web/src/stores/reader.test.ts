@@ -8,6 +8,17 @@ const empty = { draft: null, pending: null, pendingParent: null, failure: null, 
 const ev = (e: Omit<AnyEvent, 'id'>, id = 1) => ({ ...e, id }) as AnyEvent
 
 describe('reduceEvent', () => {
+  it('切换开场清除旧草稿、失败信息与回合用量，忽略旧终态事件', () => {
+    let s = reduceEvent(empty, ev({ type: 'turn.started', data: { turn_id: 'old', parent_id: 'root', input: { kind: 'opening' } } }))
+    s = reduceEvent(s, ev({ type: 'turn.text', data: { turn_id: 'old', seq: 1, delta: '旧开场' } }))
+    s = reduceEvent(s, ev({ type: 'turn.committed', data: { turn_id: 'old', node_id: 'old', status: 'interrupted' } }))
+    s = reduceEvent(s, ev({ type: 'timeline.changed', data: { head_id: 'new-root', reason: 'opening' } }))
+    expect(s.draft).toBeNull()
+    expect(s.failure).toBeNull()
+    expect(s.turnUsage).toBeNull()
+    s = reduceEvent(s, ev({ type: 'turn.committed', data: { turn_id: 'old', node_id: 'old', status: 'committed' } }))
+    expect(s.draft).toBeNull()
+  })
   it('中途进入恢复正文、工具与分支位置，后续增量只追加一次', () => {
     let s = reduceEvent(
       empty,

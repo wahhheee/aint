@@ -11,14 +11,28 @@ tags: [悬疑, 群像, 推理]
 content_rating: teen
 license: CC-BY-NC-4.0
 cover: assets/cover.webp
-engine: ">=1.0 <2.0"
+engine: ">=2.0 <3.0"
 requires:
   vision: preferred
 narrator:
   length: medium
   reasoning: low
-opening:
-  mode: static
+openings:
+  - id: post-office
+    title: 邮局醒来
+    description: 你攥着一封寄给明天的信，在邮局醒来。
+    mode: static
+    file: prompts/openings/post-office.md
+    initial_state:
+      situation: 雾越来越浓，老陈不见了。
+  - id: arriving
+    title: 乘船入港
+    description: 渡船即将靠岸，你第一次来到雾港。
+    mode: generate
+    file: prompts/openings/arriving.md
+    initial_state:
+      situation: 渡船即将靠岸，码头上有人正在等你。
+      trust.林舟: 0
 new_game:
   fields:
     - key: player.name

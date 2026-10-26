@@ -61,7 +61,7 @@ task dev:server:real
 
 | 手段 | 说明 |
 | --- | --- |
-| `task prompt -- <作品目录> [--vision] [--helpers] [--json]` | 打印 AI 实际收到的系统提示词、首条消息、工具定义，以及每个片段的启用情况与原因 |
+| `task prompt -- <作品目录> [--opening ID] [--vision] [--helpers] [--json]` | 按所选开场打印系统提示词、初始上下文、生成指引、工具定义，以及每个片段的启用情况与原因；默认选择第一项 |
 | `--trace-llm` | 每次模型调用的**完整中立请求 + 全部流事件（带毫秒时间戳）+ 错误**写成一个 JSON：`<数据目录>/logs/llm-trace/` |
 | 节点 meta | 数据库 `nodes.meta`：模型、停止原因、调用次数、续写次数、耗时、错误、前缀哈希、提示词版本、`context_tokens`（这个节点之后的上下文规模）；整理节点另有 `compact_reason`、`summary_from` / `summary_to`、`keep_from_turn` |
 | 用量与费用 | `GET /api/v1/usage?save_id=…`（也可用 `work_id`、`node_id` 组合，都省略为全局）：合计与按用途（narrate / continue / compact / probe 等）、按模型的小计；原始记录在 `usage_log`，每次模型调用一行，费用在写入时按当时的单价固化 |

@@ -80,7 +80,11 @@ func TestReentryCanCancelRunningTurn(t *testing.T) {
 
 func TestTurnDeadlineReleasesWriter(t *testing.T) {
 	for _, text := range []string{"", "雾中有人推开了门。"} {
-		t.Run(text, func(t *testing.T) {
+		name := "无正文"
+		if text != "" {
+			name = "已有正文"
+		}
+		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
 			p := &stalledProvider{Provider: fake.New(quickScript()), text: text}
 			e, err := openEnvWith(ctx, t.TempDir(), fakeModels{p}, func(d *runtime.Deps) {

@@ -67,7 +67,7 @@ func TestScopeCSSRejects(t *testing.T) {
 
 func TestCompileTheme(t *testing.T) {
 	set := NewFileSet()
-	_ = set.Add("work.yaml", []byte("format: 1\nid: test.theme\nversion: 0.1.0\ntitle: 主题\n"))
+	_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.theme\nversion: 0.1.0\ntitle: 主题\n"))
 	_ = set.Add("ui/theme.yaml", []byte(`fonts: {body: serif, heading: nofont}
 colors:
   light: {background: "#f6f2ea", text: "#2a2723", muted: "#7a7268", accent: "#8a5a2b", panel: "#efe8dc"}

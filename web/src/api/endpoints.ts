@@ -46,6 +46,7 @@ export interface UsageFilter {
 }
 
 export interface CreateSaveParams {
+  opening_id?: string
   work_id: string
   version_id?: string
   title?: string
@@ -115,6 +116,8 @@ export const api = {
     recent: (limit = 6) => http.get<Save[]>(`/saves?limit=${limit}`),
     create: (p: CreateSaveParams) => http.post<Save>('/saves', p),
     get: (id: string) => http.get<Presentation>(`/saves/${id}`),
+    switchOpening: (id: string, openingId: string, expectedHeadId: string) =>
+      http.put<Presentation>(`/saves/${id}/opening`, { opening_id: openingId, expected_head_id: expectedHeadId }),
     rename: (id: string, title: string) => http.patch<Save>(`/saves/${id}`, { title }),
     remove: (id: string) => http.del(`/saves/${id}`),
     timeline: (id: string, before?: string, limit = 50) =>

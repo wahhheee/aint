@@ -18,7 +18,7 @@ import (
 	"github.com/wahhheee/aint/internal/work"
 )
 
-const testManifest = "format: 1\nid: test.upload\nversion: 0.1.0\ntitle: 上传测试\n"
+const testManifest = "format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.upload\nversion: 0.1.0\ntitle: 上传测试\n"
 
 func newImportServer(t *testing.T, lim work.Limits) http.Handler {
 	t.Helper()

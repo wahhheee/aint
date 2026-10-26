@@ -61,7 +61,7 @@ func TestJSONSchemas(t *testing.T) {
 					name = "command-frontmatter"
 				case strings.Contains(filepath.ToSlash(p), "/memory/"):
 					name = "memory-frontmatter"
-				case d.Name() == "opening.md":
+				case strings.Contains(filepath.ToSlash(p), "/prompts/openings/"):
 					name = "opening-frontmatter"
 				default:
 					return nil

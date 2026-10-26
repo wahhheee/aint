@@ -26,7 +26,7 @@ func workInit(args []string) error {
 	if err := os.MkdirAll(filepath.Join(dir, "prompts"), fsx.DirPerm); err != nil { //nolint:gosec // 目标目录直接来自本机命令行，命令职责就是在指定位置创建模板。
 		return err
 	}
-	manifest := "format: 1\nid: local." + ids.New() + "\nversion: 0.1.0\ntitle: 我的故事\ndescription: 在这里介绍你的作品。\n"
+	manifest := "format: 1\nengine: ^" + work.EngineVersion + "\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: local." + ids.New() + "\nversion: 0.1.0\ntitle: 我的故事\ndescription: 在这里介绍你的作品。\n"
 	if err := os.WriteFile(filepath.Join(dir, "work.yaml"), []byte(manifest), fsx.PrivateFilePerm); err != nil { //nolint:gosec // 目标目录由本机命令行指定，且已确认不存在其他文件。
 		return err
 	}

@@ -1,21 +1,21 @@
 # 决策记录：脚手架评审（2026-10-20）
 
 本文记录当前决策及其代码位置。
-编号范围 D-23～D-70；本地设计材料在 `.local/docs/`。
+编号范围 D-23～D-71；本地设计材料在 `.local/docs/`。
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
 | D-23 | `presentation.text_effects` 默认关闭；`features.ooc` 默认开启 | `internal/work/manifest.go` |
 | D-24 | 平台默认的记忆目录约定写在 L0"记忆"节；作品 `memory.md` 在 L1 补充，作品写明替换时以作品为准 | `internal/prompts/l0.go` |
-| D-25 | 有 `opening.md` 未写 `mode` 时为 `static`；命令未写 `present` 时为 `[slash]` | `internal/work/compile.go` |
+| D-25 | 命令未写 `present` 时为 `[slash]`；开场按 D-71 显式声明列表与模式 | `internal/work/compile.go`、`internal/work/openings.go` |
 | D-26 | 叙事标记每个非空行为一个段落 | `web/src/markup/parse.ts` |
 | D-27 | 选项 `style` 只取作品样式标签，不内置 `danger`/`subtle`；作品有样式标签时才有该参数 | `internal/tools/builtins.go` |
 | D-28 | `<cg>` 只在有非背景图片素材时启用；背景图只用于 `<scene bg>` | `internal/contextx/profile.go` |
 | D-29 | 选项待答时玩家独立输入命令 / 场外 / 继续：工具结果如实写"没有从选项中作答"，输入照常跟在后面；选项附带命令时仍算选项作答，工具结果写所选项，随后附上命令输入 | `internal/contextx/envelope.go` |
 | D-30 | 内置标签 `<ooc>`（随 `features.ooc`）：AI 的场外回应写在其中，浅色块显示，不进入原文检索 | `prompts/l0.go`、`markup/`、`web/src/markup/` |
 | D-31 | **开发目录**用于作品链接本地目录；**开发者选项**是设置开关，默认关，开启后显示完整状态与状态编辑，开发目录作品默认显示。游玩调试使用阅读页独立开关（D-63），状态编辑仍属于开发者工具 | `internal/settings`、阅读页 |
-| D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `1.1`），与程序发布版本解耦 | `internal/work/engine.go` |
-| D-33 | 静态开场节点存两条消息：合成的 user `<input kind="opening">（开场）</input>` + 助手开场正文与选项工具调用（有选项时）；历史始终以 user 开头，首轮作答回填为工具结果 | `internal/save/service.go` |
+| D-32 | `engine` 比较独立的**作品能力版本**（程序内置，目前 `2.0`），与程序发布版本解耦；多开场格式属于能力版本 `2.0` | `internal/work/engine.go` |
+| D-33 | 静态开场节点存两条消息：合成的 user `<input kind="opening">（开场）</input>` + 助手开场正文与选项工具调用（有选项时）；历史始终以 user 开头，首轮作答回填为工具结果 | `internal/save/opening.go` |
 | D-34 | 模型价格带货币；费用按货币分别汇总，不做汇率换算 | `internal/llm/usage.go`、`usage_log.currency`、`internal/usage`（汇总） |
 | D-35 | AI 读取设定文档时把 `[[id]]` 补全为路径（不改作品文件）；校验器检查链接目标 | `internal/work/links.go` |
 | D-36 | 作者模板中的 `turn` 是对象，`turn.no` 为回合序号 | `internal/panel`、`internal/runtime/turn.go` |
@@ -98,7 +98,7 @@
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
 | D-66 | 后台助手与存档标题默认关闭。玩家主动开启时说明轻量模型费用；供应商连接测试只在点击“开始测试”后调用，允许跳过。助手每回合累计最多 10 次调用；标题同进度自动生成去重，手动命名优先 | runtime/helper.go、runtime/title.go、settings、ProviderDialog |
-| D-67 | 正文的工具旁白由提示词约束与检查器启发式提示，不按关键词删改；`<br>` / `<br/>` 是安全换行，其他 HTML 不放开。能力版本 `1.1` 包含 `<act>`、音频与限时选项 | prompts、markup、reader/debug |
+| D-67 | 正文的工具旁白由提示词约束与检查器启发式提示，不按关键词删改；`<br>` / `<br/>` 是安全换行，其他 HTML 不放开。作品支持 `<act>`、音频与限时选项 | prompts、markup、reader/debug |
 | D-68 | 调试图标只切换记录，不展开检查器；检查器入口位于用量环与回合菜单。输入栏分设模型 / 推理与上下文 / 成本入口，空闲时保存、下一回合生效；模型显示供应商，切换前说明文风、能力、缓存及上下文影响并确认，推理使用滑块；篇幅只在输入栏设置并保存至存档；预算留空以淡色数字展示继承的全局或运行时预设 | reader/input、reader/chrome、reader/debug、runtime/settings.go |
 
 ## M6 分发与创作者工具（2026-10-25）
@@ -107,3 +107,9 @@
 | --- | --- | --- |
 | D-69 | 存档升级先按旧版本整理，再原子提交目标版本与状态；新字段使用默认值，兼容值递归保留，删除或类型不兼容的旧值存入节点迁移记录，不参与当前模型状态。作品详情的存档菜单与状态抽屉可查看记录；升级前的分支完整保留，回到该分支即恢复旧版本绑定。开发目录使用相同状态迁移规则，在下一次提交时保存迁移记录；回合使用开始时的作品快照 | `state/migrate.go`、`runtime/upgrade.go`、`runtime/compact.go`、`save/repo.go` |
 | D-70 | 主动删除内置示例或版本后，启动时不再自动导入该作品。删除标记按作品 ID 保存在 settings；手动导入仍可恢复。发布包附两部示例 zip | `work/service.go`、`work/versions.go`、`cmd/release-assets` |
+
+## 多开场（2026-10-26）
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-71 | 作品显式声明非空 `openings` 列表，ID 稳定且唯一，第一项默认；每项独立指定静态正文或生成指引及可选初始状态覆盖。状态依次应用默认值、开场覆盖、开局表单。开场及其中断续写不计玩家首轮；首次玩家模型交互成功保存后永久锁定，含场外对话，回退、删除与复制均不解锁。切换由现有写者槽位串行执行，事务重建初始节点与开场、清除试读分支、保留用量；生成式切换回来重新生成。只有一个开场不显示切换控件。详见 [多开场](../openings.md) | `work/openings.go`、`save/opening.go`、`runtime/opening.go`、`reader/OpeningSwitcher.tsx` |

@@ -34,12 +34,12 @@ func TestStaticOpeningToolHistory(t *testing.T) {
 			e := setupWith(t, recordingProvider{Provider: fake.New(&fake.Script{Responses: []fake.Response{{Text: "来人敲响了门。", DelayMS: 1}}}), reqs: &reqs})
 			set := work.NewFileSet()
 			body := "门外有人。"
-			opening := "---\nmode: static\n"
+			opening := "---\nchoices: []\n"
 			if tc.choices {
-				opening += "choices:\n  - {id: a, label: 开门}\n  - {id: b, label: 等候, detail: 留在原地}\n"
+				opening = "---\nchoices:\n  - {id: a, label: 开门}\n  - {id: b, label: 等候, detail: 留在原地}\n"
 			}
 			for path, content := range map[string]string{
-				"work.yaml":          "format: 1\nid: test.static\nversion: 0.1.0\ntitle: 静态开场\n",
+				"work.yaml":          "format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: static, file: prompts/opening.md}\nid: test.static\nversion: 0.1.0\ntitle: 静态开场\n",
 				"prompts/opening.md": opening + "---\n" + body,
 			} {
 				if err := set.Add(path, []byte(content)); err != nil {

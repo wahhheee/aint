@@ -16,7 +16,7 @@ import (
 func TestDevelopmentPrefixTracksContent(t *testing.T) {
 	b := contextx.NewBuilder(tmpl.New(), nil)
 	for _, text := range []string{"旧的执笔指令", "新的执笔指令"} {
-		set, err := work.FromFS(fstest.MapFS{"work.yaml": {Data: []byte("format: 1\nid: test.reload\nversion: 1.0.0\ntitle: 缓存测试\n")}, "prompts/narrator.md": {Data: []byte(text)}}, work.DefaultLimits)
+		set, err := work.FromFS(fstest.MapFS{"work.yaml": {Data: []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.reload\nversion: 1.0.0\ntitle: 缓存测试\n")}, "prompts/narrator.md": {Data: []byte(text)}}, work.DefaultLimits)
 		if err != nil {
 			t.Fatal(err)
 		}

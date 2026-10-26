@@ -167,7 +167,7 @@ func TestImportWithErrorsCannotConfirm(t *testing.T) {
 	ctx := context.Background()
 	works, im := newTestImporter(t)
 	p := previewZip(t, im,
-		zf{name: "work.yaml", data: "format: 1\nid: test.broken\nversion: 1\ntitle: 有错误的作品\n"},
+		zf{name: "work.yaml", data: "format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.broken\nversion: 1\ntitle: 有错误的作品\n"},
 		zf{name: "assets/cover.png", data: "version https://git-lfs.github.com/spec/v1\noid sha256:4d7a\nsize 1\n"})
 	if p.Task != "" {
 		t.Fatal("有 error 时不应返回任务")

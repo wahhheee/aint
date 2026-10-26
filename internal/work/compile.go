@@ -51,6 +51,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.m.WorkID = c.m.Manifest.ID
 	c.prompts()
 	c.stateSchema()
+	c.openings()
 	c.lore()
 	c.commands()
 	c.markup()
@@ -175,7 +176,7 @@ func (c *compiler) manifest() bool {
 		ok, err := engineSatisfies(mf.Engine, EngineVersion)
 		switch {
 		case err != nil:
-			c.r.Errorf(CodeEngine, file, 0, `写法如 ">=1.0 <2.0" 或 "^1.0"`, "engine 范围不合法：%v", err)
+			c.r.Errorf(CodeEngine, file, 0, `写法如 ">=2.0 <3.0" 或 "^2.0"`, "engine 范围不合法：%v", err)
 		case !ok:
 			c.r.Errorf(CodeEngine, file, 0, "请升级 AINT，或调整 engine 范围",
 				"作品需要的能力版本为 %s，当前程序为 %s", mf.Engine, EngineVersion)
@@ -190,29 +191,6 @@ func (c *compiler) prompts() {
 		c.m.Narrator = strings.TrimSpace(string(b))
 	} else if mf.Narrator.Instructions != "prompts/narrator.md" {
 		c.r.Errorf(CodeRef, "work.yaml", 0, "", "narrator.instructions 指向的文件不存在：%s", mf.Narrator.Instructions)
-	}
-
-	openingFile := mf.Opening.File
-	if openingFile == "" {
-		openingFile = "prompts/opening.md"
-	}
-	if b, ok := c.fs.Get(openingFile); ok {
-		front, body, _ := splitFrontmatter(b)
-		op := &Opening{Mode: mf.Opening.Mode, Body: strings.TrimSpace(body)}
-		if op.Mode == "" { // 有 opening.md 未写 mode 时为 static（D-25）
-			op.Mode = "static"
-		}
-		if front != nil {
-			var fm struct {
-				Choices []Choice `yaml:"choices"`
-			}
-			if c.decode(openingFile, 1, front, &fm, nil) {
-				op.Choices = fm.Choices
-			}
-		}
-		c.m.Opening = op
-	} else if mf.Opening.File != "" {
-		c.r.Errorf(CodeRef, "work.yaml", 0, "", "opening.file 指向的文件不存在：%s", mf.Opening.File)
 	}
 
 	if b, ok := c.fs.Get("prompts/memory.md"); ok {

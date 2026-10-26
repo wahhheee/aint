@@ -144,7 +144,7 @@ func (s *Service) Rewrite(ctx context.Context, saveID, nodeID, text string) (*No
 			Messages: rewriteMessages(msgs, text), Display: display,
 			StateHash: n.StateHash, MemoryHash: n.MemoryHash, WorkVersionID: n.WorkVersionID, Status: StatusCommitted,
 			PlainText: TranscriptBody(display, m.SpeakerName),
-			Meta:      NodeMeta{Model: n.Meta.Model, Stop: n.Meta.Stop, PrefixHash: n.Meta.PrefixHash, PromptVersion: n.Meta.PromptVersion, EditedFrom: n.ID},
+			Meta:      NodeMeta{Opening: n.Meta.Opening, Model: n.Meta.Model, Stop: n.Meta.Stop, PrefixHash: n.Meta.PrefixHash, PromptVersion: n.Meta.PromptVersion, EditedFrom: n.ID},
 		})
 		return err
 	})
@@ -338,6 +338,7 @@ func (s *Service) CopyAsNew(ctx context.Context, saveID, nodeID string) (*Save, 
 		}
 	}
 	nsv := &Save{
+		OpeningID: sv.OpeningID, OpeningLocked: sv.OpeningLocked, InitialForm: sv.InitialForm,
 		ID: ids.New(), WorkID: sv.WorkID, WorkVersionID: last.WorkVersionID, WorkTitle: sv.WorkTitle,
 		Settings: sv.Settings, CreatedAt: now, UpdatedAt: now, LastPlayedAt: now, TurnCount: turnNo,
 		ForkedFrom: &ForkInfo{SaveID: sv.ID, NodeID: last.ID, TurnNo: turnNo, Title: sv.Title},

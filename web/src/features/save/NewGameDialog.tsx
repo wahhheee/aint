@@ -10,6 +10,7 @@ import { useCreateSave, useModels, useProviders, useSettings } from '@/api/queri
 import type { FormField, Pace, Reasoning, SaveSettings, WorkDetail } from '@/api/types'
 import { modelLabel } from '@/lib/modelLabel'
 import { AdvancedPlaySettings } from './AdvancedPlaySettings'
+import { OpeningSelect } from './OpeningSelect'
 import { confirmAction } from '@/components/common/confirm'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -42,6 +43,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
   const [modelId, setModelId] = useState('')
   const [helpers, setHelpers] = useState<boolean | undefined>()
   const [title, setTitle] = useState('')
+  const [openingId, setOpeningId] = useState(work.openings[0]?.id ?? '')
   const [form, setForm] = useState<Record<string, unknown>>(() => Object.fromEntries(fields.map((f) => [f.key, f.default ?? emptyOf(f)])))
   const [pace, setPace] = useState<Pace>(work.narrator.length || 'medium')
   const [reasoning, setReasoning] = useState<Reasoning>(work.narrator.reasoning ?? settings.data?.play.reasoning ?? 'low')
@@ -55,6 +57,7 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
     create.mutate(
       {
         work_id: work.id,
+        opening_id: openingId,
         title,
         form,
         settings: { ...advanced, pace, reasoning, narrator_model: model?.id, helpers: helpers ?? settings.data?.play.helpers ?? false },
@@ -91,6 +94,14 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
               {fields.map((f) => (
                 <FieldInput key={f.key} field={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
               ))}
+            </fieldset>
+          )}
+
+          {work.openings.length > 1 && (
+            <fieldset className="space-y-3">
+              <legend className="mb-3 text-[13px] font-medium text-ink-muted">{t('openings.select')}</legend>
+              <OpeningSelect options={work.openings} value={openingId} onChange={setOpeningId} disabled={create.isPending} />
+              <p className="text-xs leading-5 text-ink-faint">{t('openings.hint')}</p>
             </fieldset>
           )}
 

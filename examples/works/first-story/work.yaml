@@ -1,4 +1,7 @@
 format: 1
+engine: ">=2.0 <3.0"
+openings:
+  - {id: default, title: 故事开场, mode: generate}
 id: aint.first-story
 version: 0.1.0
 title: 第一个故事

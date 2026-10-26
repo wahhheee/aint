@@ -11,6 +11,7 @@ import (
 	"github.com/wahhheee/aint/internal/pkg/jsonx"
 	"github.com/wahhheee/aint/internal/prompts"
 	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
 	"github.com/wahhheee/aint/internal/tmpl"
 	"github.com/wahhheee/aint/internal/work"
 )
@@ -111,13 +112,30 @@ type ToolSpecs func(fs prompts.FeatureSet, m *work.Model) []llm.ToolSpec
 // Analyze 估算作品常驻部分（每回合都会发送、可被缓存的前缀）的 token，写入报告（I-TOKENS），
 // 设定索引或常驻部分过大时给出 W-INDEX-LARGE / W-PREFIX-LARGE。
 //
-// 以作品"典型"的游玩条件组装：作品声明需要看图时按能看图的模型计算，不开后台助手；初始状态取默认值。
+// 以作品"典型"的游玩条件组装：作品声明需要看图时按能看图的模型计算，不开后台助手；使用默认开场与表单默认值。
 // 只在报告没有 error 时调用（有 error 的作品无法组装）。
 func Analyze(m *work.Model, rep *work.Report, specs ToolSpecs) {
 	caps := llm.Caps{Vision: m.Manifest.Requires.Vision != "none", Tools: true, ImageMaxEdge: imageMaxEdge}
 	fs := Profile(m, save.Settings{}, caps, false)
 	model := &llm.Model{Caps: caps, MaxOutput: 8000}
-	st := m.State.Defaults()
+	op, err := m.Opening("")
+	if err != nil {
+		rep.Warnf(work.CodeTokens, "work.yaml", 0, "", "无法估算常驻部分的 token：%v", err)
+		return
+	}
+	st, err := op.State(m.State)
+	if err != nil {
+		rep.Warnf(work.CodeTokens, "work.yaml", 0, "", "无法估算常驻部分的 token：%v", err)
+		return
+	}
+	for _, f := range m.Manifest.NewGame.Fields {
+		if f.Default != nil {
+			if err := state.Set(m.State, st, f.Key, f.Default); err != nil {
+				rep.Warnf(work.CodeTokens, "work.yaml", 0, "检查开局表单默认值", "无法估算常驻部分的 token：%v", err)
+				return
+			}
+		}
+	}
 	built, err := NewBuilder(tmpl.New(), nil).Build(context.Background(), BuildInput{
 		SaveID: "estimate", Work: m, Features: fs, Model: model, InitialState: st, InitialStateHash: "estimate",
 		Epoch: RenderEpoch0(fs, m.State, st, nil),

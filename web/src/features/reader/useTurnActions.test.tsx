@@ -37,6 +37,14 @@ beforeEach(() => {
 })
 
 describe('会话恢复', () => {
+  it('其他页面已启动或完成自动开场时同步会话，不显示失败提示', async () => {
+    const version = useReader.getState().resyncVersion
+    vi.mocked(api.saves.submit).mockRejectedValue(new ApiError('conflict', '存档已变化，请刷新后重试', 409))
+    expect(await actions().current.submit({ kind: 'opening', expected_head_id: 'root' })).toBe(false)
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(useReader.getState().resyncVersion).toBe(version + 1)
+    expect(useReader.getState().pending).toBeNull()
+  })
   it('提交冲突显示原因并请求完整同步，不清空待发送内容', async () => {
     const version = useReader.getState().resyncVersion
     vi.mocked(api.saves.submit).mockRejectedValue(new ApiError('conflict', '上一回合还在进行中', 409, { turn_id: 'other' }))

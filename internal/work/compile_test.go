@@ -47,7 +47,7 @@ func TestForceChoicesManifest(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			set := NewFileSet()
-			if err := set.Add("work.yaml", []byte("format: 1\nid: test.choices\nversion: 0.1.0\ntitle: 选项\n"+tc.feature)); err != nil {
+			if err := set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.choices\nversion: 0.1.0\ntitle: 选项\n"+tc.feature)); err != nil {
 				t.Fatal(err)
 			}
 			m, rep := Compile(set)
@@ -63,8 +63,8 @@ func TestForceChoicesManifest(t *testing.T) {
 
 func TestCompileMistyHarbor(t *testing.T) {
 	m, _ := compileExample(t, "misty-harbor")
-	if m.Opening == nil || m.Opening.Mode != "static" || len(m.Opening.Choices) != 3 {
-		t.Fatalf("开场解析不对：%+v", m.Opening)
+	if len(m.Openings) != 2 || m.Openings[0].Mode != "static" || len(m.Openings[0].Choices) != 3 {
+		t.Fatalf("开场解析不对：%+v", m.Openings)
 	}
 	if m.State.Empty() || m.State.Fields["trust"].Values.Type != "number" {
 		t.Fatal("状态定义解析不对")
@@ -104,7 +104,7 @@ func TestDocLinks(t *testing.T) {
 	}
 
 	set := NewFileSet()
-	_ = set.Add("work.yaml", []byte("format: 1\nid: test.links\nversion: 0.1.0\ntitle: 链接\n"))
+	_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.links\nversion: 0.1.0\ntitle: 链接\n"))
 	_ = set.Add("lore/a.md", []byte("---\ntitle: 甲\n---\n第一行\n见 [[b-missing]]\n"))
 	_, rep := Compile(set)
 	if len(rep.Issues) == 0 || rep.Issues[0].Code != CodeRef || rep.Issues[0].Line != 5 {
@@ -114,7 +114,7 @@ func TestDocLinks(t *testing.T) {
 
 func TestTemplateChecks(t *testing.T) {
 	set := NewFileSet()
-	_ = set.Add("work.yaml", []byte("format: 1\nid: test.tpl\nversion: 0.1.0\ntitle: 模板\n"))
+	_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.tpl\nversion: 0.1.0\ntitle: 模板\n"))
 	_ = set.Add("prompts/narrator.md", []byte("你好 {{ state.name }}\n{% if x %}\n没有结束\n"))
 	_ = set.Add("commands/look.md", []byte("---\ndescription: 看\n---\n看看\n{% include 'x' %}\n"))
 	_ = set.Add("ui/layout.yaml", []byte("panels:\n  - {id: a, place: sidebar, template: ui/panels/a.liquid}\n"))
@@ -146,7 +146,7 @@ func TestTemplateChecks(t *testing.T) {
 
 func TestEncodingWarnings(t *testing.T) {
 	set := NewFileSet()
-	_ = set.Add("work.yaml", []byte("format: 1\nid: test.enc\nversion: 0.1.0\ntitle: 编码\n"))
+	_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.enc\nversion: 0.1.0\ntitle: 编码\n"))
 	_ = set.Add("lore/a.md", append([]byte{0xEF, 0xBB, 0xBF}, []byte("---\ntitle: 甲\n---\n正文\n")...))
 	_ = set.Add("lore/b.md", []byte{0xD3, 0xEA, 0xB8, 0xDB}) // GBK 编码的"雨港"
 	m, rep := Compile(set)
@@ -166,7 +166,7 @@ func TestEncodingWarnings(t *testing.T) {
 
 func TestAssetMagic(t *testing.T) {
 	set := NewFileSet()
-	_ = set.Add("work.yaml", []byte("format: 1\nid: test.assets\nversion: 0.1.0\ntitle: 素材\n"))
+	_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.assets\nversion: 0.1.0\ntitle: 素材\n"))
 	_ = set.Add("assets/rain.ogg", []byte("OggS\x00\x02"))
 	_ = set.Add("assets/fake.mp3", []byte("<html>not audio</html>"))
 	_ = set.Add("assets/font.woff2", []byte("wOF2\x00\x01"))

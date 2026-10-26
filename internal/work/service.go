@@ -200,14 +200,15 @@ type Summary struct {
 // Detail 是作品详情页。
 type Detail struct {
 	Summary
-	License    string        `json:"license,omitzero"`
-	Requires   Requires      `json:"requires"`
-	Narrator   NarratorConf  `json:"narrator"`
-	NewGame    NewGame       `json:"new_game"`
-	Changelog  string        `json:"changelog,omitzero"`
-	ReadmeHTML string        `json:"readme_html,omitzero"`
-	Versions   []VersionInfo `json:"versions"`
-	Report     *Report       `json:"report"`
+	License    string           `json:"license,omitzero"`
+	Requires   Requires         `json:"requires"`
+	Narrator   NarratorConf     `json:"narrator"`
+	NewGame    NewGame          `json:"new_game"`
+	Openings   []OpeningSummary `json:"openings"`
+	Changelog  string           `json:"changelog,omitzero"`
+	ReadmeHTML string           `json:"readme_html,omitzero"`
+	Versions   []VersionInfo    `json:"versions"`
+	Report     *Report          `json:"report"`
 }
 
 func versionInfo(v versionRow) VersionInfo {
@@ -283,6 +284,7 @@ func (s *Service) Get(ctx context.Context, workID string) (*Detail, error) {
 	d.CoverURL = s.coverURL(ctx, latest)
 	mf := latest.Manifest
 	d.License, d.Requires, d.Narrator, d.NewGame, d.Changelog = mf.License, mf.Requires, mf.Narrator, mf.NewGame, mf.Changelog
+	d.Openings = mf.OpeningSummaries()
 	d.Report = &latest.Report
 
 	if m, err := s.Model(ctx, latest.ID); err == nil && m.Readme != "" {

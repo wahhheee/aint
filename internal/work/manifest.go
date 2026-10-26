@@ -6,27 +6,27 @@ package work
 // 默认值的处理方式：先用 defaultManifest() 填好默认值，再把 YAML 解码到它上面——
 // 文件中出现的字段覆盖默认值，未出现的保持默认。这样字段都是普通值类型，使用处无需判空。
 type Manifest struct {
-	Format        int          `yaml:"format" json:"format"`
-	ID            string       `yaml:"id" json:"id"`
-	Version       string       `yaml:"version" json:"version"`
-	Title         string       `yaml:"title" json:"title"`
-	Subtitle      string       `yaml:"subtitle" json:"subtitle,omitzero"`
-	Authors       []Author     `yaml:"authors" json:"authors,omitzero"`
-	Language      string       `yaml:"language" json:"language"`
-	Description   string       `yaml:"description" json:"description,omitzero"`
-	Tags          []string     `yaml:"tags" json:"tags,omitzero"`
-	ContentRating string       `yaml:"content_rating" json:"content_rating,omitzero"` // general | teen | mature
-	License       string       `yaml:"license" json:"license,omitzero"`
-	Cover         string       `yaml:"cover" json:"cover,omitzero"`   // 素材引用
-	Engine        string       `yaml:"engine" json:"engine,omitzero"` // semver 范围
-	Requires      Requires     `yaml:"requires" json:"requires"`
-	Narrator      NarratorConf `yaml:"narrator" json:"narrator"`
-	Opening       OpeningConf  `yaml:"opening" json:"opening"`
-	NewGame       NewGame      `yaml:"new_game" json:"new_game"`
-	Features      Features     `yaml:"features" json:"features"`
-	Presentation  Presentation `yaml:"presentation" json:"presentation"`
-	Docs          DocsConf     `yaml:"docs" json:"docs"`
-	Changelog     string       `yaml:"changelog" json:"changelog,omitzero"`
+	Format        int           `yaml:"format" json:"format"`
+	ID            string        `yaml:"id" json:"id"`
+	Version       string        `yaml:"version" json:"version"`
+	Title         string        `yaml:"title" json:"title"`
+	Subtitle      string        `yaml:"subtitle" json:"subtitle,omitzero"`
+	Authors       []Author      `yaml:"authors" json:"authors,omitzero"`
+	Language      string        `yaml:"language" json:"language"`
+	Description   string        `yaml:"description" json:"description,omitzero"`
+	Tags          []string      `yaml:"tags" json:"tags,omitzero"`
+	ContentRating string        `yaml:"content_rating" json:"content_rating,omitzero"` // general | teen | mature
+	License       string        `yaml:"license" json:"license,omitzero"`
+	Cover         string        `yaml:"cover" json:"cover,omitzero"`   // 素材引用
+	Engine        string        `yaml:"engine" json:"engine,omitzero"` // semver 范围
+	Requires      Requires      `yaml:"requires" json:"requires"`
+	Narrator      NarratorConf  `yaml:"narrator" json:"narrator"`
+	Openings      []OpeningConf `yaml:"openings" json:"openings"`
+	NewGame       NewGame       `yaml:"new_game" json:"new_game"`
+	Features      Features      `yaml:"features" json:"features"`
+	Presentation  Presentation  `yaml:"presentation" json:"presentation"`
+	Docs          DocsConf      `yaml:"docs" json:"docs"`
+	Changelog     string        `yaml:"changelog" json:"changelog,omitzero"`
 }
 
 type Author struct {
@@ -45,8 +45,12 @@ type NarratorConf struct {
 }
 
 type OpeningConf struct {
-	File string `yaml:"file" json:"file,omitzero"` // 默认 prompts/opening.md（存在时）
-	Mode string `yaml:"mode" json:"mode,omitzero"` // static | generate
+	ID           string         `yaml:"id" json:"id"`
+	Title        string         `yaml:"title" json:"title"`
+	Description  string         `yaml:"description" json:"description,omitzero"`
+	Mode         string         `yaml:"mode" json:"mode"` // static | generate
+	File         string         `yaml:"file" json:"file,omitzero"`
+	InitialState map[string]any `yaml:"initial_state" json:"initial_state,omitzero"` // 状态路径 → 初始值
 }
 
 type NewGame struct {

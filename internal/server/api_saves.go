@@ -115,6 +115,23 @@ func (s *Server) patchSave(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (s *Server) switchOpening(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		OpeningID      string `json:"opening_id"`
+		ExpectedHeadID string `json:"expected_head_id"`
+	}
+	if err := decode(r, &body); err != nil {
+		return err
+	}
+	if body.OpeningID == "" || body.ExpectedHeadID == "" {
+		return errs.Invalid("缺少 opening_id 或 expected_head_id")
+	}
+	if err := s.d.Runtime.SwitchOpening(r.Context(), r.PathValue("id"), body.OpeningID, body.ExpectedHeadID); err != nil {
+		return err
+	}
+	return s.getSave(w, r)
+}
+
 func (s *Server) deleteSave(w http.ResponseWriter, r *http.Request) error {
 	id := r.PathValue("id")
 	if err := s.d.Runtime.Exclusive(r.Context(), id, "delete", func() error { return s.d.Saves.Delete(r.Context(), id) }); err != nil {

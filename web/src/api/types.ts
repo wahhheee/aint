@@ -175,6 +175,7 @@ export interface TokenEstimate {
 
 /** work.Detail（GET /works/{id}） */
 export interface WorkDetail extends WorkSummary {
+  openings: OpeningSummary[]
   license?: string
   requires: { vision: 'none' | 'preferred' | 'required' }
   narrator: { instructions: string; length: Pace; reasoning?: Reasoning }
@@ -183,6 +184,14 @@ export interface WorkDetail extends WorkSummary {
   readme_html?: string
   versions: VersionInfo[]
   report: Report
+}
+
+/** 开场选择列表，不包含正文或生成指引。 */
+export interface OpeningSummary {
+  id: string
+  title: string
+  description?: string
+  mode: 'static' | 'generate'
 }
 
 /** work.ImportPreview（POST /works/import）：导入第一步的结果，解析与校验，尚未写入 */
@@ -289,6 +298,8 @@ export interface SaveSettings {
 
 /** save.Save */
 export interface Save {
+  opening_id: string
+  opening_locked: boolean
   id: string
   work_id: string
   work_version_id: string
@@ -311,6 +322,7 @@ export type InputKind = 'free' | 'choice' | 'command' | 'continue' | 'opening' |
 
 /** save.TurnInput（POST /saves/{id}/turns） */
 export interface TurnInput {
+  expected_head_id?: string
   kind: InputKind
   text?: string
   mode?: string
@@ -447,6 +459,7 @@ export interface CompactStats {
 
 /** runtime.Presentation（GET /saves/{id}）：阅读页所需的全部呈现信息 */
 export interface Presentation {
+  opening: { options: OpeningSummary[]; can_switch: boolean; has_unfinished_turn: boolean }
   save: Save
   running_turn_id?: string
   needs_opening: boolean

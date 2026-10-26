@@ -18,16 +18,24 @@ import (
 // Presentation 是阅读页打开存档时所需的全部"呈现信息"（GET /saves/{id}）。
 // 它是一个读模型：把存档、作品版本、模型能力合成为前端直接可用的结构，前端不需要理解作品格式。
 type Presentation struct {
-	Save          *save.Save `json:"save"`
-	RunningTurnID string     `json:"running_turn_id,omitzero"`
-	NeedsOpening  bool       `json:"needs_opening"` // 还没有任何回合：前端应提交 kind=opening 的输入
-	DevWork       bool       `json:"dev_work"`      // 作品来自开发目录：默认显示开发者工具（D-31）
-	Compacting    bool       `json:"compacting"`    // 正在整理上下文
+	Opening       OpeningPresentation `json:"opening"`
+	Save          *save.Save          `json:"save"`
+	RunningTurnID string              `json:"running_turn_id,omitzero"`
+	NeedsOpening  bool                `json:"needs_opening"` // 还没有任何回合：前端应提交 kind=opening 的输入
+	DevWork       bool                `json:"dev_work"`      // 作品来自开发目录：默认显示开发者工具（D-31）
+	Compacting    bool                `json:"compacting"`    // 正在整理上下文
 	// Context 是当前上下文规模与整理阈值（顶栏用量环）；Compactions 是当前进度线上的整理次数。
 	Context     event.ContextUsage `json:"context"`
 	Compactions int                `json:"compactions"`
 	Model       ModelBrief         `json:"model"`
 	UI          UI                 `json:"ui"`
+}
+
+// OpeningPresentation 是开场选择与切换提示；生成期间的禁用状态由会话信息决定。
+type OpeningPresentation struct {
+	Options           []work.OpeningSummary `json:"options"`
+	CanSwitch         bool                  `json:"can_switch"`
+	HasUnfinishedTurn bool                  `json:"has_unfinished_turn"`
 }
 
 // ModelBrief 是主笔模型的摘要。
@@ -102,6 +110,13 @@ func (m *Manager) Presentation(ctx context.Context, saveID string) (*Presentatio
 	}
 	p := &Presentation{Save: sv, RunningTurnID: m.Running(saveID), NeedsOpening: lastTurn(line) == nil, DevWork: w.IsDev,
 		Compacting: m.Compacting(saveID)}
+	p.Opening = OpeningPresentation{Options: w.Manifest.OpeningSummaries(), CanSwitch: !sv.OpeningLocked && len(w.Openings) > 1}
+	if p.Opening.CanSwitch {
+		p.Opening.HasUnfinishedTurn, err = m.d.Saves.HasUnfinishedInteraction(ctx, saveID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, n := range line {
 		if n.Kind == save.KindCompaction {
 			p.Compactions++

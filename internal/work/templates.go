@@ -27,11 +27,13 @@ func (c *compiler) templates() {
 	if data, ok := c.fs.Get(c.m.Manifest.Narrator.Instructions); ok {
 		c.checkTemplate(c.m.Manifest.Narrator.Instructions, string(data), 1)
 	}
-	opening := c.m.Manifest.Opening.File
-	if opening == "" {
-		opening = "prompts/opening.md"
+	files := c.fs.Glob("commands", ".md")
+	for _, op := range c.m.Openings {
+		if op.File != "" {
+			files = append(files, op.File)
+		}
 	}
-	for _, p := range append([]string{opening}, c.fs.Glob("commands", ".md")...) {
+	for _, p := range files {
 		data, ok := c.fs.Get(p)
 		if !ok {
 			continue

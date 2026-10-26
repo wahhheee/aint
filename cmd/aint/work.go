@@ -16,6 +16,7 @@ import (
 	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/jsonx"
 	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
 	"github.com/wahhheee/aint/internal/tmpl"
 	"github.com/wahhheee/aint/internal/tools"
 	"github.com/wahhheee/aint/internal/vfs"
@@ -108,16 +109,17 @@ func workValidate(args []string) error {
 	return nil
 }
 
-// workPrompt：aint work prompt <目录> [--vision] [--helpers] [--json]
+// workPrompt：aint work prompt <目录> [--opening ID] [--vision] [--helpers] [--json]
 // 打印主笔实际收到的系统提示词与工具定义，以及每个片段的启用情况（创作者与平台开发者的调试利器）。
 func workPrompt(args []string) error {
 	fs := flag.NewFlagSet("work prompt", flag.ExitOnError)
+	openingID := fs.String("opening", "", "选择开场 ID（默认第一项）")
 	vision := fs.Bool("vision", false, "模拟支持看图的模型")
 	helpers := fs.Bool("helpers", false, "模拟开启后台助手")
 	asJSON := fs.Bool("json", false, "以 JSON 输出完整请求（含工具 schema）")
-	_ = fs.Parse(reorderFlags(args))
+	_ = fs.Parse(reorderFlags(args, "opening"))
 	if fs.NArg() != 1 {
-		return fmt.Errorf("用法：aint work prompt <目录> [--vision] [--helpers] [--json]")
+		return fmt.Errorf("用法：aint work prompt <目录> [--opening ID] [--vision] [--helpers] [--json]")
 	}
 	m, rep, set, err := loadWorkFiles(fs.Arg(0))
 	if err != nil {
@@ -143,7 +145,28 @@ func workPrompt(args []string) error {
 			memory = append(memory, save.MemoryEntry{Path: "/memory/" + rest, Summary: vfs.Summary(string(data))})
 		}
 	}
-	initState := m.State.Defaults()
+	op, err := m.Opening(*openingID)
+	if err != nil {
+		return err
+	}
+	initState, err := op.State(m.State)
+	if err != nil {
+		return err
+	}
+	for _, f := range m.Manifest.NewGame.Fields {
+		if f.Default != nil {
+			if err := state.Set(m.State, initState, f.Key, f.Default); err != nil {
+				return err
+			}
+		}
+	}
+	if op.Mode == "generate" && op.File != "" {
+		body, err := tmpl.New().RenderWith(op.File, op.Body, map[string]any{"state": initState}, m.Partials)
+		if err != nil {
+			return err
+		}
+		env.Text += "\n\n" + body
+	}
 	built, err := contextx.NewBuilder(tmpl.New(), nil).Build(context.Background(), contextx.BuildInput{
 		SaveID: "preview", Work: m, Features: features, Model: model, Settings: settings,
 		InitialState: initState, InitialStateHash: "preview", Epoch: contextx.RenderEpoch0(features, m.State, initState, memory),

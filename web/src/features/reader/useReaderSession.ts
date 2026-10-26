@@ -56,6 +56,7 @@ export function useReaderSession(saveId: string) {
             break
           case 'timeline.changed':
           case 'compaction.done':
+            if (ev.type === 'timeline.changed' && ev.data.reason === 'opening') void qc.resetQueries({ queryKey: qk.timeline(saveId) })
             void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
             void qc.invalidateQueries({ queryKey: qk.usage(saveId) })
             void qc.invalidateQueries({ queryKey: qk.save(saveId) })

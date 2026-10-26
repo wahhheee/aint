@@ -11,7 +11,7 @@ type schemaObject = map[string]any
 // 字段类型与编译器共用输入结构；跨文件引用、模板与素材的检查由 work validate 完成。
 func JSONSchemas() map[string]schemaObject {
 	manifest := schemaOf(reflect.TypeFor[Manifest]())
-	manifest["required"] = []string{"format", "id", "version", "title"}
+	manifest["required"] = []string{"format", "id", "version", "title", "openings"}
 	prop(manifest, "format")["const"] = 1
 	prop(manifest, "id")["pattern"] = reWorkID.String()
 	prop(manifest, "version")["pattern"] = `^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$`
@@ -19,7 +19,14 @@ func JSONSchemas() map[string]schemaObject {
 	enum(prop(manifest, "content_rating"), "general", "teen", "mature")
 	enum(prop(manifest, "requires", "vision"), "none", "preferred", "required")
 	enum(prop(manifest, "narrator", "reasoning"), "off", "low", "medium", "high")
-	enum(prop(manifest, "opening", "mode"), "static", "generate")
+	prop(manifest, "openings")["minItems"] = 1
+	openingConf := prop(manifest, "openings")["items"].(schemaObject)
+	openingConf["required"] = []string{"id", "title", "mode"}
+	prop(openingConf, "id")["pattern"] = reDocID.String()
+	prop(openingConf, "title")["minLength"] = 1
+	enum(prop(openingConf, "mode"), "static", "generate")
+	openingConf["if"] = schemaObject{"properties": schemaObject{"mode": schemaObject{"const": "static"}}}
+	openingConf["then"] = schemaObject{"required": []string{"file"}, "properties": schemaObject{"file": schemaObject{"minLength": 1}}}
 	enum(prop(manifest, "presentation", "dialogue"), "plain", "tagged")
 	enum(prop(manifest, "docs", "default_load"), "always", "index", "none")
 	form := prop(manifest, "new_game", "fields")["items"].(schemaObject)

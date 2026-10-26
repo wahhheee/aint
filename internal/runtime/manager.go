@@ -194,7 +194,8 @@ func (m *Manager) Regenerate(ctx context.Context, saveID, nodeID string, in *sav
 		}
 		input = *in
 	}
-	input.ChoiceLabel = "" // 由 prepare 依据父节点的选项重新补全
+	input.ChoiceLabel = ""    // 由 prepare 依据父节点的选项重新补全
+	input.ExpectedHeadID = "" // 重新生成使用显式父节点，不沿用自动开场时的 head
 	return m.submit(ctx, saveID, n.ParentID, input)
 }
 
@@ -207,7 +208,16 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 		return "", err
 	}
 	s := m.lockSession(saveID)
-	defer s.mu.Unlock()
+	defer func() { s.mu.Unlock(); m.dropIdle(saveID, s) }()
+	if in.ExpectedHeadID != "" {
+		current, err := m.d.Saves.Get(ctx, saveID)
+		if err != nil {
+			return "", err
+		}
+		if current.HeadNodeID != in.ExpectedHeadID {
+			return "", errs.Conflict("存档已变化，请刷新后重试")
+		}
+	}
 	var wait <-chan struct{}
 	switch {
 	case s.running != nil && s.running.kind == jobTurn:
@@ -328,16 +338,20 @@ func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func(
 		return err
 	}
 	err := fn()
+	refreshPanels := false
+	if err == nil {
+		if sv, getErr := m.d.Saves.Get(ctx, saveID); getErr == nil {
+			// 结构变更先于下一回合的 pending/started，客户端据此清除旧开场草稿。
+			m.publish(saveID, event.TimelineChanged, event.TimelineChangedData{HeadID: sv.HeadNodeID, Reason: reason})
+			refreshPanels = true
+		}
+	}
 	s.mu.Unlock()
 	m.dropIdle(saveID, s)
-	if err != nil {
-		return err
-	}
-	if sv, err := m.d.Saves.Get(ctx, saveID); err == nil {
-		m.publish(saveID, event.TimelineChanged, event.TimelineChangedData{HeadID: sv.HeadNodeID, Reason: reason})
+	if refreshPanels {
 		m.publishPanels(ctx, saveID)
 	}
-	return nil
+	return err
 }
 
 // busyError 返回会话忙碌时的冲突错误（调用方持有 s.mu）。

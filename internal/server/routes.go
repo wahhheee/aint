@@ -37,6 +37,7 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/v1/saves", s.h(s.createSave))
 	m.HandleFunc("GET /api/v1/saves/{id}", s.h(s.getSave))
 	m.HandleFunc("PATCH /api/v1/saves/{id}", s.h(s.patchSave))
+	m.HandleFunc("PUT /api/v1/saves/{id}/opening", s.h(s.switchOpening))
 	m.HandleFunc("DELETE /api/v1/saves/{id}", s.h(s.deleteSave))
 	m.HandleFunc("GET /api/v1/saves/{id}/timeline", s.h(s.timeline))
 	m.HandleFunc("GET /api/v1/saves/{id}/panels", s.h(s.panels))

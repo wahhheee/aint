@@ -62,6 +62,11 @@ export function useTurnActions(saveId: string, commands: Command[]) {
         return true
       } catch (err) {
         if (useReader.getState().saveId === saveId) setPending(null)
+        // 多个阅读页可能同时自动开场；已有页面启动或完成时重新同步会话。
+        if (input.kind === 'opening' && isApiError(err, 'conflict')) {
+          if (useReader.getState().saveId === saveId) useReader.getState().resync()
+          return false
+        }
         reportError(err)
         return false
       }

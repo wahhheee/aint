@@ -64,6 +64,9 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	if err != nil {
 		return nil, err
 	}
+	if in.ExpectedHeadID != "" && in.ExpectedHeadID != sv.HeadNodeID {
+		return nil, errs.Conflict("存档已变化，请刷新后重试")
+	}
 	if parentID != "" && parentID != sv.HeadNodeID {
 		if line, err = m.d.Saves.ProgressLineAt(ctx, saveID, parentID); err != nil {
 			return nil, err
@@ -127,8 +130,15 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 			return nil, errs.Invalid("故事已经开始，不需要再开场")
 		}
 		env.Text = "请按开场指引开始故事。"
-		if w.Opening != nil && w.Opening.Mode == "generate" {
-			body, err := m.d.Tmpl.RenderWith("prompts/opening.md", w.Opening.Body, map[string]any{"state": initState}, w.Partials)
+		op, err := w.Opening(sv.OpeningID)
+		if err != nil {
+			return nil, errs.Invalid("%v", err)
+		}
+		if op.Mode == "static" {
+			return nil, errs.Invalid("静态开场不需要生成，请重新打开存档")
+		}
+		if op.File != "" {
+			body, err := m.d.Tmpl.RenderWith(op.File, op.Body, map[string]any{"state": initState}, w.Partials)
 			if err != nil {
 				return nil, errs.Wrap(err, errs.CodeWorkInvalid, "开场模板渲染失败")
 			}
@@ -196,7 +206,11 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 			}
 		}
 	}
-	d := &draft{budget: budget,
+	opening := in.Kind == save.InputOpening
+	if last := lastTurn(line); in.Kind == save.InputContinue && last != nil && last.Meta.Opening && last.Status == save.StatusInterrupted {
+		opening = true
+	}
+	d := &draft{budget: budget, opening: opening,
 		id: turnID, started: time.Now(), save: sv, parent: head, root: root, initState: initState, turnNo: turnNo + 1, input: env.Input,
 		work: w, features: features, provider: provider, model: model, built: built, vfs: fsys, memory: memory,
 		state: headState, images: m.d.Images, migration: migration, stateChanged: w.IsDev,
@@ -220,6 +234,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 		}
 		if reason := d.budget.exceeded(d); reason != "" {
 			d.stop = "budget"
+			d.status = save.StatusInterrupted
 			d.addNotice("warn", "本回合已达上限（"+reason+"），可以点“继续”接着写。")
 			return
 		}
@@ -534,10 +549,12 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	memory := memoryWrite(d.memory)
 	contextTokens := d.contextTokens(m)
 	node, err := m.d.Saves.CommitTurn(ctx, save.TurnCommit{
-		SaveID: d.save.ID, Parent: d.parent, TurnNo: d.turnNo, Input: d.input, Messages: d.turnMsgs, Display: d.display,
+		LockOpening: !d.opening,
+		SaveID:      d.save.ID, Parent: d.parent, TurnNo: d.turnNo, Input: d.input, Messages: d.turnMsgs, Display: d.display,
 		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, Memory: memory, WorkVersionID: d.parent.WorkVersionID,
 		Status: d.status, Usage: &d.usage, PlainText: save.TranscriptBody(d.display, d.work.SpeakerName), UsageRecords: d.records, NodeID: d.id,
 		Meta: save.NodeMeta{
+			Opening:   d.opening,
 			Migration: d.migration, WorkHash: d.work.TreeHash,
 			Model: d.model.Name, Stop: d.stop, StopRaw: d.stopRaw, Calls: d.calls, ToolCalls: d.toolCalls,
 			Continuations: d.continuations, DurationMS: time.Since(d.started).Milliseconds(), Error: d.errMsg,

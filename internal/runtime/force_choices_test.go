@@ -19,7 +19,7 @@ import (
 func choicesSave(t *testing.T, e *env, features string) *save.Save {
 	t.Helper()
 	set := work.NewFileSet()
-	if err := set.Add("work.yaml", []byte("format: 1\nid: test.choices\nversion: 0.1.0\ntitle: 选项测试\n"+features)); err != nil {
+	if err := set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.choices\nversion: 0.1.0\ntitle: 选项测试\n"+features)); err != nil {
 		t.Fatal(err)
 	}
 	works := work.NewService(e.db, e.blobs)
@@ -68,7 +68,7 @@ func TestForceChoices(t *testing.T) {
 		{name: "空回复不补调", features: enabled, responses: []fake.Response{{}}, calls: 1, stop: "end"},
 		{name: "拒答不补调", features: enabled, responses: []fake.Response{{Text: story.Text, Stop: "refusal"}}, calls: 1, stop: "refusal"},
 		{name: "补调用失败保留正文", features: enabled, responses: []fake.Response{story, {Error: string(llm.ErrNetwork)}}, calls: 2, nudgeAt: 1, stop: "error", interrupted: true},
-		{name: "补调用受回合预算限制", features: enabled, responses: []fake.Response{story, choiceResponse()}, maxCalls: 1, calls: 1, stop: "budget", warning: "已达本回合模型调用上限"},
+		{name: "补调用受回合预算限制", features: enabled, responses: []fake.Response{story, choiceResponse()}, maxCalls: 1, calls: 1, stop: "budget", interrupted: true, warning: "已达本回合模型调用上限"},
 		{name: "空工具调用按自然结束处理", features: enabled, responses: []fake.Response{{Text: story.Text, Stop: "tool_use"}, choiceResponse()}, calls: 2, nudgeAt: 1, stop: "choices", choices: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

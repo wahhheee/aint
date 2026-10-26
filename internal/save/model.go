@@ -54,20 +54,23 @@ type Settings struct {
 
 // Save 是一个存档条目。
 type Save struct {
-	ID            string    `json:"id"`
-	WorkID        string    `json:"work_id"`
-	WorkVersionID string    `json:"work_version_id"`
-	WorkTitle     string    `json:"work_title"`
-	Title         string    `json:"title"`        // 为空时界面显示"未命名存档 · 最近游玩时间"
-	TitleSource   string    `json:"title_source"` // generated | manual | ""
-	HeadNodeID    string    `json:"head_node_id"`
-	TurnCount     int       `json:"turn_count"`   // head 所在进度线的回合数
-	BranchCount   int       `json:"branch_count"` // 分支数（叶子数）
-	ForkedFrom    *ForkInfo `json:"forked_from,omitzero"`
-	Settings      Settings  `json:"settings"`
-	CreatedAt     int64     `json:"created_at"`
-	UpdatedAt     int64     `json:"updated_at"`
-	LastPlayedAt  int64     `json:"last_played_at"`
+	OpeningID     string         `json:"opening_id"`
+	OpeningLocked bool           `json:"opening_locked"` // 首次玩家交互成功后永久锁定，不随 head 回退
+	InitialForm   map[string]any `json:"-"`              // 建档时有效的开局表单，切换开场时重新应用
+	ID            string         `json:"id"`
+	WorkID        string         `json:"work_id"`
+	WorkVersionID string         `json:"work_version_id"`
+	WorkTitle     string         `json:"work_title"`
+	Title         string         `json:"title"`        // 为空时界面显示"未命名存档 · 最近游玩时间"
+	TitleSource   string         `json:"title_source"` // generated | manual | ""
+	HeadNodeID    string         `json:"head_node_id"`
+	TurnCount     int            `json:"turn_count"`   // head 所在进度线的回合数
+	BranchCount   int            `json:"branch_count"` // 分支数（叶子数）
+	ForkedFrom    *ForkInfo      `json:"forked_from,omitzero"`
+	Settings      Settings       `json:"settings"`
+	CreatedAt     int64          `json:"created_at"`
+	UpdatedAt     int64          `json:"updated_at"`
+	LastPlayedAt  int64          `json:"last_played_at"`
 }
 
 // Node 是存档树上的一个节点。
@@ -95,6 +98,7 @@ type Node struct {
 
 // NodeMeta 是随节点保存的排查信息，记录停止原因、调用次数、耗时与上下文规模。
 type NodeMeta struct {
+	Opening       bool                   `json:"opening,omitzero"` // 开场及中断开场的续写
 	Migration     []state.MigrationValue `json:"migration,omitzero"`
 	WorkHash      string                 `json:"work_hash,omitzero"`
 	Model         string                 `json:"model,omitzero"`
@@ -120,14 +124,15 @@ type NodeMeta struct {
 
 // TurnInput 是玩家一回合的输入（《02-技术方案》9.1）。
 type TurnInput struct {
-	Kind        string       `json:"kind"` // free | choice | command | continue | opening | ooc
-	Text        string       `json:"text,omitzero"`
-	Mode        string       `json:"mode,omitzero"`         // 输入模式（present: mode 的命令名）
-	ChoiceID    string       `json:"choice_id,omitzero"`    // 所选选项的 ID，选项附带命令时也保留
-	ChoiceLabel string       `json:"choice_label,omitzero"` // 服务端根据上一回合的选项补全，用于显示与工具结果
-	Command     *CommandCall `json:"command,omitzero"`
-	Attachments []string     `json:"attachments,omitzero"` // 上传图片 blob 哈希
-	Pace        string       `json:"pace,omitzero"`        // 本回合篇幅覆盖
+	ExpectedHeadID string       `json:"expected_head_id,omitzero"` // 自动开场依据的 head，防止旧页面启动已切换的开场
+	Kind           string       `json:"kind"`                      // free | choice | command | continue | opening | ooc
+	Text           string       `json:"text,omitzero"`
+	Mode           string       `json:"mode,omitzero"`         // 输入模式（present: mode 的命令名）
+	ChoiceID       string       `json:"choice_id,omitzero"`    // 所选选项的 ID，选项附带命令时也保留
+	ChoiceLabel    string       `json:"choice_label,omitzero"` // 服务端根据上一回合的选项补全，用于显示与工具结果
+	Command        *CommandCall `json:"command,omitzero"`
+	Attachments    []string     `json:"attachments,omitzero"` // 上传图片 blob 哈希
+	Pace           string       `json:"pace,omitzero"`        // 本回合篇幅覆盖
 }
 
 // CommandCall 是命令调用。

@@ -11,9 +11,6 @@ import (
 	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/ids"
-	"github.com/wahhheee/aint/internal/pkg/jsonx"
-	"github.com/wahhheee/aint/internal/prompts"
-	"github.com/wahhheee/aint/internal/state"
 	"github.com/wahhheee/aint/internal/store"
 	"github.com/wahhheee/aint/internal/tmpl"
 	"github.com/wahhheee/aint/internal/usage"
@@ -35,6 +32,7 @@ func NewService(db *store.DB, blobs *store.Blobs, works *work.Service, tm *tmpl.
 
 // CreateParams 是新建存档的参数。
 type CreateParams struct {
+	OpeningID string         `json:"opening_id,omitzero"`
 	WorkID    string         `json:"work_id"`
 	VersionID string         `json:"version_id,omitzero"` // 为空取最新版本
 	Title     string         `json:"title,omitzero"`
@@ -42,7 +40,7 @@ type CreateParams struct {
 	Settings  Settings       `json:"settings"`
 }
 
-// Create 新建存档：root 节点（初始状态 + 初始记忆）；静态开场时再加一个开场回合（零 token）。
+// Create 新建存档：保存开局表单，创建初始状态与记忆；静态开场同时写入零 token 回合。
 func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 	versionID := p.VersionID
 	if versionID == "" {
@@ -58,114 +56,28 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Save, error) {
 	if m.WorkID != p.WorkID {
 		return nil, errs.Invalid("作品版本 %s 不属于作品 %s", versionID, p.WorkID)
 	}
-
-	// 初始状态 = 默认值 + 开局表单
-	st := m.State.Defaults()
-	for _, f := range m.Manifest.NewGame.Fields {
-		v, ok := p.Form[f.Key]
-		if !ok || v == nil {
-			if f.Required {
-				return nil, errs.Invalid("请填写「%s」", f.Label)
-			}
-			v = f.Default
-		}
-		if v == nil {
-			continue
-		}
-		if err := state.Set(m.State, st, f.Key, v); err != nil {
-			return nil, errs.Invalid("「%s」填写不正确：%v", f.Label, err)
-		}
+	op, err := m.Opening(p.OpeningID)
+	if err != nil {
+		return nil, errs.Invalid("%v", err)
 	}
-
-	// 初始记忆 = 作品 memory/ 模板：直接引用作品文件的 blob，零拷贝
-	mem := MemoryManifest{V: 1, Files: map[string]MemoryFile{}}
-	for path, ref := range m.Files {
-		if rest, ok := strings.CutPrefix(path, "memory/"); ok {
-			mem.Files["/memory/"+rest] = MemoryFile{Blob: ref.Blob, Size: ref.Size}
-		}
+	init, err := s.prepareOpening(m, op, p.Form)
+	if err != nil {
+		return nil, err
 	}
-
-	// 静态开场：以初始状态渲染一次
-	var opening *DisplayItem
-	var openingChoices *DisplayItem
-	if m.Opening != nil && m.Opening.Mode == "static" {
-		body, err := s.tmpl.RenderWith("prompts/opening.md", m.Opening.Body, map[string]any{"state": st}, m.Partials)
-		if err != nil {
-			return nil, errs.Wrap(err, errs.CodeWorkInvalid, "开场模板渲染失败")
-		}
-		opening = &DisplayItem{T: "text", Markup: strings.TrimSpace(body)}
-		if len(m.Opening.Choices) > 0 {
-			openingChoices = &DisplayItem{T: "choices", Free: m.Manifest.Features.FreeInput}
-			for _, c := range m.Opening.Choices {
-				openingChoices.Items = append(openingChoices.Items, ChoiceItem{ID: c.ID, Label: c.Label, Detail: c.Detail})
-			}
-		}
-	}
-
 	now := store.NowMillis()
 	sv := &Save{
 		ID: ids.New(), WorkID: p.WorkID, WorkVersionID: versionID, WorkTitle: m.Manifest.Title,
 		Title: strings.TrimSpace(p.Title), Settings: p.Settings, CreatedAt: now, UpdatedAt: now, LastPlayedAt: now,
+		OpeningID: op.ID, InitialForm: init.form,
 	}
 	if sv.Title != "" {
 		sv.TitleSource = "manual"
 	}
-
 	err = s.db.Tx(ctx, func(tx *sql.Tx) error {
-		stateHash, err := s.blobs.PutJSON(ctx, tx, st)
-		if err != nil {
-			return err
-		}
-		memHash, err := s.blobs.PutJSON(ctx, tx, mem)
-		if err != nil {
-			return err
-		}
-		root := &Node{
-			ID: ids.New(), SaveID: sv.ID, Kind: KindRoot, Status: StatusCommitted,
-			StateHash: stateHash, MemoryHash: memHash, WorkVersionID: versionID, CreatedAt: now,
-		}
-		// 第 0 阶段的阶段块只由初始状态与初始记忆决定，构建请求时即时渲染，不存储（D-39）
-		sv.HeadNodeID = root.ID
 		if err := insertSave(ctx, tx, sv); err != nil {
 			return err
 		}
-		if err := insertNode(ctx, tx, root); err != nil {
-			return err
-		}
-		if opening == nil {
-			return nil
-		}
-
-		display := []DisplayItem{*opening}
-		if openingChoices != nil {
-			display = append(display, *openingChoices)
-		}
-		// 合成的助手消息：正文与选项工具调用分开记录，首轮玩家输入回填为工具结果。
-		parts := []llm.Part{llm.Text(opening.Markup)}
-		if openingChoices != nil {
-			parts = append(parts, llm.Part{Kind: llm.PartToolCall, ToolCall: &llm.ToolCall{
-				ID: "static_opening_choices", Name: "offer_choices",
-				Args: jsonx.MustMarshal(struct {
-					Choices []ChoiceItem `json:"choices"`
-				}{Choices: openingChoices.Items}),
-			}})
-		}
-		// 先放一条合成的 user 消息：历史始终以 user 开头，与生成式开场的结构一致（D-33）
-		messages := []llm.Message{
-			{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.StaticOpeningInput)}},
-			{Role: llm.RoleAssistant, Parts: parts},
-		}
-		node, err := s.commitTx(ctx, tx, TurnCommit{
-			SaveID: sv.ID, Parent: root, TurnNo: 1, Input: TurnInput{Kind: InputOpening},
-			Messages: messages, Display: display, StateHash: stateHash, MemoryHash: memHash,
-			WorkVersionID: versionID, Status: StatusCommitted, PlainText: TranscriptBody(display, m.SpeakerName),
-			Meta: NodeMeta{Stop: "static_opening"},
-		})
-		if err != nil {
-			return err
-		}
-		sv.HeadNodeID, sv.TurnCount = node.ID, 1
-		return nil
+		return s.startOpening(ctx, tx, sv, m, init)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("创建存档失败: %w", err)
@@ -245,6 +157,7 @@ func (s *Service) ProgressLine(ctx context.Context, saveID string) (*Save, []*No
 
 // TurnCommit 是一次回合提交的全部内容（由 runtime 组装）。
 type TurnCommit struct {
+	LockOpening   bool // 与成功的玩家回合一同提交；开场、续写开场与手动编辑不锁定
 	SaveID        string
 	Parent        *Node
 	TurnNo        int
@@ -319,6 +232,11 @@ func (s *Service) commitTx(ctx context.Context, tx *sql.Tx, c TurnCommit) (*Node
 	}
 	if err := setHead(ctx, tx, c.SaveID, n.ID, true); err != nil {
 		return nil, err
+	}
+	if c.LockOpening && c.Status == StatusCommitted {
+		if err := lockOpening(ctx, tx, c.SaveID); err != nil {
+			return nil, err
+		}
 	}
 	return n, nil
 }

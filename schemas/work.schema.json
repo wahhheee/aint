@@ -168,21 +168,62 @@
       },
       "type": "object"
     },
-    "opening": {
-      "additionalProperties": true,
-      "properties": {
-        "file": {
-          "type": "string"
+    "openings": {
+      "items": {
+        "additionalProperties": true,
+        "if": {
+          "properties": {
+            "mode": {
+              "const": "static"
+            }
+          }
         },
-        "mode": {
-          "enum": [
-            "static",
-            "generate"
-          ],
-          "type": "string"
-        }
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "initial_state": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "mode": {
+            "enum": [
+              "static",
+              "generate"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "mode"
+        ],
+        "then": {
+          "properties": {
+            "file": {
+              "minLength": 1
+            }
+          },
+          "required": [
+            "file"
+          ]
+        },
+        "type": "object"
       },
-      "type": "object"
+      "minItems": 1,
+      "type": "array"
     },
     "presentation": {
       "additionalProperties": true,
@@ -239,7 +280,8 @@
     "format",
     "id",
     "version",
-    "title"
+    "title",
+    "openings"
   ],
   "title": "AINT 作品：work",
   "type": "object"

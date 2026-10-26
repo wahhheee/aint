@@ -5,6 +5,15 @@
  * 按钮写清楚会发生什么（"开始新故事"而不是"提交"）。同一个动作在整个流程中用同一个词。
  */
 const zhCN = {
+  openings: {
+    select: '选择开场',
+    switch: '切换开场',
+    current: '开场 · {{title}}',
+    generated: '由 AI 生成',
+    hint: '首次互动完成后，开场将固定；场外对话也算一次互动。',
+    switchHint: '切换会重新开始所选开场。生成式开场每次切换都会重新生成。',
+    discardUnfinished: '切换开场会清除当前未完成的互动，并恢复所选开场的初始状态和记忆。确定切换？',
+  },
   access: {
     title: '进入 AINT',
     password: '访问密码',

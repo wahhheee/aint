@@ -30,6 +30,7 @@ import { TurnView } from './TurnView'
 const FOLLOW_THRESHOLD = 80
 
 interface Props {
+  opening?: ReactNode
   loadEarlier: () => void
   loadingEarlier: boolean
   timeline?: Timeline
@@ -37,7 +38,7 @@ interface Props {
   onContinue: () => void
 }
 
-export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarlier }: Props) {
+export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarlier, opening }: Props) {
   const { t } = useTranslation()
   const draft = useReader((s) => s.draft)
   const pending = useReader((s) => s.pending)
@@ -183,6 +184,7 @@ export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarl
             className="mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-6 pt-10 pb-14"
             style={{ fontSize: 'var(--reading-size)' }}
           >
+            {opening}
             {timeline?.has_more && (
               <div className="mb-6 text-center">
                 <Button variant="ghost" size="sm" disabled={loadingEarlier} onClick={earlier}>

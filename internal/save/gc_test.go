@@ -28,7 +28,7 @@ func TestStorageCollectionPreservesBranchesAndUploads(t *testing.T) {
 	}
 	blobs := store.NewBlobs(filepath.Join(dir, "blobs"))
 	works := work.NewService(db, blobs)
-	set, err := work.FromFS(fstest.MapFS{"work.yaml": {Data: []byte("format: 1\nid: test.gc\nversion: 1.0.0\ntitle: 清理测试\n")}, "prompts/narrator.md": {Data: []byte("故事")}}, work.DefaultLimits)
+	set, err := work.FromFS(fstest.MapFS{"work.yaml": {Data: []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.gc\nversion: 1.0.0\ntitle: 清理测试\n")}, "prompts/narrator.md": {Data: []byte("故事")}}, work.DefaultLimits)
 	if err != nil {
 		t.Fatal(err)
 	}

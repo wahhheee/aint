@@ -13,7 +13,7 @@ import (
 	"github.com/wahhheee/aint/internal/pkg/errs"
 )
 
-const minimalManifest = "format: 1\nid: test.import\nversion: 0.1.0\ntitle: 导入测试\n"
+const minimalManifest = "format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.import\nversion: 0.1.0\ntitle: 导入测试\n"
 
 // zf 是测试用 zip 条目。
 type zf struct {
