@@ -138,6 +138,18 @@ func listWorks(ctx context.Context, q store.Querier) ([]workRow, error) {
 	return out, rows.Err()
 }
 
+// deleteWorkWithSaves 在同一事务内清除原文索引、存档和作品；节点与版本文件级联删除，blob 交给 GC。
+func deleteWorkWithSaves(ctx context.Context, tx *sql.Tx, id string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM transcript_fts WHERE save_id IN (SELECT id FROM saves WHERE work_id = ?)`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM saves WHERE work_id = ?`, id); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `DELETE FROM works WHERE id = ?`, id)
+	return err
+}
+
 func getWork(ctx context.Context, q store.Querier, id string) (workRow, error) {
 	var r workRow
 	err := q.QueryRowContext(ctx, `

@@ -23,11 +23,15 @@ export function VersionList({ work }: { work: WorkDetail }) {
   const [importing, setImporting] = useState(false)
   const busy = actions.check.isPending || actions.remove.isPending
   const remove = async (id?: string) => {
-    if (!(await confirmAction(t(id ? 'distribution.deleteVersionConfirm' : 'distribution.deleteWorkConfirm')))) return
+    if (!(await confirmAction(t(id ? 'distribution.deleteVersionConfirm' : 'distribution.deleteWorkConfirm', { count: work.save_count }))))
+      return
     try {
       await actions.remove.mutateAsync(id)
       const removedWork = !id || work.versions.length === 1
-      if (removedWork) await navigate('/')
+      if (removedWork) {
+        await qc.invalidateQueries({ queryKey: qk.recentSaves })
+        await navigate('/')
+      }
       await qc.invalidateQueries({ queryKey: qk.works, refetchType: removedWork ? 'none' : 'active' })
       if (removedWork) await qc.invalidateQueries({ queryKey: qk.works, exact: true })
     } catch (e) {
@@ -88,10 +92,9 @@ export function VersionList({ work }: { work: WorkDetail }) {
           </li>
         ))}
       </ul>
-      <Button className="mt-6" variant="destructive" disabled={busy || work.save_count > 0} onClick={() => void remove()}>
+      <Button className="mt-6" variant="destructive" disabled={busy} onClick={() => void remove()}>
         {t('distribution.deleteWork')}
       </Button>
-      {work.save_count > 0 && <p className="mt-2 text-xs text-ink-muted">{t('distribution.deleteReferenced')}</p>}
       <ImportDialog open={importing} onOpenChange={setImporting} imp={imp} />
     </>
   )

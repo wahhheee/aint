@@ -62,7 +62,7 @@ func (s *Service) Export(ctx context.Context, workID, versionID string, w io.Wri
 	return WriteZip(w, set)
 }
 
-// Delete 仅删除没有存档引用的作品或版本；历史分支的引用也受保护。
+// Delete 删除作品及全部存档；单独删除版本时保护存档及历史分支的引用。
 func (s *Service) Delete(ctx context.Context, workID, versionID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -74,12 +74,7 @@ func (s *Service) Delete(ctx context.Context, workID, versionID string) error {
 		if err != nil {
 			return err
 		}
-		var refs int
-		if versionID == "" {
-			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM saves WHERE work_id = ?`, workID).Scan(&refs); err != nil {
-				return err
-			}
-		} else {
+		if versionID != "" {
 			v, err := getVersion(ctx, tx, versionID)
 			if errors.Is(err, sql.ErrNoRows) || (err == nil && v.WorkID != workID) {
 				return errs.NotFound("作品版本不存在")
@@ -87,20 +82,20 @@ func (s *Service) Delete(ctx context.Context, workID, versionID string) error {
 			if err != nil {
 				return err
 			}
+			var refs int
 			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM saves s WHERE s.work_version_id = ? OR EXISTS (SELECT 1 FROM nodes n WHERE n.save_id = s.id AND n.work_version_id = ?)`, versionID, versionID).Scan(&refs); err != nil {
 				return err
 			}
-		}
-		if refs > 0 {
-			return errs.Conflict("有 %d 个存档或其历史分支引用此作品版本，请先处理这些存档", refs)
+			if refs > 0 {
+				return errs.Conflict("有 %d 个存档或其历史分支引用此作品版本，请先处理这些存档", refs)
+			}
 		}
 		// 删除标记以作品 ID 为单位；手动导入不受影响，启动时不再自动补回。
 		if _, err := tx.ExecContext(ctx, `INSERT INTO settings (key, value) VALUES (?, 'true') ON CONFLICT(key) DO NOTHING`, "deleted_builtin:"+workID); err != nil {
 			return err
 		}
 		if versionID == "" {
-			_, err := tx.ExecContext(ctx, `DELETE FROM works WHERE id = ?`, workID)
-			return err
+			return deleteWorkWithSaves(ctx, tx, workID)
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM work_versions WHERE id = ?`, versionID); err != nil {
 			return err

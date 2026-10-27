@@ -53,8 +53,8 @@ const zhCN = {
     deleteVersion: '删除版本',
     deleteWork: '删除作品',
     deleteVersionConfirm: '删除此作品版本？有存档或历史分支引用时无法删除。',
-    deleteWorkConfirm: '从书架删除此作品及全部版本？原始文件夹不会被删除。有存档引用时无法删除。',
-    deleteReferenced: '这部作品仍有存档，请先处理存档再删除作品。',
+    deleteWorkConfirm:
+      '确定删除此作品？\n将永久删除作品的全部版本及所有存档（当前 {{count}} 个），包括存档中的全部历史分支与游玩记录。此操作无法撤销。\n原始文件夹不会被删除。',
     cleanupHint: '清理超过一小时且未被作品、存档或历史分支引用的内容。',
     cleanupDone: '已清理 {{count}} 项内容，释放 {{size}}',
     upgrade: '升级作品版本',
