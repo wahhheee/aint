@@ -52,16 +52,33 @@ type Field struct {
 type Schema struct {
 	Fields map[string]*Field `json:"fields"`
 	Order  []string          `json:"order"`
+
+	// Unknown 是定义中不认识的键，按出现顺序；运行时不使用，由校验器报告 W-UNKNOWN-FIELD。
+	Unknown []UnknownKey `json:"-"`
+}
+
+// UnknownKey 是一个不认识的键。Field 是所在字段的路径（如 player.name、clues[]），顶层键为空。
+type UnknownKey struct {
+	Field string
+	Key   string
 }
 
 // Empty 表示作品没有定义状态（能力画像中的 state 特征为假，相关提示词与工具都会被裁掉）。
 func (s *Schema) Empty() bool { return s == nil || len(s.Order) == 0 }
 
-// ParseSchema 解析 state.yaml。
+// SyntaxError 是 state.yaml 的 YAML 语法错误，与类型、默认值不合法的错误区分开（校验器分别报告 E-PARSE 与 E-STATE）。
+type SyntaxError struct {
+	Err error // YAML 解析器的原始错误，消息以 [行:列] 开头
+}
+
+func (e *SyntaxError) Error() string { return yaml.FormatError(e.Err, false, true) }
+func (e *SyntaxError) Unwrap() error { return e.Err }
+
+// ParseSchema 解析 state.yaml。YAML 语法错误返回 *SyntaxError。
 func ParseSchema(data []byte) (*Schema, error) {
 	var root any
 	if err := yaml.UnmarshalWithOptions(data, &root, yaml.UseOrderedMap()); err != nil {
-		return nil, fmt.Errorf("%s", yaml.FormatError(err, false, true))
+		return nil, &SyntaxError{Err: err}
 	}
 	top, ok := root.(yaml.MapSlice)
 	if !ok {
@@ -69,8 +86,9 @@ func ParseSchema(data []byte) (*Schema, error) {
 	}
 	s := &Schema{Fields: map[string]*Field{}}
 	for _, item := range top {
-		if fmt.Sprint(item.Key) != "fields" {
-			continue // 未知顶层键由校验器报告 W-UNKNOWN-FIELD
+		if key := fmt.Sprint(item.Key); key != "fields" {
+			s.Unknown = append(s.Unknown, UnknownKey{Key: key})
+			continue
 		}
 		fields, ok := item.Value.(yaml.MapSlice)
 		if !ok {
@@ -78,7 +96,7 @@ func ParseSchema(data []byte) (*Schema, error) {
 		}
 		for _, f := range fields {
 			name := fmt.Sprint(f.Key)
-			field, err := parseField(name, f.Value)
+			field, err := parseField(name, f.Value, &s.Unknown)
 			if err != nil {
 				return nil, err
 			}
@@ -89,7 +107,8 @@ func ParseSchema(data []byte) (*Schema, error) {
 	return s, nil
 }
 
-func parseField(path string, v any) (*Field, error) {
+// parseField 解析一个字段定义；不认识的键追加到 unknown。
+func parseField(path string, v any, unknown *[]UnknownKey) (*Field, error) {
 	name := path[strings.LastIndex(path, ".")+1:]
 	// 简写：items: string
 	if t, ok := v.(string); ok {
@@ -123,7 +142,7 @@ func parseField(path string, v any) (*Field, error) {
 		case "default":
 			rawDefault, hasDefault = it.Value, true
 		case "items", "values":
-			sub, err := parseField(path+"[]", it.Value)
+			sub, err := parseField(path+"[]", it.Value, unknown)
 			if err != nil {
 				return nil, err
 			}
@@ -140,13 +159,15 @@ func parseField(path string, v any) (*Field, error) {
 			f.Fields = map[string]*Field{}
 			for _, sf := range fields {
 				sn := fmt.Sprint(sf.Key)
-				sub, err := parseField(path+"."+sn, sf.Value)
+				sub, err := parseField(path+"."+sn, sf.Value, unknown)
 				if err != nil {
 					return nil, err
 				}
 				f.Fields[sn] = sub
 				f.Order = append(f.Order, sn)
 			}
+		default:
+			*unknown = append(*unknown, UnknownKey{Field: path, Key: key})
 		}
 	}
 	if !f.Type.valid() {

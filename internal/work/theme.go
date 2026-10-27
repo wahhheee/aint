@@ -130,7 +130,7 @@ func (c *compiler) theme() {
 			}
 			fmt.Fprintf(&css, ".work-root .work-backdrop { background-image: url(%q); opacity: %s; }\n", AssetURL(a), strconv.FormatFloat(opacity, 'f', -1, 64))
 			th.Reading.Backdrop = true
-			c.m.markUIOnly(a)
+			c.markUIOnly(a, "ui/theme.yaml 的 background.image")
 		}
 	}
 

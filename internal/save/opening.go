@@ -69,7 +69,7 @@ func (s *Service) prepareOpening(m *work.Model, op *work.Opening, form map[strin
 	if len(op.Choices) > 0 {
 		choices := DisplayItem{T: "choices", Free: m.Manifest.Features.FreeInput}
 		for _, c := range op.Choices {
-			choices.Items = append(choices.Items, ChoiceItem{ID: c.ID, Label: c.Label, Detail: c.Detail})
+			choices.Items = append(choices.Items, ChoiceItem{ID: c.ID, Label: c.Label, Detail: c.Detail, Command: c.Command})
 		}
 		init.display = append(init.display, choices)
 		parts = append(parts, llm.Part{Kind: llm.PartToolCall, ToolCall: &llm.ToolCall{

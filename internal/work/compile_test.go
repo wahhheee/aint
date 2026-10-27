@@ -1,6 +1,9 @@
 package work
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"io/fs"
 	"strings"
 	"testing"
@@ -161,6 +164,76 @@ func TestEncodingWarnings(t *testing.T) {
 	}
 	if d, ok := m.DocByPath("lore/a.md"); !ok || d.Title != "甲" {
 		t.Fatal("带 BOM 的文件应照常读取")
+	}
+}
+
+func TestUIAssetConflicts(t *testing.T) {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewGray(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, assets, lore, want string
+	}{
+		{name: "界面专用", lore: "display: {avatar: fog}"},
+		{name: "背景角色", assets: "role: background", want: "这张图片用作 work.yaml 的 cover 与 ui/theme.yaml 的 background.image，只给界面用，不会进入 AI 的素材索引；它同时在 assets.yaml 中标为 role: background"},
+		{name: "插图与文档图片", assets: "role: cg", lore: "images: [fog]", want: "它同时在 assets.yaml 中标为 role: cg、被 lore/lin.md 的 images 引用"},
+		{name: "文档图片", lore: "images: [assets/fog.png]", want: "它同时被 lore/lin.md 的 images 引用"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			set := NewFileSet()
+			_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.ui\nversion: 0.1.0\ntitle: 界面素材\ncover: fog\n"))
+			_ = set.Add("ui/theme.yaml", []byte("background: {image: assets/fog.png}\n"))
+			_ = set.Add("assets.yaml", []byte("- {path: assets/fog.png, "+tc.assets+"}\n"))
+			_ = set.Add("lore/lin.md", []byte("---\ntitle: 林舟\n"+tc.lore+"\n---\n正文\n"))
+			_ = set.Add("assets/fog.png", buf.Bytes())
+			m, rep := Compile(set)
+			var got []Issue
+			for _, i := range rep.Issues {
+				if i.Code == CodeUIAsset {
+					got = append(got, i)
+				}
+			}
+			switch {
+			case tc.want == "" && len(got) > 0:
+				t.Fatalf("只给界面用的素材不需要提示：%+v", got)
+			case tc.want != "" && (len(got) != 1 || got[0].Path != "assets/fog.png" || !strings.Contains(got[0].Message, tc.want)):
+				t.Fatalf("应提示 %q，得到 %+v", tc.want, rep.Issues)
+			}
+			if a, _ := m.Asset("fog"); !m.UIOnly(a) {
+				t.Fatal("封面与主题背景只给界面用")
+			}
+		})
+	}
+}
+
+func TestStateSchemaErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, state, code, msg string
+		line                   int
+	}{
+		{name: "引号错误", state: "fields:\n  name:\n    type: string\n    desc: \"我\"的名字\n", code: CodeParse, line: 4},
+		{name: "未知类型", state: "fields:\n  name: {type: text, desc: 名字}\n", code: CodeState},
+		{name: "默认值类型", state: "fields:\n  day: {type: number, default: 第一天, desc: 天数}\n", code: CodeState},
+		{name: "未知顶层键", state: "feilds:\n  day: {type: number, desc: 天数}\n", code: CodeUnknownField, msg: "未知字段：feilds"},
+		{name: "字段定义的未知键", state: "fields:\n  day: {type: number, defaults: 3, desc: 天数}\n", code: CodeUnknownField, msg: "状态字段 day 的未知字段：defaults"},
+		{name: "嵌套字段的未知键", state: "fields:\n  player:\n    type: object\n    fields:\n      name: {type: string, desc: 名字, label: 姓名}\n", code: CodeUnknownField, msg: "状态字段 player.name 的未知字段：label"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			set := NewFileSet()
+			_ = set.Add("work.yaml", []byte("format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: generate}\nid: test.state\nversion: 0.1.0\ntitle: 状态\n"))
+			_ = set.Add("state.yaml", []byte(tc.state))
+			_, rep := Compile(set)
+			if len(rep.Issues) != 1 || rep.Issues[0].Code != tc.code || rep.Issues[0].Path != "state.yaml" || rep.Issues[0].Line != tc.line {
+				t.Fatalf("应报告 %s（第 %d 行），得到 %+v", tc.code, tc.line, rep.Issues)
+			}
+			if !strings.Contains(rep.Issues[0].Message, tc.msg) {
+				t.Fatalf("消息应含 %q，得到 %q", tc.msg, rep.Issues[0].Message)
+			}
+			if tc.code == CodeParse && strings.Contains(rep.Issues[0].Hint, "六种") {
+				t.Fatalf("语法错误不应提示类型：%+v", rep.Issues[0])
+			}
+		})
 	}
 }
 

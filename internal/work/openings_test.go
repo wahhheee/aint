@@ -46,6 +46,54 @@ func TestOpeningsValidation(t *testing.T) {
 	}
 }
 
+func TestOpeningChoiceFields(t *testing.T) {
+	for _, tc := range []struct {
+		name, choice, want string
+		features           string
+		error              bool
+	}{
+		{name: "未知字段", choice: "{id: a, label: 推门, style: hint}", want: "[W-UNKNOWN-FIELD] start.md 未知字段"},
+		{name: "作品命令", choice: "{id: a, label: 跟着林舟, command: /follow 林舟}"},
+		{name: "具名参数", choice: `{id: a, label: 跟着老陈, command: '/follow who="老 陈" 悄悄地'}`},
+		{name: "全角空格", choice: "{id: a, label: 跟着林舟, command: /follow　林舟}"},
+		{name: "继续", choice: "{id: a, label: 静观其变, command: /continue}"},
+		{name: "场外对话", choice: "{id: a, label: 问问作者, command: /ooc 这里有几条线索？}"},
+		{name: "未开启场外对话", choice: "{id: a, label: 问问作者, command: /ooc 线索？}", features: "features: {ooc: false}\n", error: true, want: "[E-MANIFEST] start.md 选项 \"a\" 的 command：作品没有开启场外对话"},
+		{name: "场外对话为空", choice: "{id: a, label: 问问作者, command: /ooc}", error: true, want: "/ooc 后需要写场外对话的内容"},
+		{name: "格式错误", choice: "{id: a, label: 跟着林舟, command: follow 林舟}", error: true, want: "格式不对"},
+		{name: "不可执行的内置命令", choice: "{id: a, label: 重写, command: /rewrite 短一点}", error: true, want: "不能执行 /rewrite"},
+		{name: "命令不存在", choice: "{id: a, label: 看看, command: /look}", error: true, want: "[E-REF] start.md 选项 \"a\" 的 command：命令 /look 不存在"},
+		{name: "缺少参数", choice: "{id: a, label: 跟随, command: /follow}", error: true, want: "命令 /follow 缺少参数 who"},
+		{name: "不能从选项执行", choice: "{id: a, label: 推理, command: /deduce 林舟}", error: true, want: "命令 /deduce 不能从选项执行"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			set := NewFileSet()
+			for path, text := range map[string]string{
+				"work.yaml":          "format: 1\nid: test.choices\nversion: 1.0.0\ntitle: 选项\nopenings:\n  - {id: start, title: 开始, mode: static, file: start.md}\n" + tc.features,
+				"start.md":           "---\nchoices:\n  - " + tc.choice + "\n---\n开始。",
+				"commands/follow.md": "---\ndescription: 跟随\nargs: [{name: who, required: true}]\npresent: [slash, button]\n---\n跟随 {{ args.who }}",
+				"commands/deduce.md": "---\ndescription: 推理\npresent: [mode]\n---\n{{ input }}",
+			} {
+				if err := set.Add(path, []byte(text)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			m, report := Compile(set)
+			var got []string
+			for _, i := range report.Issues {
+				got = append(got, i.String())
+			}
+			joined := strings.Join(got, "\n")
+			if report.HasErrors() != tc.error || tc.want == "" && len(got) > 0 || !strings.Contains(joined, tc.want) {
+				t.Fatalf("应报告 %q，得到：\n%s", tc.want, joined)
+			}
+			if !tc.error && tc.want == "" && m.Openings[0].Choices[0].Command == "" {
+				t.Fatal("选项应保留 command")
+			}
+		})
+	}
+}
+
 func TestOpeningStateIsolation(t *testing.T) {
 	m, report := compileExample(t, "misty-harbor")
 	if report.HasErrors() {

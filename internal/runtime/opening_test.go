@@ -27,6 +27,7 @@ func TestStaticOpeningToolHistory(t *testing.T) {
 		{name: "自由输入作答", choices: true, input: save.TurnInput{Kind: save.InputFree, Text: "问来人是谁"}, result: "玩家自由输入：问来人是谁"},
 		{name: "另有输入", choices: true, input: save.TurnInput{Kind: save.InputContinue}, result: prompts.ChoiceNotAnswered},
 		{name: "修改开场正文", choices: true, revise: true, input: save.TurnInput{Kind: save.InputChoice, ChoiceID: "b"}, result: "玩家选择：B「等候」"},
+		{name: "选项附带命令", choices: true, input: save.TurnInput{Kind: save.InputContinue, ChoiceID: "a"}, result: "玩家选择：A「开门」"},
 		{name: "没有开场选项", input: save.TurnInput{Kind: save.InputFree, Text: "问来人是谁"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -36,7 +37,7 @@ func TestStaticOpeningToolHistory(t *testing.T) {
 			body := "门外有人。"
 			opening := "---\nchoices: []\n"
 			if tc.choices {
-				opening = "---\nchoices:\n  - {id: a, label: 开门}\n  - {id: b, label: 等候, detail: 留在原地}\n"
+				opening = "---\nchoices:\n  - {id: a, label: 开门, command: /continue}\n  - {id: b, label: 等候, detail: 留在原地}\n"
 			}
 			for path, content := range map[string]string{
 				"work.yaml":          "format: 1\nopenings:\n  - {id: default, title: 故事开场, mode: static, file: prompts/opening.md}\nid: test.static\nversion: 0.1.0\ntitle: 静态开场\n",
@@ -81,7 +82,7 @@ func TestStaticOpeningToolHistory(t *testing.T) {
 				if err := jsonx.Unmarshal(calls[0].Args, &args); err != nil {
 					t.Fatal(err)
 				}
-				if len(args.Choices) != 2 || args.Choices[1].ID != "b" || args.Choices[1].Label != "等候" || args.Choices[1].Detail != "留在原地" {
+				if len(args.Choices) != 2 || args.Choices[0].Command != "/continue" || args.Choices[1].ID != "b" || args.Choices[1].Label != "等候" || args.Choices[1].Detail != "留在原地" {
 					t.Fatalf("工具参数应包含开场选项：%+v", args)
 				}
 			} else if len(calls) != 0 {

@@ -33,7 +33,17 @@ openings:
 | `file` | 作品内的文件路径；静态开场必填，生成式开场可省略 |
 | `initial_state` | 可选，状态路径到初始值的映射，例如 `trust.林舟: 0` |
 
-静态文件正文是 Liquid 模板，渲染后直接展示，不调用模型。frontmatter 可声明 `choices`，每项包含唯一的 `id`、非空 `label` 和可选 `detail`；选项以 `offer_choices` 工具调用写入助手历史。
+静态文件正文是 Liquid 模板，渲染后直接展示，不调用模型。frontmatter 可声明 `choices`，每项包含唯一的 `id`、非空 `label`、可选 `detail` 与可选 `command`；选项以 `offer_choices` 工具调用写入助手历史。
+
+```markdown
+---
+choices:
+  - {id: a, label: 拆开那封信}
+  - {id: b, label: 跟着脚步声出去, command: /follow 林舟}
+---
+```
+
+`command` 是选中即执行的命令，与模型给出的选项一致：可以是 `present` 含 `slash` 或 `button` 的作品命令，也可以是 `/ooc 内容`（作品开启场外对话时）或 `/continue`。参数按位置或 `key=value` 填写，带空格的值用引号。选中后先按命令规则确认，再提交命令；所选选项随输入一并记录，主笔在工具结果中看到玩家的选择。校验器检查命令存在、可从选项执行且必填参数齐全；`choices` 中的其他字段报告 `W-UNKNOWN-FIELD`。
 
 生成式文件正文是开场指引，渲染后发送给主笔；生成式文件不声明 `choices`，选项由模型提供。省略文件时，主笔依据作品执笔指令生成。平台只生成当前选中的开场。
 

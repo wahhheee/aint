@@ -8,6 +8,9 @@
       "items": {
         "additionalProperties": true,
         "properties": {
+          "command": {
+            "type": "string"
+          },
           "detail": {
             "type": "string"
           },

@@ -122,11 +122,13 @@ type Opening struct {
 	Choices []Choice `json:"choices,omitzero"`
 }
 
-// Choice 是开场的初始选项（仅 static 模式）。
+// Choice 是开场的初始选项（仅 static 模式）。Command 是选中即执行的命令，如 "/follow 林舟"，
+// 与模型给出的选项一致：作品命令、/ooc 或 /continue。
 type Choice struct {
-	ID     string `yaml:"id" json:"id"`
-	Label  string `yaml:"label" json:"label"`
-	Detail string `yaml:"detail" json:"detail,omitzero"`
+	ID      string `yaml:"id" json:"id"`
+	Label   string `yaml:"label" json:"label"`
+	Detail  string `yaml:"detail" json:"detail,omitzero"`
+	Command string `yaml:"command" json:"command,omitzero"`
 }
 
 // Doc 是一份设定文档（《03-作品格式规范》第 7 节）。

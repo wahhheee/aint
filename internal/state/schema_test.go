@@ -1,6 +1,7 @@
 package state
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -33,6 +34,32 @@ func TestParseSchemaAndDefaults(t *testing.T) {
 	}
 	if err := Check(s.Fields["trust"], map[string]any{"林舟": "很高"}); err == nil {
 		t.Fatal("map 的值类型为 number，应拒绝字符串")
+	}
+}
+
+func TestParseSchemaUnknownKeys(t *testing.T) {
+	s, err := ParseSchema([]byte(`version: 1
+fields:
+  day: {type: number, defaults: 3, desc: 天数}
+  player:
+    type: object
+    fields:
+      name: {type: string, label: 名字}
+  clues: {type: list, items: {type: string, max: 5}}
+  trust: {type: map, values: number}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []UnknownKey{{Key: "version"}, {Field: "day", Key: "defaults"}, {Field: "player.name", Key: "label"}, {Field: "clues[]", Key: "max"}}
+	if !reflect.DeepEqual(s.Unknown, want) {
+		t.Fatalf("未知键应按出现顺序记录路径，得到 %+v", s.Unknown)
+	}
+	if s.Defaults()["day"] != float64(0) {
+		t.Fatal("拼错的 default 不生效，取类型的零值")
+	}
+	if s, _ := ParseSchema([]byte(exampleYAML)); len(s.Unknown) != 0 {
+		t.Fatalf("合法定义不应有未知键：%+v", s.Unknown)
 	}
 }
 

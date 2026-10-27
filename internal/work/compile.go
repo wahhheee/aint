@@ -2,6 +2,7 @@ package work
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -33,9 +34,10 @@ var (
 // 编译是纯函数：不读写数据库与磁盘，便于测试与 `aint work validate`。
 func Compile(fs *FileSet) (*Model, *Report) {
 	c := &compiler{
-		fs: fs,
-		r:  &Report{Issues: []Issue{}},
-		m:  &Model{Files: map[string]FileRef{}, State: &state.Schema{Fields: map[string]*state.Field{}}},
+		fs:     fs,
+		r:      &Report{Issues: []Issue{}},
+		m:      &Model{Files: map[string]FileRef{}, State: &state.Schema{Fields: map[string]*state.Field{}}},
+		uiUses: map[string][]string{},
 	}
 	for _, p := range fs.Paths() {
 		data, _ := fs.Get(p)
@@ -62,6 +64,7 @@ func Compile(fs *FileSet) (*Model, *Report) {
 	c.crossRefs()
 	c.pinnedImages()
 	c.theme()
+	c.uiAssetConflicts()
 	c.tagDarkColors()
 	// 前缀 token 估算需要组装提示词，由上层在编译之后补充（Analyzer，见 contextx.Analyze）。
 	return c.m, c.r
@@ -72,7 +75,8 @@ type compiler struct {
 	m  *Model
 	r  *Report
 
-	darkBackground string // 主题的深色背景（样式标签的深色颜色据此计算）；没有时为平台的纯黑
+	darkBackground string              // 主题的深色背景（样式标签的深色颜色据此计算）；没有时为平台的纯黑
+	uiUses         map[string][]string // 只给界面用的素材路径 → 引用处（如 work.yaml 的 cover），用于 W-UI-ASSET
 }
 
 // yamlError 把 YAML 解析错误转成报告条目，尽量带上行号。
@@ -210,11 +214,24 @@ func (c *compiler) stateSchema() {
 		return
 	}
 	s, err := state.ParseSchema(data)
+	var syntax *state.SyntaxError
+	if errors.As(err, &syntax) {
+		c.yamlError("state.yaml", 0, syntax.Err)
+		return
+	}
 	if err != nil {
 		c.r.Errorf(CodeState, "state.yaml", 0, "类型只有 boolean、number、string、list、map、object 六种", "%s", firstLine(err.Error()))
 		return
 	}
 	c.m.State = s
+	for _, u := range s.Unknown {
+		const hint = "可能是拼写错误，或是新版本才支持的字段；字段定义可用 type、default、desc、items、values、fields"
+		if u.Field == "" {
+			c.r.Warnf(CodeUnknownField, "state.yaml", 0, "顶层只有 fields", "未知字段：%s", u.Key)
+		} else {
+			c.r.Warnf(CodeUnknownField, "state.yaml", 0, hint, "状态字段 %s 的未知字段：%s", u.Field, u.Key)
+		}
+	}
 	for _, name := range s.Order {
 		if f := s.Fields[name]; f.Desc == "" && f.Type != state.Object {
 			c.r.Warnf(CodeNoDesc, "state.yaml", 0, "写清含义与范围，AI 才会稳定地维护它", "状态字段 %s 缺少 desc", name)
@@ -495,9 +512,10 @@ func (c *compiler) crossRefs() {
 		if a, ok := c.m.Asset(cover); !ok || a.Kind != "image" {
 			c.r.Errorf(CodeRef, "work.yaml", 0, "", "封面素材不存在：%s", cover)
 		} else {
-			c.m.markUIOnly(a)
+			c.markUIOnly(a, "work.yaml 的 cover")
 		}
 	}
+	c.openingCommands()
 	c.checkDocLinks()
 	for _, d := range c.m.Docs {
 		for _, ref := range d.Images {
@@ -534,11 +552,37 @@ func (c *compiler) pinnedImages() {
 	}
 }
 
-func (m *Model) markUIOnly(a Asset) {
-	if m.uiAssets == nil {
-		m.uiAssets = map[string]bool{}
+// markUIOnly 把素材标为只给界面用（见 Model.UIOnly），use 记录引用处。
+func (c *compiler) markUIOnly(a Asset, use string) {
+	if c.m.uiAssets == nil {
+		c.m.uiAssets = map[string]bool{}
 	}
-	m.uiAssets[a.Path] = true
+	c.m.uiAssets[a.Path] = true
+	c.uiUses[a.Path] = append(c.uiUses[a.Path], use)
+}
+
+// uiAssetConflicts 检查只给界面用的素材是否同时被故事引用（W-UI-ASSET）：素材标为 role: background 或 cg，
+// 或被设定文档的 images 引用。这类素材不出现在 AI 的素材索引中，<scene>、<cg> 可能因此不会启用。
+func (c *compiler) uiAssetConflicts() {
+	for _, a := range c.m.Assets {
+		uses := c.uiUses[a.Path]
+		if len(uses) == 0 {
+			continue
+		}
+		var story []string
+		if a.Role == "background" || a.Role == "cg" {
+			story = append(story, "在 assets.yaml 中标为 role: "+a.Role)
+		}
+		for _, d := range c.m.Docs {
+			if slices.ContainsFunc(d.Images, func(ref string) bool { b, ok := c.m.Asset(ref); return ok && b.Path == a.Path }) {
+				story = append(story, "被 "+d.Path+" 的 images 引用")
+			}
+		}
+		if len(story) > 0 {
+			c.r.Warnf(CodeUIAsset, a.Path, 0, "需要 AI 使用这张图片（<scene>、<cg> 或查看）时，为界面另存一份文件",
+				"这张图片用作 %s，只给界面用，不会进入 AI 的素材索引；它同时%s", strings.Join(uses, " 与 "), strings.Join(story, "、"))
+		}
+	}
 }
 
 func (c *compiler) statePathExists(p string) bool {

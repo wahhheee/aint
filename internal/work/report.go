@@ -23,8 +23,9 @@ const (
 	CodeAsset        = "E-ASSET"
 	CodeTheme        = "E-THEME"    // ui/theme.yaml 取值或 custom.css 不合法
 	CodeEncoding     = "W-ENCODING" // 文本文件带 BOM 或不是 UTF-8
-	CodeParse        = "E-PARSE"    // YAML / frontmatter 语法错误（规范中未单列，归入对应文件）
+	CodeParse        = "E-PARSE"    // YAML / frontmatter 语法错误
 	CodeUnknownField = "W-UNKNOWN-FIELD"
+	CodeUIAsset      = "W-UI-ASSET" // 封面或主题背景图同时被故事引用，但不会进入 AI 的素材索引
 	CodePrefixLarge  = "W-PREFIX-LARGE"
 	CodeIndexLarge   = "W-INDEX-LARGE"
 	CodePinImage     = "W-PIN-IMAGE"
