@@ -49,6 +49,8 @@ func (s *Server) routes() {
 	m.HandleFunc("DELETE /api/v1/saves/{id}/branches/{nid}", s.h(s.deleteBranch))
 	m.HandleFunc("POST /api/v1/saves/{id}/nodes/{nid}/copy", s.h(s.copySave))
 	m.HandleFunc("POST /api/v1/saves/{id}/nodes/{nid}/regenerate", s.h(s.regenerate))
+	m.HandleFunc("POST /api/v1/saves/{id}/nodes/{nid}/revise", s.h(s.reviseTurn))
+	m.HandleFunc("POST /api/v1/saves/{id}/nodes/{nid}/choices", s.h(s.requestChoices))
 	m.HandleFunc("POST /api/v1/saves/{id}/nodes/{nid}/rewrite", s.h(s.rewrite))
 	m.HandleFunc("POST /api/v1/saves/{id}/nodes/{nid}/discard", s.h(s.discard))
 	m.HandleFunc("GET /api/v1/saves/{id}/debug", s.h(s.debugSave))

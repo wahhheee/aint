@@ -11,9 +11,10 @@ import { create } from 'zustand'
 
 import type { AnyEvent } from '@/api/events'
 import type { StreamStatus } from '@/api/sse'
-import type { DisplayItem, TurnInput, Usage } from '@/api/types'
+import type { DisplayItem, TurnInput, TurnOperation, Usage } from '@/api/types'
 
 export interface TurnFailure {
+  operation?: TurnOperation
   turnId: string
   nodeId?: string
   parentId?: string
@@ -23,6 +24,7 @@ export interface TurnFailure {
 }
 
 export interface DraftTurn {
+  operation?: TurnOperation
   turnId: string
   /** 父节点：重新生成、修改输入时是较早的节点，正文流中它之后的已提交回合先隐去 */
   parentId: string
@@ -49,6 +51,7 @@ export interface TurnUsage {
 }
 
 export interface ReaderState {
+  pendingOperation?: TurnOperation
   saveId: string | null
   draft: DraftTurn | null
   /** 已提交输入、尚未收到 turn.started（显示等待态，防止重复提交） */
@@ -67,7 +70,7 @@ export interface ReaderState {
   connection: StreamStatus
 
   reset: (saveId: string) => void
-  setPending: (input: TurnInput | null, parentId?: string) => void
+  setPending: (input: TurnInput | null, parentId?: string, operation?: TurnOperation) => void
   /** 用呈现信息初始化上下文用量；实时会话状态以事件流为准 */
   init: (context: { used: number; threshold: number }) => void
   resyncVersion: number
@@ -80,7 +83,16 @@ export interface ReaderState {
 
 type Snapshot = Pick<
   ReaderState,
-  'draft' | 'pending' | 'pendingParent' | 'pendingTurnId' | 'failure' | 'context' | 'turnUsage' | 'compacting' | 'helper'
+  | 'draft'
+  | 'pendingOperation'
+  | 'pending'
+  | 'pendingParent'
+  | 'pendingTurnId'
+  | 'failure'
+  | 'context'
+  | 'turnUsage'
+  | 'compacting'
+  | 'helper'
 >
 
 /** 处理一条 SSE 事件，返回新状态（纯函数）。 */
@@ -95,6 +107,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
               turnId: turn.turn_id,
               parentId: turn.parent_id,
               input: turn.input,
+              operation: turn.operation,
               items: turn.items,
               seq: turn.seq,
               toolsRunning: turn.tools_running,
@@ -102,6 +115,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
             }
           : null,
         pending: turn && !turn.started ? turn.input : null,
+        pendingOperation: turn && !turn.started ? turn.operation : undefined,
         pendingParent: turn && !turn.started ? turn.parent_id || null : null,
         pendingTurnId: turn && !turn.started ? turn.turn_id : undefined,
         failure: null,
@@ -116,6 +130,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         ...s,
         draft: null,
         pending: ev.data.input,
+        pendingOperation: ev.data.operation,
         pendingParent: ev.data.parent_id || null,
         pendingTurnId: ev.data.turn_id,
         failure: null,
@@ -130,6 +145,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         helper: undefined,
         pending: null,
         pendingParent: null,
+        pendingOperation: undefined,
         pendingTurnId: undefined,
         failure: null,
         turnUsage: null,
@@ -137,6 +153,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
           turnId: ev.data.turn_id,
           parentId: ev.data.parent_id,
           input: ev.data.input,
+          operation: ev.data.operation,
           items: [],
           seq: 0,
           toolsRunning: 0,
@@ -176,6 +193,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
     case 'turn.committed': {
       const d = s.draft
       if (!d || d.turnId !== ev.data.turn_id) return s
+      if (d.operation?.kind === 'choices') return { ...s, draft: null }
       return { ...s, draft: { ...d, status: ev.data.status, nodeId: ev.data.node_id, toolsRunning: 0 } }
     }
     case 'timeline.changed':
@@ -185,6 +203,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         draft: null,
         pending: null,
         pendingParent: null,
+        pendingOperation: undefined,
         pendingTurnId: undefined,
         failure: null,
         helper: undefined,
@@ -205,10 +224,12 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         helper: undefined,
         pending: null,
         pendingParent: null,
+        pendingOperation: undefined,
         pendingTurnId: undefined,
         // 后端在有内容时先发 committed 再发 failed；仍在 streaming 说明这一回合没有留下任何内容，草稿可以移除
         draft: s.draft?.turnId === ev.data.turn_id && s.draft.status === 'streaming' ? null : s.draft,
         failure: {
+          operation: s.draft?.operation ?? s.pendingOperation,
           turnId: ev.data.turn_id,
           nodeId: ev.data.node_id,
           parentId: ev.data.parent_id,
@@ -227,6 +248,7 @@ export const useReader = create<ReaderState>((set) => ({
   draft: null,
   pending: null,
   pendingParent: null,
+  pendingOperation: undefined,
   failure: null,
   context: null,
   turnUsage: null,
@@ -241,6 +263,7 @@ export const useReader = create<ReaderState>((set) => ({
       draft: null,
       pending: null,
       pendingParent: null,
+      pendingOperation: undefined,
       pendingTurnId: undefined,
       failure: null,
       context: null,
@@ -249,8 +272,14 @@ export const useReader = create<ReaderState>((set) => ({
       helper: undefined,
       connection: 'connecting',
     }),
-  setPending: (pending, parentId) =>
-    set({ pending, pendingParent: pending ? (parentId ?? null) : null, pendingTurnId: undefined, failure: null }),
+  setPending: (pending, parentId, operation) =>
+    set({
+      pending,
+      pendingOperation: pending ? operation : undefined,
+      pendingParent: pending ? (parentId ?? null) : null,
+      pendingTurnId: undefined,
+      failure: null,
+    }),
   init: (context) => set((s) => ({ context: s.turnUsage ? s.context : context })),
   setConnection: (connection) => set({ connection }),
   dispatch: (ev) => set((s) => reduceEvent(s, ev)),

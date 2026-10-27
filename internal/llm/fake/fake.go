@@ -66,10 +66,17 @@ func (p *Provider) Stream(ctx context.Context, _ *llm.Model, req *llm.Request) (
 	}
 	var resp Response
 	n := 0
+	special, specialOK := p.script.Operations[req.Purpose]
 	switch {
 	case req.Purpose == "compact" && len(p.script.Compact) > 0:
 		i := min(compactCalls(req), len(p.script.Compact)-1)
 		resp, n = p.script.Compact[i], 1000+i
+	case specialOK:
+		p.mu.Lock()
+		n = p.calls[req.CacheKey]
+		p.calls[req.CacheKey] = n + 1
+		p.mu.Unlock()
+		resp = special
 	case p.script.OOC != nil && lastPlayerIsOOC(req):
 		resp = *p.script.OOC
 	default:

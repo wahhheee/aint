@@ -226,6 +226,6 @@ type PanelDef struct {
 
 // 保留名（《03-作品格式规范》第 4 节）。
 var (
-	BuiltinCommands = []string{"ooc", "continue", "compact", "help"}
+	BuiltinCommands = []string{"ooc", "continue", "compact", "help", "rewrite", "choices"}
 	BuiltinTags     = []string{"scene", "cg", "say", "bgm", "sfx", "pause", "fx", "aside", "act", "ooc"}
 )

@@ -50,7 +50,7 @@ func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int
 	if err != nil {
 		return nil, err
 	}
-	turns := slices.DeleteFunc(slices.Clone(line), func(n *Node) bool { return n.Kind == KindRoot })
+	turns := slices.DeleteFunc(slices.Clone(line), func(n *Node) bool { return n.Kind == KindRoot || n.Kind == KindChoices })
 	if before != "" {
 		if i := slices.IndexFunc(turns, func(n *Node) bool { return n.ID == before }); i >= 0 {
 			turns = turns[:i]
@@ -71,7 +71,7 @@ func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int
 			SummaryFrom: n.Meta.SummaryFrom, SummaryTo: n.Meta.SummaryTo, KeepFromTurn: n.Meta.KeepFromTurn,
 		}
 		if n.Kind == KindTurn {
-			if tn.Display, err = s.LoadDisplay(ctx, n.DisplayHash); err != nil {
+			if tn.Display, err = s.TurnDisplay(ctx, line, n); err != nil {
 				return nil, err
 			}
 			if tn.Versions, err = s.versions(ctx, n); err != nil {
@@ -85,8 +85,12 @@ func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int
 
 // Siblings 返回与回合 n 同一父节点的全部回合版本（按创建先后），含 n 自身。
 func (s *Service) Siblings(ctx context.Context, n *Node) ([]string, error) {
+	parent := n.Meta.VersionParent
+	if parent == "" {
+		parent = n.ParentID
+	}
 	rows, err := s.db.Read().QueryContext(ctx,
-		`SELECT id FROM nodes WHERE save_id = ? AND parent_id = ? AND kind = 'turn' ORDER BY created_at, id`, n.SaveID, n.ParentID)
+		`SELECT id FROM nodes WHERE save_id = ? AND COALESCE(NULLIF(json_extract(meta, '$.version_parent'), ''), parent_id) = ? AND kind = 'turn' ORDER BY created_at, id`, n.SaveID, parent)
 	if err != nil {
 		return nil, err
 	}
@@ -115,4 +119,23 @@ func (s *Service) versions(ctx context.Context, n *Node) (Versions, error) {
 		v.IDs = sibs
 	}
 	return v, nil
+}
+
+// TurnDisplay 返回回合正文和当前进度线上附着于它的选项，不改变原回合的存储内容。
+func (s *Service) TurnDisplay(ctx context.Context, line []*Node, turn *Node) ([]DisplayItem, error) {
+	items, err := s.LoadDisplay(ctx, turn.DisplayHash)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range line {
+		if n.Kind != KindChoices || n.Meta.Operation == nil || n.Meta.Operation.NodeID != turn.ID {
+			continue
+		}
+		extra, err := s.LoadDisplay(ctx, n.DisplayHash)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, extra...)
+	}
+	return items, nil
 }

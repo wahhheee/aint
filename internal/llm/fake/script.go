@@ -31,9 +31,10 @@ import (
 //
 // 每个存档独立计数，依次循环使用 responses。正文与工具参数中的字符串都可以写 {{input}}。
 type Script struct {
-	Responses []Response `yaml:"responses"`
-	OOC       *Response  `yaml:"ooc"`
-	Compact   []Response `yaml:"compact"`
+	Operations map[string]Response `yaml:"operations"` // 按调用用途指定响应（如 rewrite、choices）
+	Responses  []Response          `yaml:"responses"`
+	OOC        *Response           `yaml:"ooc"`
+	Compact    []Response          `yaml:"compact"`
 }
 
 // Response 是一次调用的脚本。

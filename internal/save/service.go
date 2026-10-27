@@ -157,7 +157,10 @@ func (s *Service) ProgressLine(ctx context.Context, saveID string) (*Save, []*No
 
 // TurnCommit 是一次回合提交的全部内容（由 runtime 组装）。
 type TurnCommit struct {
-	LockOpening   bool // 与成功的玩家回合一同提交；开场、续写开场与手动编辑不锁定
+	Compaction    *PreparedCompaction
+	ExpectedHead  string
+	Kind          NodeKind // 缺省为故事回合；choices 为补充选项
+	LockOpening   bool     // 与成功的玩家回合一同提交；开场、续写开场与手动编辑不锁定
 	SaveID        string
 	Parent        *Node
 	TurnNo        int
@@ -189,6 +192,23 @@ func (s *Service) CommitTurn(ctx context.Context, c TurnCommit) (*Node, error) {
 }
 
 func (s *Service) commitTx(ctx context.Context, tx *sql.Tx, c TurnCommit) (*Node, error) {
+	if c.ExpectedHead != "" {
+		sv, err := getSave(ctx, tx, c.SaveID)
+		if err != nil {
+			return nil, err
+		}
+		if sv.HeadNodeID != c.ExpectedHead {
+			return nil, errs.Conflict("存档已变化，请刷新后重试")
+		}
+	}
+	if c.Compaction != nil {
+		if err := s.insertCompaction(ctx, tx, c.Compaction); err != nil {
+			return nil, err
+		}
+	}
+	if c.Kind == "" {
+		c.Kind = KindTurn
+	}
 	msgHash, err := s.blobs.PutJSON(ctx, tx, c.Messages)
 	if err != nil {
 		return nil, err
@@ -213,7 +233,7 @@ func (s *Service) commitTx(ctx context.Context, tx *sql.Tx, c TurnCommit) (*Node
 	}
 	in := c.Input
 	n := &Node{
-		ID: id, SaveID: c.SaveID, ParentID: c.Parent.ID, Depth: c.Parent.Depth + 1, Kind: KindTurn,
+		ID: id, SaveID: c.SaveID, ParentID: c.Parent.ID, Depth: c.Parent.Depth + 1, Kind: c.Kind,
 		Status: c.Status, TurnNo: c.TurnNo, Input: &in, MessagesHash: msgHash, DisplayHash: dispHash,
 		StateHash: c.StateHash, MemoryHash: c.MemoryHash, WorkVersionID: c.WorkVersionID,
 		Usage: c.Usage, Meta: c.Meta, CreatedAt: store.NowMillis(),
@@ -338,19 +358,24 @@ type CompactionCommit struct {
 	UsageRecords  []usage.Record
 }
 
-// CommitCompaction 在单个事务中提交整理节点：阶段块、整理过程的消息（只供排查，不进入之后的上下文）、
-// 新记忆清单、用量，并把 head 移到整理节点；升级时同时提交状态迁移与作品版本。
-func (s *Service) CommitCompaction(ctx context.Context, c CompactionCommit) (*Node, error) {
+// PreparedCompaction 保存已准备的不可变内容；节点尚未加入存档树。
+// 重写回合使用它在成功时一并提交整理与新正文。
+type PreparedCompaction struct {
+	Node    *Node
+	Records []usage.Record
+}
+
+// StageCompaction 只保存内容寻址的 blob，不写节点、不移动进度；未采用的内容由存储回收清理。
+func (s *Service) StageCompaction(ctx context.Context, c CompactionCommit) (*PreparedCompaction, error) {
 	n := &Node{
 		ID: ids.New(), SaveID: c.SaveID, ParentID: c.Parent.ID, Depth: c.Parent.Depth + 1, Kind: KindCompaction,
 		Status: StatusCommitted, TurnNo: c.Parent.TurnNo, KeepFrom: c.KeepFrom, StateHash: c.Parent.StateHash,
 		MemoryHash: c.Parent.MemoryHash, WorkVersionID: c.Parent.WorkVersionID, Usage: c.Usage, Meta: c.Meta,
-		CreatedAt: store.NowMillis(),
+		CreatedAt: store.NowMillis(), Notes: c.Notes,
 	}
 	if c.WorkVersionID != "" {
 		n.WorkVersionID = c.WorkVersionID
 	}
-	n.Notes = c.Notes
 	err := s.db.Tx(ctx, func(tx *sql.Tx) error {
 		var err error
 		if c.State != nil {
@@ -369,19 +394,54 @@ func (s *Service) CommitCompaction(ctx context.Context, c CompactionCommit) (*No
 				return err
 			}
 		}
-		if err := insertNode(ctx, tx, n); err != nil {
-			return fmt.Errorf("写入整理节点失败: %w", err)
-		}
-		for _, r := range c.UsageRecords {
-			r.SaveID, r.NodeID = c.SaveID, n.ID
-			if err := usage.Insert(ctx, tx, r); err != nil {
-				return fmt.Errorf("写入用量失败: %w", err)
-			}
-		}
-		return setHead(ctx, tx, c.SaveID, n.ID, false)
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return n, nil
+	return &PreparedCompaction{Node: n, Records: c.UsageRecords}, nil
+}
+
+func (s *Service) insertCompaction(ctx context.Context, tx *sql.Tx, p *PreparedCompaction) error {
+	if err := insertNode(ctx, tx, p.Node); err != nil {
+		return err
+	}
+	for _, r := range p.Records {
+		r.SaveID, r.NodeID = p.Node.SaveID, p.Node.ID
+		if err := usage.Insert(ctx, tx, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CommitCompaction 原子提交整理节点、用量与当前进度；升级同时提交状态和作品版本。
+func (s *Service) CommitCompaction(ctx context.Context, c CompactionCommit) (*Node, error) {
+	p, err := s.StageCompaction(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	err = s.db.Tx(ctx, func(tx *sql.Tx) error {
+		if err := s.insertCompaction(ctx, tx, p); err != nil {
+			return err
+		}
+		return setHead(ctx, tx, c.SaveID, p.Node.ID, false)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return p.Node, nil
+}
+
+// RecordAttempt 保存未采用操作的实际用量，不创建故事节点。
+func (s *Service) RecordAttempt(ctx context.Context, saveID string, records []usage.Record) error {
+	return s.db.Tx(ctx, func(tx *sql.Tx) error {
+		for _, r := range records {
+			r.SaveID, r.NodeID = saveID, ""
+			if err := usage.Insert(ctx, tx, r); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

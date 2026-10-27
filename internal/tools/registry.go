@@ -148,6 +148,11 @@ type Outcome struct {
 
 // Execute 执行一批工具调用：相邻的读类并行、写类串行、终止型最后；结果按原顺序返回。
 func (r *Registry) Execute(ctx context.Context, env Env, calls []llm.ToolCall) Outcome {
+	return r.ExecuteAllowed(ctx, env, calls, nil)
+}
+
+// ExecuteAllowed 在执行入口限制本次操作可用的工具；nil 表示使用完整的作品工具集合。
+func (r *Registry) ExecuteAllowed(ctx context.Context, env Env, calls []llm.ToolCall, allowed map[string]bool) Outcome {
 	results := make([]*Result, len(calls))
 	durations := make([]time.Duration, len(calls))
 	run := func(i int, d *Def) {
@@ -170,6 +175,11 @@ func (r *Registry) Execute(ctx context.Context, env Env, calls []llm.ToolCall) O
 	terminal := -1
 	for i, c := range calls {
 		d, ok := r.byName[c.Name]
+		if allowed != nil && !allowed[c.Name] {
+			res := NotExecuted("本次操作不允许使用工具 %s，该调用未执行。", c.Name)
+			results[i] = &res
+			continue
+		}
 		if ok {
 			if avail, _ := d.When.Eval(fs); !avail {
 				ok = false

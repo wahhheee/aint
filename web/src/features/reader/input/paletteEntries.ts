@@ -15,6 +15,8 @@ export function paletteEntries(ui: Presentation['ui'], query: string): PaletteEn
   const builtin: PaletteEntry[] = [
     ...(ui.features.ooc ? [{ name: 'ooc', signature: '/ooc <文字>', description: t('reader.builtin.ooc'), builtin: true }] : []),
     { name: 'continue', signature: '/continue', description: t('reader.builtin.continue'), builtin: true },
+    { name: 'rewrite', signature: t('reader.rewriteSignature'), description: t('reader.builtin.rewrite'), builtin: true },
+    { name: 'choices', signature: '/choices', description: t('reader.builtin.choices'), builtin: true },
     { name: 'compact', signature: '/compact', description: t('reader.builtin.compact'), builtin: true },
     { name: 'help', signature: '/help', description: t('reader.builtin.help'), builtin: true },
   ]

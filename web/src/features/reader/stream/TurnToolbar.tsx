@@ -28,7 +28,7 @@ import { parseMarkup, plainText } from '@/markup/parse'
 import { useReaderContext } from '../ReaderContext'
 import { displayedInput } from './displayedInput'
 
-type Editing = { kind: 'text' | 'input'; value: string } | null
+type Editing = { kind: 'text' | 'input' | 'revise'; value: string } | null
 
 export function TurnToolbar({
   node,
@@ -67,9 +67,11 @@ export function TurnToolbar({
     if (!value) return
     setSaving(true)
     const ok =
-      editing.kind === 'text'
-        ? await actions.rewrite(node.id, value)
-        : await actions.regenerate(node.id, node.parent_id, { kind: input?.kind === 'ooc' ? 'ooc' : 'free', text: value })
+      editing.kind === 'revise'
+        ? await actions.operate('rewrite', value, node.id)
+        : editing.kind === 'text'
+          ? await actions.rewrite(node.id, value)
+          : await actions.regenerate(node.id, node.parent_id, { kind: input?.kind === 'ooc' ? 'ooc' : 'free', text: value })
     setSaving(false)
     if (ok) setEditing(null)
   }
@@ -135,6 +137,12 @@ export function TurnToolbar({
                 {t('reader.regenerate')}
               </DropdownMenuItem>
             )}
+            {latest && !staticOpening && markup.trim() && (
+              <DropdownMenuItem disabled={disabled} onSelect={() => setEditing({ kind: 'revise', value: '' })}>
+                <PencilLine />
+                {t('reader.revise')}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem disabled={disabled} onSelect={() => setEditing({ kind: 'text', value: markup })}>
               <SquarePen />
               {t('reader.editText')}
@@ -162,11 +170,25 @@ export function TurnToolbar({
         <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editing?.kind === 'input' ? t('reader.editInputTitle') : t('reader.editTextTitle')}</DialogTitle>
-              <DialogDescription>{editing?.kind === 'input' ? t('reader.editInputHint') : t('reader.editTextHint')}</DialogDescription>
+              <DialogTitle>
+                {editing?.kind === 'revise'
+                  ? t('reader.revise')
+                  : editing?.kind === 'input'
+                    ? t('reader.editInputTitle')
+                    : t('reader.editTextTitle')}
+              </DialogTitle>
+              <DialogDescription>
+                {editing?.kind === 'revise'
+                  ? t('reader.reviseHint')
+                  : editing?.kind === 'input'
+                    ? t('reader.editInputHint')
+                    : t('reader.editTextHint')}
+              </DialogDescription>
             </DialogHeader>
             <Textarea
-              aria-label={t(editing?.kind === 'input' ? 'reader.editInputTitle' : 'reader.editTextTitle')}
+              aria-label={t(
+                editing?.kind === 'revise' ? 'reader.revise' : editing?.kind === 'input' ? 'reader.editInputTitle' : 'reader.editTextTitle',
+              )}
               value={editing?.value ?? ''}
               onChange={(e) => setEditing((cur) => cur && { ...cur, value: e.target.value })}
               className="max-h-[55dvh] min-h-40 font-serif text-[15px] leading-7"
@@ -177,7 +199,7 @@ export function TurnToolbar({
                 {t('common.cancel')}
               </Button>
               <Button onClick={() => void save()} disabled={saving || !editing?.value.trim()}>
-                {editing?.kind === 'input' ? t('reader.regenerate') : t('common.save')}
+                {editing?.kind === 'revise' ? t('reader.revise') : editing?.kind === 'input' ? t('reader.regenerate') : t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>

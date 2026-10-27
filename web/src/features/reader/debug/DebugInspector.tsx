@@ -239,6 +239,12 @@ export function DebugInspector({
   )
 }
 
-function purpose(call: DebugSummary): 'narrate' | 'continue' | 'compact' {
-  return call.purpose === 'compact' || call.purpose === 'continue' ? call.purpose : 'narrate'
+function purpose(call: DebugSummary): 'narrate' | 'continue' | 'compact' | 'rewrite' | 'rewrite_memory' | 'choices' {
+  return call.purpose === 'compact' ||
+    call.purpose === 'continue' ||
+    call.purpose === 'rewrite' ||
+    call.purpose === 'rewrite_memory' ||
+    call.purpose === 'choices'
+    ? call.purpose
+    : 'narrate'
 }

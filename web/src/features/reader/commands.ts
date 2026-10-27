@@ -8,11 +8,12 @@
  */
 import type { Command, TurnInput } from '@/api/types'
 
-export const BUILTIN_COMMANDS = ['ooc', 'continue', 'compact', 'help'] as const
+export const BUILTIN_COMMANDS = ['ooc', 'continue', 'compact', 'help', 'rewrite', 'choices'] as const
 export type BuiltinCommand = (typeof BUILTIN_COMMANDS)[number]
 
 export type ParseResult =
   | { ok: true; input: TurnInput }
+  | { ok: true; operation: 'rewrite' | 'choices'; instructions: string }
   | { ok: true; local: 'help' | 'compact' }
   | { ok: false; error: 'not_found' | 'arg_missing'; name: string; arg?: string }
 
@@ -32,6 +33,11 @@ export function parseInput(text: string, commands: Command[], mode?: string): Pa
   }
   const [, name = '', rest = ''] = /^\/(\S+)\s*([\s\S]*)$/.exec(trimmed) ?? []
   switch (name) {
+    case 'rewrite':
+      if (!rest.trim()) return { ok: false, error: 'arg_missing', name }
+      return { ok: true, operation: 'rewrite', instructions: rest.trim() }
+    case 'choices':
+      return { ok: true, operation: 'choices', instructions: '' }
     case 'ooc':
       return { ok: true, input: { kind: 'ooc', text: rest } }
     case 'continue':

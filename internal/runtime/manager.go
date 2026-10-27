@@ -196,11 +196,15 @@ func (m *Manager) Regenerate(ctx context.Context, saveID, nodeID string, in *sav
 	}
 	input.ChoiceLabel = ""    // 由 prepare 依据父节点的选项重新补全
 	input.ExpectedHeadID = "" // 重新生成使用显式父节点，不沿用自动开场时的 head
-	return m.submit(ctx, saveID, n.ParentID, input)
+	return m.submitOperation(ctx, saveID, n.ParentID, input, nil, n.Meta.VersionParent)
 }
 
 // submit 在后台开始一个回合。parentID 为空时以 head 为父节点。
 func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.TurnInput) (string, error) {
+	return m.submitOperation(ctx, saveID, parentID, in, nil, "")
+}
+
+func (m *Manager) submitOperation(ctx context.Context, saveID, parentID string, in save.TurnInput, op *save.TurnOperation, versionParent string) (string, error) {
 	if err := validateInput(in); err != nil {
 		return "", err
 	}
@@ -217,6 +221,9 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 		if current.HeadNodeID != in.ExpectedHeadID {
 			return "", errs.Conflict("存档已变化，请刷新后重试")
 		}
+	}
+	if op != nil && s.running != nil {
+		return "", errs.Conflict("请等待当前生成或整理完成")
 	}
 	var wait <-chan struct{}
 	switch {
@@ -240,7 +247,7 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 	} else {
 		s.running = j
 	}
-	m.publish(saveID, event.TurnPending, event.TurnStartedData{TurnID: turnID, ParentID: parentID, Input: in})
+	m.publish(saveID, event.TurnPending, event.TurnStartedData{TurnID: turnID, ParentID: parentID, Input: in, Operation: operationValue(op)})
 
 	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
 	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
@@ -271,7 +278,7 @@ func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.T
 				return
 			}
 		}
-		m.runTurn(turnCtx, saveID, turnID, parentID, in, &turnSlot{session: s, job: j, release: release})
+		m.runOperation(turnCtx, saveID, turnID, parentID, in, &turnSlot{session: s, job: j, release: release}, op, versionParent)
 	})
 	return turnID, nil
 }

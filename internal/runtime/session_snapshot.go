@@ -18,6 +18,7 @@ type SessionSnapshot struct {
 
 // LiveTurn 包含排队、准备或生成中的回合。Started 为 false 时尚无正文与确定的父节点。
 type LiveTurn struct {
+	Operation    any                `json:"operation,omitempty"`
 	TurnID       string             `json:"turn_id"`
 	ParentID     string             `json:"parent_id"`
 	Input        save.TurnInput     `json:"input"`
@@ -58,7 +59,7 @@ func (m *Manager) updateSnapshot(saveID string, data any, typ string) {
 	}
 	switch v := data.(type) {
 	case event.TurnStartedData:
-		s.Turn = &LiveTurn{TurnID: v.TurnID, ParentID: v.ParentID, Input: v.Input.(save.TurnInput), Started: typ == event.TurnStarted, Items: []save.DisplayItem{}}
+		s.Turn = &LiveTurn{TurnID: v.TurnID, ParentID: v.ParentID, Input: v.Input.(save.TurnInput), Operation: v.Operation, Started: typ == event.TurnStarted, Items: []save.DisplayItem{}}
 		s.Helper, s.Usage = "", nil
 	case event.TurnTextData:
 		if d := s.Turn; d != nil && d.TurnID == v.TurnID {

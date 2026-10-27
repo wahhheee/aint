@@ -12,6 +12,7 @@ import (
 	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/ids"
 	"github.com/wahhheee/aint/internal/pkg/logx"
+	"github.com/wahhheee/aint/internal/save"
 	"github.com/wahhheee/aint/internal/vfs"
 	"github.com/wahhheee/aint/internal/work"
 )
@@ -110,7 +111,18 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 		return err
 	}
 	m.publish(d.save.ID, event.CompactionStarted, event.CompactionStartedData{Reason: string(reason)})
-	node, stats, err := m.compactVersion(ctx, d.save, line, reason, nil, d.work)
+	commit := m.d.Saves.CommitCompaction
+	if d.operation != nil {
+		commit = func(ctx context.Context, c save.CompactionCommit) (*save.Node, error) {
+			p, err := m.d.Saves.StageCompaction(ctx, c)
+			if err != nil {
+				return nil, err
+			}
+			d.staged = p
+			return p.Node, nil
+		}
+	}
+	node, stats, err := m.compactWith(ctx, d.save, line, reason, nil, d.work, commit)
 	if err != nil {
 		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{Message: compactionError(err)})
 		return err
@@ -135,12 +147,13 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 	built, err := m.d.Builder.Build(ctx, contextx.BuildInput{
 		SaveID: d.save.ID, Work: d.work, Features: d.features, Model: d.model, Settings: d.save.Settings,
 		InitialState: d.initState, InitialStateHash: d.root.StateHash, Epoch: ec.block,
-		Tools: m.d.Tools.Specs(d.features, d.work), History: ec.history, Turn: d.turnMsgs[0],
+		Tools: m.d.Tools.Specs(d.features, d.work), History: ec.history, Turn: d.operationMessage(d.turnMsgs[0]),
 	})
 	if err != nil {
 		return err
 	}
 	msgs := built.Request.Messages // 以本回合的玩家消息结尾，再接本回合已有的其余消息
+	d.contextMessages = len(msgs) - 1
 	msgs = append(msgs, d.turnMsgs[1:]...)
 	d.req.Messages = msgs
 	built.Request = d.req

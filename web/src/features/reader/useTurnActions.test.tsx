@@ -8,13 +8,15 @@ import { toast } from 'sonner'
 
 import { api } from '@/api/endpoints'
 import { ApiError } from '@/api/errors'
-import type { Command } from '@/api/types'
+import type { Command, Timeline } from '@/api/types'
 import { confirmAction } from '@/components/common/confirm'
 import { useReader } from '@/stores/reader'
 
 import { useTurnActions } from './useTurnActions'
 
-vi.mock('@/api/endpoints', () => ({ api: { saves: { submit: vi.fn(), regenerate: vi.fn(), cancel: vi.fn() } } }))
+vi.mock('@/api/endpoints', () => ({
+  api: { saves: { submit: vi.fn(), regenerate: vi.fn(), cancel: vi.fn(), revise: vi.fn(), requestChoices: vi.fn() } },
+}))
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }))
 vi.mock('@/components/common/confirm', () => ({ confirmAction: vi.fn() }))
 
@@ -71,9 +73,9 @@ describe('会话恢复', () => {
 })
 afterEach(cleanup)
 
-function actions() {
+function actions(timeline?: Timeline) {
   const client = new QueryClient()
-  return renderHook(() => useTurnActions('save', [follow]), {
+  return renderHook(() => useTurnActions('save', [follow], timeline), {
     wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
   }).result
 }
@@ -149,6 +151,49 @@ describe('失败重试', () => {
       .dispatch({ id: 1, type: 'turn.failed', data: { turn_id: 'failed', code: 'network', message: '上游失败', recoverable: true } })
     await a.current.retry()
     expect(api.saves.regenerate).toHaveBeenLastCalledWith('save', 'old', { kind: 'free', text: '新输入' })
+    expect(api.saves.submit).not.toHaveBeenCalled()
+  })
+})
+
+const operationTimeline: Timeline = {
+  save_id: 'save',
+  head_id: 'edit',
+  has_more: false,
+  has_later: false,
+  nodes: [
+    {
+      id: 'story',
+      parent_id: 'root',
+      kind: 'turn',
+      status: 'committed',
+      turn_no: 1,
+      created_at: 0,
+      display: [
+        { t: 'input', kind: 'free', text: '看看摊位' },
+        { t: 'text', markup: '雨夜集市。' },
+      ],
+      versions: { index: 1, count: 1 },
+    },
+  ],
+}
+
+describe('回合操作命令', () => {
+  it('重写保留原输入，向操作接口发送要求和当前进度', async () => {
+    const a = actions(operationTimeline)
+    expect(await a.current.submitText('/rewrite 暂时不要揭露身份')).toBe(true)
+    expect(api.saves.revise).toHaveBeenCalledWith('save', 'story', '暂时不要揭露身份', 'edit')
+    expect(api.saves.submit).not.toHaveBeenCalled()
+    expect(useReader.getState().pending?.text).toBe('看看摊位')
+    expect(useReader.getState().pendingParent).toBe('root')
+  })
+  it('补选项不裁掉当前正文，重试保持操作种类', async () => {
+    const a = actions(operationTimeline)
+    await a.current.submitText('/choices')
+    expect(api.saves.requestChoices).toHaveBeenCalledWith('save', 'story', 'edit')
+    expect(useReader.getState().pendingParent).toBeNull()
+    useReader.getState().setPending(null)
+    await a.current.retry()
+    expect(api.saves.requestChoices).toHaveBeenCalledTimes(2)
     expect(api.saves.submit).not.toHaveBeenCalled()
   })
 })

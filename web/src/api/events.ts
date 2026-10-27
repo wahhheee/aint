@@ -1,13 +1,14 @@
 /**
  * SSE 事件契约（与 internal/event/types.go 同步）。
  */
-import type { ChoiceItem, CompactStats, DisplayItem, PanelRender, StateChange, TurnInput, Usage } from './types'
+import type { ChoiceItem, CompactStats, DisplayItem, PanelRender, StateChange, TurnInput, TurnOperation, Usage } from './types'
 
 export interface EventMap {
   'session.snapshot': {
     turn: {
       turn_id: string
       parent_id: string
+      operation?: TurnOperation
       input: TurnInput
       started: boolean
       items: DisplayItem[]
@@ -18,8 +19,8 @@ export interface EventMap {
     helper?: string
     usage?: EventMap['turn.usage']
   }
-  'turn.pending': { turn_id: string; parent_id: string; input: TurnInput }
-  'turn.started': { turn_id: string; parent_id: string; input: TurnInput }
+  'turn.pending': { turn_id: string; parent_id: string; input: TurnInput; operation?: TurnOperation }
+  'turn.started': { turn_id: string; parent_id: string; input: TurnInput; operation?: TurnOperation }
   'turn.text': { turn_id: string; seq: number; delta: string }
   'turn.tool': { turn_id: string; call_id: string; name: string; phase: 'start' | 'done' | 'error'; display?: string }
   'turn.display': { turn_id: string; item: DisplayItem }

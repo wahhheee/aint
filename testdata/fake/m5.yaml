@@ -19,3 +19,23 @@ ooc:
   text: 重连测试正文。雾中的执笔者正在缓慢记录这次场外交流，等待读者在另一台设备上接着阅读。这段内容会持续生成，直到读者主动停止。
   chunk_runes: 8
   delay_ms: 900
+
+operations:
+  rewrite:
+    text: |
+      你停下脚步。雨声渐密，远处那盏灯在水面上晃了一下。
+      那封信还在口袋里，你却不急着把它拿出来。
+    first_delay_ms: 1000
+    chunk_runes: 12
+    delay_ms: 250
+  choices:
+    text: 好的，我来生成选项。
+    first_delay_ms: 1000
+    chunk_runes: 100
+    delay_ms: 1
+    tool_calls:
+      - name: offer_choices
+        args:
+          choices:
+            - {id: a, label: 走近那盏灯}
+            - {id: b, label: 留在雨棚下}

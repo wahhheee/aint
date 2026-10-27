@@ -40,3 +40,13 @@ describe('parseInput', () => {
     expect(parseInput('/fly', [follow])).toMatchObject({ ok: false, error: 'not_found' })
   })
 })
+
+it('重写要求完整保留，缺少要求时不进入故事输入', () => {
+  expect(parseInput('/rewrite 更含蓄，保留“蓝伞”\n暂时不提供选项', [])).toEqual({
+    ok: true,
+    operation: 'rewrite',
+    instructions: '更含蓄，保留“蓝伞”\n暂时不提供选项',
+  })
+  expect(parseInput('/rewrite', [])).toMatchObject({ ok: false, error: 'arg_missing' })
+  expect(parseInput('/choices', [])).toEqual({ ok: true, operation: 'choices', instructions: '' })
+})

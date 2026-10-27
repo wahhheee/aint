@@ -47,7 +47,7 @@
 ```
 POST /saves/{id}/turns
   └─ runtime.Manager.Submit            会话加锁：同一存档同时只有一个回合（409）；回合 ID = 提交后的节点 ID
-       └─ goroutine: runTurn           与 HTTP 请求脱钩；ctx 带 save_id / turn_id 日志字段
+       └─ goroutine: runOperation           与 HTTP 请求脱钩；ctx 带 save_id / turn_id 日志字段
             ├─ prepare                 读进度线 → 作品模型 → 解析模型 → 能力画像 → 封装玩家消息 → contextx.Build → 挂载 VFS
             ├─ loop                    llm.Stream → 正文增量（turn.text）→ 工具（tools.Execute：read / list 经 VFS）
             │                          → 终止型 offer_choices / 截断续写 / 预算 / 取消 / 错误
@@ -80,6 +80,12 @@ POST /saves/{id}/compact、/compact ──► 后台整理
 
 **分支与编辑**（`save/branch.go`、`edit.go`、`tree.go`）：重新生成、修改玩家输入经 `runtime.Regenerate` 以原回合的父节点提交新回合；
 移动 head、修改正文、丢弃、删除分支、编辑记忆或状态经 `runtime.Exclusive`（有任务在运行时 409），完成后推送 `timeline.changed`。
+
+### 按要求重写与主动补选项
+
+`runtime/operation.go` 通过同一个写者槽位与回合循环运行操作。重写从原回合父节点创建草稿，原文与修改要求只在本次请求中可见；成功原子采用，取消和失败恢复原版。紧急整理以 `save.StageCompaction` 暂存，与重写整体提交。`operation_memory.go` 对新写记忆以成稿进行有界核对，不回传旧稿和修改要求，只允许查询与记忆修订；核对失败整体回滚。
+
+补选项使用只读工具执行白名单，只保存 `offer_choices`；`choices` 附属节点不占故事回合号、不产生正文。`save.TurnDisplay` 合并当前分支的选项，`runtime.loadContext` 把其调用并入对应故事回合。`operation` 随待开始事件、开始事件与会话快照传给前端，正文和舞台层使用相同的可见进度。详见 [重写与主动补选项](turn-operations.md)。
 
 ## 4. 上下文工程（`contextx` + `prompts` + `tools`）
 

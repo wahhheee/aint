@@ -57,6 +57,11 @@ var compactAllowed = map[string]bool{"read": true, "list": true, "search": true,
 
 // compactVersion 对进度线执行整理；current 用于固定开发回合正在使用的作品快照，target 指定升级目标。
 func (m *Manager) compactVersion(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model) (*save.Node, *CompactStats, error) {
+	return m.compactWith(ctx, sv, line, reason, target, current, m.d.Saves.CommitCompaction)
+}
+
+// compactWith 通过提交函数选择立即采用或暂存整理结果。
+func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model, commit func(context.Context, save.CompactionCommit) (*save.Node, error)) (*save.Node, *CompactStats, error) {
 	start := time.Now()
 	head := line[len(line)-1]
 	if target != nil && lastTurn(line) == nil {
@@ -219,7 +224,7 @@ func (m *Manager) compactVersion(ctx context.Context, sv *save.Save, line []*sav
 		return nil, nil, err
 	}
 
-	node, err := m.d.Saves.CommitCompaction(ctx, save.CompactionCommit{
+	node, err := commit(ctx, save.CompactionCommit{
 		SaveID: sv.ID, Parent: head, Epoch: epoch, KeepFrom: keepID, Memory: memWrite,
 		WorkVersionID: versionID, State: headState, Notes: notes,
 		Messages: run.msgs, Usage: &run.usage, UsageRecords: run.records,

@@ -25,11 +25,17 @@ import (
 	"github.com/wahhheee/aint/internal/work"
 )
 
-// runTurn 是一个回合的完整生命周期（在独立 goroutine 中运行）。
-func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput, slot *turnSlot) {
+// runOperation 运行普通回合或附着在既有回合上的操作。
+func (m *Manager) runOperation(ctx context.Context, saveID, turnID, parentID string, in save.TurnInput, slot *turnSlot, op *save.TurnOperation, versionParent string) {
 	ctx, cancel := context.WithTimeoutCause(ctx, m.d.Budget.WallClock, errTurnTimeout)
 	defer cancel()
 	d, err := m.prepare(ctx, saveID, turnID, parentID, in)
+	if err == nil {
+		d.versionParent = versionParent
+	}
+	if err == nil && op != nil {
+		err = m.prepareOperation(ctx, d, op)
+	}
 	if err != nil {
 		if errors.Is(context.Cause(ctx), errTurnTimeout) {
 			err = errTurnTimeout
@@ -42,12 +48,15 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, 
 	}
 	slog.InfoContext(ctx, "回合开始", "kind", in.Kind, "turn_no", d.turnNo, "model", d.model.Name,
 		"prefix_hash", short(d.built.PrefixHash))
-	m.publish(saveID, event.TurnStarted, event.TurnStartedData{TurnID: turnID, ParentID: d.parent.ID, Input: d.input})
+	m.publish(saveID, event.TurnStarted, event.TurnStartedData{TurnID: turnID, ParentID: d.parent.ID, Input: d.input, Operation: operationValue(op)})
 
 	d.slot, d.release = slot, slot.release
 	d.delegate = func(ctx context.Context, kind, task string) (string, error) { return m.delegate(ctx, d, kind, task) }
 	refresh := m.panelRefresher(d)
 	d.onState = func(changes []state.Change) {
+		if d.operation != nil {
+			return
+		}
 		m.publish(saveID, event.TurnState, event.TurnStateData{TurnID: turnID, Changes: changes})
 		refresh.schedule(d.state)
 	}
@@ -55,7 +64,19 @@ func (m *Manager) runTurn(ctx context.Context, saveID, turnID, parentID string, 
 		m.publish(saveID, event.TurnDisplay, event.TurnDisplayData{TurnID: turnID, Item: item})
 	}
 	m.loop(ctx, d)
+	if d.operation != nil && !d.isChoices() && d.status != save.StatusInterrupted && (d.stop == "end" || d.stop == "choices") && d.hasNarrative() && d.memory.Dirty() {
+		if err := m.reviewRewriteMemory(ctx, d); err != nil {
+			d.stop, d.err, d.status = "error", err, save.StatusInterrupted
+			if ctx.Err() != nil {
+				d.stopCanceled(ctx)
+			}
+		}
+	}
 	refresh.stop()
+	if d.operation != nil && (ctx.Err() != nil || d.status == save.StatusInterrupted || (d.stop != "end" && d.stop != "choices") || (!d.isChoices() && !d.hasNarrative())) {
+		m.abortOperation(ctx, d)
+		return
+	}
 	m.commit(ctx, d)
 }
 
@@ -95,7 +116,7 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 	var headDisplay []save.DisplayItem
 	if last := lastTurn(line); last != nil {
 		turnNo = last.TurnNo
-		if headDisplay, err = m.d.Saves.LoadDisplay(ctx, last.DisplayHash); err != nil {
+		if headDisplay, err = m.d.Saves.TurnDisplay(ctx, line, last); err != nil {
 			return nil, err
 		}
 	}
@@ -242,14 +263,14 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			return
 		}
 		// 硬上限：下一次调用的上下文估算达到 窗口 − 预留 时，先在回合内整理（每回合至多一次）
-		if !d.compacted && m.estimate(d.model, d.req) >= d.hardLimit {
+		if !d.isChoices() && !d.compacted && m.estimate(d.model, d.req) >= d.hardLimit {
 			if err := m.compactInTurn(ctx, d, compact.ReasonLimit); err != nil && !errors.Is(err, errNothingToCompact) {
 				slog.WarnContext(ctx, "回合内整理失败，照常继续", "err", err)
 			}
 		}
 		res, err := m.callOnce(ctx, d)
 		// 模型报上下文超限：紧急整理后重试一次（13.2 第 3 点）
-		if err != nil && ctx.Err() == nil && llm.KindOf(err) == llm.ErrContextOverflow && !d.compacted {
+		if err != nil && ctx.Err() == nil && llm.KindOf(err) == llm.ErrContextOverflow && !d.compacted && !d.isChoices() {
 			if cerr := m.compactInTurn(ctx, d, compact.ReasonOverflow); cerr == nil {
 				continue
 			} else {
@@ -332,10 +353,14 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 				d.stopToolText()
 				return
 			}
-			if d.features.Has(prompts.FForceChoices) && d.choices == nil && d.hasNarrative() {
+			if d.choices == nil && (d.isChoices() || (d.features.Has(prompts.FForceChoices) && d.hasNarrative())) {
 				if !choicesNudged {
 					choicesNudged = true
-					notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ForceChoicesNotice)}}
+					text := prompts.ForceChoicesNotice
+					if d.isChoices() {
+						text = prompts.RequestChoices
+					}
+					notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(text)}}
 					d.req.Messages = append(d.req.Messages, notice)
 					d.turnMsgs = append(d.turnMsgs, notice)
 					continue
@@ -359,7 +384,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			d.turnMsgs = append(d.turnMsgs, notice)
 		case llm.StopContextOverflow:
 			// 输出写到了窗口上限：紧急整理后接着写（与截断续写相同），每回合一次
-			if !d.compacted {
+			if !d.compacted && !d.isChoices() {
 				if err := m.compactInTurn(ctx, d, compact.ReasonOverflow); err == nil {
 					d.continuing = true
 					notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ContinueNotice)}}
@@ -413,7 +438,14 @@ func (m *Manager) runTools(ctx context.Context, d *draft, calls []llm.ToolCall) 
 	for _, c := range calls {
 		m.publish(d.save.ID, event.TurnTool, event.TurnToolData{TurnID: d.id, CallID: c.ID, Name: c.Name, Phase: "start", Display: m.displayOf(c.Name)})
 	}
-	out := m.d.Tools.Execute(ctx, d, calls)
+	var allowed map[string]bool
+	if d.isChoices() {
+		allowed = choiceTools
+	}
+	if d.reviewing {
+		allowed = rewriteMemoryTools
+	}
+	out := m.d.Tools.ExecuteAllowed(ctx, d, calls, allowed)
 	d.inspection.toolsDone(ctx, out, d.vfs, d.state)
 	d.toolLog = append(d.toolLog, out.Records...)
 
@@ -435,11 +467,13 @@ func (m *Manager) runTools(ctx context.Context, d *draft, calls []llm.ToolCall) 
 		for _, r := range out.Results {
 			msg.Parts = append(msg.Parts, llm.Part{Kind: llm.PartToolResult, ToolResult: &r})
 		}
-		d.req.Messages = append(d.req.Messages, msg)
+		d.req.Messages = append(d.req.Messages, d.operationToolResult(msg))
 		d.turnMsgs = append(d.turnMsgs, msg)
 	}
 	if out.Terminal != nil && d.choices != nil {
-		m.publish(d.save.ID, event.TurnChoices, event.TurnChoicesData{TurnID: d.id, Choices: *d.choices})
+		if !d.isChoices() {
+			m.publish(d.save.ID, event.TurnChoices, event.TurnChoicesData{TurnID: d.id, Choices: *d.choices})
+		}
 		return true
 	}
 	return false
@@ -463,6 +497,12 @@ type callResult struct {
 func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	d.calls++
 	purpose := "narrate"
+	if d.operation != nil {
+		purpose = d.operation.Kind
+	}
+	if d.reviewing {
+		purpose = "rewrite_memory"
+	}
 	// 截断后的续写：先缓冲开头，去掉与上一段末尾重叠的部分再显示（9.4；只影响显示，LLM 消息保留原文）。
 	var overlap *overlapFilter
 	if d.continuing {
@@ -486,7 +526,7 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 		}
 	}()
 	show := func(s string) {
-		if s == "" {
+		if s == "" || d.isChoices() || d.reviewing {
 			return
 		}
 		d.appendText(s)
@@ -611,13 +651,29 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	}
 	memory := memoryWrite(d.memory)
 	contextTokens := d.contextTokens(m)
+	kind := save.KindTurn
+	expected := ""
+	if d.operation != nil {
+		expected = d.operation.ExpectedHead
+		d.turnMsgs = stripNative(d.turnMsgs)
+		if d.isChoices() {
+			kind = save.KindChoices
+			d.turnMsgs = choiceHistory(d.turnMsgs)
+			d.display = []save.DisplayItem{*d.choices}
+		}
+	}
+	plain := save.TranscriptBody(d.display, d.work.SpeakerName)
+	if d.isChoices() {
+		plain = ""
+	}
 	node, err := m.d.Saves.CommitTurn(ctx, save.TurnCommit{
-		LockOpening: !d.opening,
+		Kind: kind, ExpectedHead: expected, Compaction: d.staged,
+		LockOpening: !d.opening && !d.isChoices(),
 		SaveID:      d.save.ID, Parent: d.parent, TurnNo: d.turnNo, Input: d.input, Messages: d.turnMsgs, Display: d.display,
 		StateHash: d.parent.StateHash, State: newState, MemoryHash: d.parent.MemoryHash, Memory: memory, WorkVersionID: d.parent.WorkVersionID,
-		Status: d.status, Usage: &d.usage, PlainText: save.TranscriptBody(d.display, d.work.SpeakerName), UsageRecords: d.records, NodeID: d.id,
+		Status: d.status, Usage: &d.usage, PlainText: plain, UsageRecords: d.records, NodeID: d.id,
 		Meta: save.NodeMeta{
-			Opening:   d.opening,
+			Opening: d.opening, Operation: d.operation, VersionParent: d.versionParent,
 			Migration: d.migration, WorkHash: d.work.TreeHash,
 			Model: d.model.Name, Stop: d.stop, StopRaw: d.stopRaw, Calls: d.calls, ToolCalls: d.toolCalls,
 			Continuations: d.continuations, DurationMS: time.Since(d.started).Milliseconds(), Error: d.errMsg,
@@ -627,16 +683,24 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	// 上下文达到整理阈值：写者槽位直接交给整理任务（玩家阅读期间整理，期间的输入排队）。
 	// 上次整理之后至少要有 3 个回合（整理至少保留 2 个回合，才有可以摘要掉的内容）：预算小于常驻部分加保留原文时，
 	// 不会每个回合都整理一次；出错或中断的回合不触发，停止与超时后让出存档。
-	compacting := err == nil && d.status != save.StatusInterrupted && d.stop != "error" && contextTokens >= d.threshold && d.sinceCompaction >= 3
+	compacting := !d.isChoices() && err == nil && d.status != save.StatusInterrupted && d.stop != "error" && contextTokens >= d.threshold && d.sinceCompaction >= 3
 	if compacting {
 		slog.InfoContext(ctx, "上下文达到整理阈值", "context_tokens", contextTokens, "threshold", d.threshold)
 		m.handoffCompaction(d.save.ID, d.slot)
+	}
+	if err != nil && d.operation != nil {
+		d.stop, d.err = "error", err
+		m.abortOperation(ctx, d)
+		return
 	}
 	d.release() // 已提交（或提交失败）：先让出写者槽位，再发布终态事件
 	if err != nil {
 		slog.ErrorContext(ctx, "回合提交失败", "err", err)
 		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: string(errs.CodeInternal), Message: "保存回合失败（详见日志）", Recoverable: true})
 		return
+	}
+	if d.isChoices() {
+		m.publish(d.save.ID, event.TimelineChanged, event.TimelineChangedData{HeadID: node.ID, Reason: "choices"})
 	}
 	m.publish(d.save.ID, event.TurnCommitted, event.TurnCommittedData{TurnID: d.id, NodeID: node.ID, Status: string(node.Status)})
 	if d.stop == "error" {

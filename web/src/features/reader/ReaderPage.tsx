@@ -50,6 +50,7 @@ import { OpeningSwitcher } from './OpeningSwitcher'
 import { stageCues } from './stage/scene'
 import { StageAudio } from './stage/StageAudio'
 import { StageBackground } from './stage/StageBackground'
+import { cutAfter } from './stream/cutAfter'
 import { Stream } from './stream/Stream'
 import { useTitleOnExit } from './useTitleOnExit'
 import { useReaderSession } from './useReaderSession'
@@ -107,7 +108,7 @@ type ViewProps = {
 function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timeline, panels, reading, workTheme, devTools }: ViewProps) {
   const { t } = useTranslation()
   const { ui, save } = presentation
-  const actions = useTurnActions(saveId, ui.commands)
+  const actions = useTurnActions(saveId, ui.commands, timeline)
   const busy = useReader(selectBusy)
   const connection = useReader((s) => s.connection)
   const dockRef = useRef<InputDockHandle>(null)
@@ -190,16 +191,20 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
 
   // 舞台背景：进度线上（含进行中的回合）最近一次 <scene bg>
   const draft = useReader((s) => s.draft)
+  const pendingParent = useReader((s) => s.pendingParent)
   const cues = useMemo(
     () =>
       stageCues(
         [
-          ...(timeline?.nodes.filter((n) => n.id !== draft?.turnId).map((n) => ({ id: n.id, items: n.display })) ?? []),
+          ...cutAfter(
+            timeline?.nodes.filter((n) => n.id !== draft?.turnId) ?? [],
+            draft?.operation?.kind === 'choices' ? null : (draft?.parentId ?? pendingParent),
+          ).map((n) => ({ id: n.id, items: n.display })),
           ...(draft ? [{ id: draft.turnId, items: draft.items }] : []),
         ],
         ui.builtin_tags,
       ),
-    [timeline, draft, ui.builtin_tags],
+    [timeline, draft, pendingParent, ui.builtin_tags],
   )
   const scene = cues.findLast((c) => c.kind === 'scene' && c.attrs.bg)
   const sceneBg = scene?.attrs.bg

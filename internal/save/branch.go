@@ -128,9 +128,22 @@ func (s *Service) Rewrite(ctx context.Context, saveID, nodeID, text string) (*No
 	if err != nil {
 		return nil, err
 	}
-	display, err := s.LoadDisplay(ctx, n.DisplayHash)
+	_, line, err := s.ProgressLine(ctx, saveID)
 	if err != nil {
 		return nil, err
+	}
+	display, err := s.TurnDisplay(ctx, line, n)
+	if err != nil {
+		return nil, err
+	}
+	for _, extra := range line {
+		if extra.Kind == KindChoices && extra.Meta.Operation != nil && extra.Meta.Operation.NodeID == n.ID {
+			choices, err := s.LoadMessages(ctx, extra.MessagesHash)
+			if err != nil {
+				return nil, err
+			}
+			msgs = append(msgs, choices...)
+		}
 	}
 	m, err := s.works.Model(ctx, n.WorkVersionID)
 	if err != nil {
@@ -144,7 +157,7 @@ func (s *Service) Rewrite(ctx context.Context, saveID, nodeID, text string) (*No
 			Messages: rewriteMessages(msgs, text), Display: display,
 			StateHash: n.StateHash, MemoryHash: n.MemoryHash, WorkVersionID: n.WorkVersionID, Status: StatusCommitted,
 			PlainText: TranscriptBody(display, m.SpeakerName),
-			Meta:      NodeMeta{Opening: n.Meta.Opening, Model: n.Meta.Model, Stop: n.Meta.Stop, PrefixHash: n.Meta.PrefixHash, PromptVersion: n.Meta.PromptVersion, EditedFrom: n.ID},
+			Meta:      NodeMeta{VersionParent: n.Meta.VersionParent, Opening: n.Meta.Opening, Model: n.Meta.Model, Stop: n.Meta.Stop, PrefixHash: n.Meta.PrefixHash, PromptVersion: n.Meta.PromptVersion, EditedFrom: n.ID},
 		})
 		return err
 	})
@@ -356,6 +369,12 @@ func (s *Service) CopyAsNew(ctx context.Context, saveID, nodeID string) (*Save, 
 			cp := *n
 			cp.ID, cp.SaveID, cp.ParentID = newID[n.ID], nsv.ID, newID[n.ParentID]
 			cp.KeepFrom = newID[n.KeepFrom]
+			cp.Meta.VersionParent = newID[n.Meta.VersionParent]
+			if n.Meta.Operation != nil {
+				op := *n.Meta.Operation
+				op.NodeID, op.ExpectedHead = newID[op.NodeID], newID[op.ExpectedHead]
+				cp.Meta.Operation = &op
+			}
 			cp.Meta.EditedFrom = "" // 指向原存档中的兄弟节点，复制后没有意义
 			if err := insertNode(ctx, tx, &cp); err != nil {
 				return err

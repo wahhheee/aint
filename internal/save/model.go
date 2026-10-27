@@ -26,6 +26,7 @@ const (
 	KindTurn       NodeKind = "turn"       // 一个回合（含开场）
 	KindCompaction NodeKind = "compaction" // 上下文整理（含存档升级）
 	KindEdit       NodeKind = "edit"       // 玩家手动改状态 / 记忆
+	KindChoices    NodeKind = "choices"    // 当前回合的补充选项，不增加回合号
 )
 
 // NodeStatus 是节点状态。
@@ -98,7 +99,9 @@ type Node struct {
 
 // NodeMeta 是随节点保存的排查信息，记录停止原因、调用次数、耗时与上下文规模。
 type NodeMeta struct {
-	Opening       bool                   `json:"opening,omitzero"` // 开场及中断开场的续写
+	Operation     *TurnOperation         `json:"operation,omitzero"`
+	VersionParent string                 `json:"version_parent,omitzero"` // 回合版本共同的分叉点，回合内整理不改变它
+	Opening       bool                   `json:"opening,omitzero"`        // 开场及中断开场的续写
 	Migration     []state.MigrationValue `json:"migration,omitzero"`
 	WorkHash      string                 `json:"work_hash,omitzero"`
 	Model         string                 `json:"model,omitzero"`
@@ -120,6 +123,14 @@ type NodeMeta struct {
 	SummaryFrom   int    `json:"summary_from,omitzero"`
 	SummaryTo     int    `json:"summary_to,omitzero"`
 	KeepFromTurn  int    `json:"keep_from_turn,omitzero"`
+}
+
+// TurnOperation 是附着在已有回合上的操作；不属于玩家在故事中的行动。
+type TurnOperation struct {
+	Kind         string `json:"kind"` // rewrite | choices
+	NodeID       string `json:"node_id"`
+	Instructions string `json:"instructions,omitzero"`
+	ExpectedHead string `json:"expected_head"`
 }
 
 // TurnInput 是玩家一回合的输入（《02-技术方案》9.1）。

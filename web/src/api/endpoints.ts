@@ -132,6 +132,10 @@ export const api = {
     setHead: (id: string, nodeId: string, mode: 'here' | 'latest-leaf') =>
       http.post<{ head_id: string }>(`/saves/${id}/head`, { node_id: nodeId, mode }),
     /** 重新生成；带 input 时为修改玩家输入 */
+    revise: (id: string, nodeId: string, instructions: string, expectedHead: string) =>
+      http.post<{ turn_id: string }>(`/saves/${id}/nodes/${nodeId}/revise`, { instructions, expected_head: expectedHead }),
+    requestChoices: (id: string, nodeId: string, expectedHead: string) =>
+      http.post<{ turn_id: string }>(`/saves/${id}/nodes/${nodeId}/choices`, { expected_head: expectedHead }),
     regenerate: (id: string, nodeId: string, input?: TurnInput) =>
       http.post<{ turn_id: string }>(`/saves/${id}/nodes/${nodeId}/regenerate`, input ? { input } : {}),
     rewrite: (id: string, nodeId: string, text: string) =>

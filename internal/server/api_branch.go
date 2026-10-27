@@ -64,6 +64,33 @@ func (s *Server) regenerate(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// reviseTurn 根据要求重写当前故事回合。
+func (s *Server) reviseTurn(w http.ResponseWriter, r *http.Request) error {
+	return s.turnOperation(w, r, "rewrite")
+}
+
+func (s *Server) requestChoices(w http.ResponseWriter, r *http.Request) error {
+	return s.turnOperation(w, r, "choices")
+}
+
+func (s *Server) turnOperation(w http.ResponseWriter, r *http.Request, kind string) error {
+	var body struct {
+		Instructions string `json:"instructions"`
+		ExpectedHead string `json:"expected_head"`
+	}
+	if err := decode(r, &body); err != nil {
+		return err
+	}
+	id, err := s.d.Runtime.Operate(r.Context(), r.PathValue("id"), save.TurnOperation{
+		Kind: kind, NodeID: r.PathValue("nid"), Instructions: body.Instructions, ExpectedHead: body.ExpectedHead,
+	})
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"turn_id": id})
+	return nil
+}
+
 // rewrite：POST /saves/{id}/nodes/{nid}/rewrite {text}——修改 AI 正文，生成新版本并成为 head。
 func (s *Server) rewrite(w http.ResponseWriter, r *http.Request) error {
 	var body struct {

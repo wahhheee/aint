@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/wahhheee/aint/internal/contextx"
 	"github.com/wahhheee/aint/internal/llm"
@@ -79,6 +80,24 @@ func (m *Manager) loadContext(ctx context.Context, w *work.Model, fs prompts.Fea
 	keeping := last < 0 // 第 0 阶段：全部回合都在上下文中
 	cleaner := toolHistoryCleaner{specs: m.d.Tools.Specs(fs, w), tags: w.Tags}
 	for i, n := range line {
+		if n.Kind == save.KindChoices && n.Meta.Operation != nil {
+			at := slices.IndexFunc(ec.turns, func(t *save.Node) bool { return t.ID == n.Meta.Operation.NodeID })
+			if at < 0 {
+				continue
+			}
+			msgs, err := m.d.Saves.LoadMessages(ctx, n.MessagesHash)
+			if err != nil {
+				return nil, err
+			}
+			msgs = cleaner.clean(msgs)
+			ec.msgs[at] = append(ec.msgs[at], msgs...)
+			ec.sizes[at] += contextx.EstimateMessages(msgs)
+			if i < last {
+				msgs = stripNative(msgs)
+			}
+			ec.history = append(ec.history, msgs...)
+			continue
+		}
 		if n.Kind != save.KindTurn {
 			continue
 		}

@@ -793,7 +793,7 @@ export interface Usage {
 }
 
 /** usage_log.call_kind：模型调用的用途 */
-export type CallKind = 'narrate' | 'continue' | 'compact' | 'helper' | 'title' | 'probe'
+export type CallKind = 'narrate' | 'continue' | 'compact' | 'helper' | 'title' | 'probe' | 'rewrite' | 'rewrite_memory' | 'choices'
 
 /** usage.Stats：一组调用的累计用量 */
 export interface UsageStats {
@@ -812,4 +812,12 @@ export interface UsageSummary {
   by_kind: Partial<Record<CallKind, UsageStats>>
   /** 按调用次数从多到少；name 在模型已删除或不在模型表中时省略 */
   by_model: { model_id: string; name?: string; stats: UsageStats }[]
+}
+
+/** 对当前回合的操作，不是故事中的玩家行动。 */
+export interface TurnOperation {
+  kind: 'rewrite' | 'choices'
+  node_id: string
+  instructions?: string
+  expected_head: string
 }

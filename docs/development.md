@@ -230,3 +230,17 @@ GitHub 导入只支持公开仓库，带斜杠的 ref 可自动消歧（最多�
 密码排查只查看 `/api/v1/auth/status`，不打印 secrets.json。服务停止后可运行 `aint password set|clear --data <目录>`；设置通过隐藏输入读取，`--stdin` 只供自动化。密码错误 401，登录过频 429，跨站请求 403。密码修改会撤销全部会话；开放局域网而未设密码时显示警告。
 
 分发回归集中在 `work/remote_test.go`、`work/dev_test.go`、`work/schemas_test.go`、`save/gc_test.go`、`runtime/upgrade_test.go`、`server/api_access_test.go` 与 `web/e2e/distribution.spec.ts`；均不调用付费模型。
+
+## 8. 重写与补选项调试
+
+确定性回归随 `task check` 执行。浏览器专项在 `web/` 内执行 `pnpm exec playwright test operations.spec.ts`，覆盖桌面、手机与 320 px 视口。假模型脚本可用 `operations.rewrite` / `operations.choices` 指定对应操作的响应。
+
+真实 DeepSeek 测试在仓库根目录执行（PowerShell，会产生费用）：
+
+```powershell
+$env:AINT_OPERATION_LIVE = (Resolve-Path .local/secrets/live.json).Path
+$env:AINT_OPERATION_OUT = Join-Path $PWD .local/eval/turn-operations
+go test ./internal/runtime -run '^TestOperationLive$' -count=1 -v
+```
+
+配置的 `providers` 列表使用 `protocol`、`base_url`、`key`、`model` 字段；只测试模型名以 `deepseek-` 开头的条目。每组依次重写、再次重写、补选项、选择续写。检查目录中的 `story.md` 与 `raw/`，不要打印私有配置。测试结束后删除本会话的两个环境变量，恢复默认跳过真实调用：`Remove-Item Env:AINT_OPERATION_LIVE, Env:AINT_OPERATION_OUT`。设计与边界见 [重写与主动补选项](turn-operations.md)。

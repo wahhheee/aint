@@ -22,6 +22,7 @@ import { useReader, type DraftTurn } from '@/stores/reader'
 
 import { useReaderContext } from '../ReaderContext'
 import { useTypewriter } from '../useTypewriter'
+import { cutAfter } from './cutAfter'
 import { displayedInput } from './displayedInput'
 import { Notice, QuietLine, Waiting } from './Notice'
 import { TurnToolbar } from './TurnToolbar'
@@ -42,6 +43,7 @@ export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarl
   const { t } = useTranslation()
   const draft = useReader((s) => s.draft)
   const pending = useReader((s) => s.pending)
+  const pendingOperation = useReader((s) => s.pendingOperation)
   const pendingParent = useReader((s) => s.pendingParent)
   const compacting = useReader((s) => s.compacting)
   const helper = useReader((s) => s.helper)
@@ -57,7 +59,7 @@ export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarl
   const nodes = timeline?.nodes ?? []
   // 草稿已提交但打字机还没显示完时，先不显示时间线里的同一个节点（避免内容跳变）
   let visible = draft?.nodeId ? nodes.filter((n) => n.id !== draft.nodeId) : nodes
-  visible = cutAfter(visible, draft?.parentId ?? pendingParent)
+  visible = cutAfter(visible, draft?.operation?.kind === 'choices' ? null : (draft?.parentId ?? pendingParent))
   const latestTurn = visible.findLast((n) => n.kind === 'turn')
   const busy = pending !== null || draft !== null
   const draftCommittedInTimeline = draft?.nodeId !== undefined && nodes.some((n) => n.id === draft.nodeId)
@@ -212,6 +214,14 @@ export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarl
                       ) : undefined
                     }
                   />
+                  {n === latestTurn &&
+                    !busy &&
+                    n.display.some((it) => it.t === 'text' && it.markup.trim()) &&
+                    !n.display.some((it) => it.t === 'choices' && it.items.length > 0) && (
+                      <div className="mt-5">
+                        <SmallButton onClick={() => void actions.operate('choices', '', n.id)}>{t('reader.requestChoices')}</SmallButton>
+                      </div>
+                    )}
                 </TurnFrame>
               ) : (
                 <MetaNode key={n.id} node={n} />
@@ -232,8 +242,16 @@ export function Stream({ timeline, onRetry, onContinue, loadEarlier, loadingEarl
             {/* 已提交输入、等待回合开始：先显示玩家的输入与等待态（整理期间排队） */}
             {pending && !draft && (
               <section className="mt-[2.4em]">
-                <TurnView items={inputItems(pending, latestTurn?.display)} />
-                <Waiting label={compacting ? t('reader.queued') : t('reader.waiting')} />
+                {pendingOperation?.kind !== 'choices' && <TurnView items={inputItems(pending, latestTurn?.display)} />}
+                <Waiting
+                  label={
+                    compacting
+                      ? t('reader.queued')
+                      : pendingOperation
+                        ? t(pendingOperation.kind === 'choices' ? 'reader.requestingChoices' : 'reader.revising')
+                        : t('reader.waiting')
+                  }
+                />
               </section>
             )}
 
@@ -316,8 +334,24 @@ function DraftTurnView({
 
   return (
     <div onClick={revealAll}>
-      <TurnView items={[...inputItems(draft.input), ...items]} drafting={streaming || !done} interactive={!streaming && done} />
-      {streaming && total === 0 && <Waiting label={draft.toolsRunning > 0 ? t('reader.toolsWorking') : t('reader.waiting')} />}
+      <TurnView
+        items={[...(draft.operation?.kind === 'choices' ? [] : inputItems(draft.input)), ...items]}
+        drafting={streaming || !done}
+        interactive={!streaming && done}
+      />
+      {streaming && total === 0 && (
+        <Waiting
+          label={
+            draft.operation?.kind === 'choices'
+              ? t('reader.requestingChoices')
+              : draft.toolsRunning > 0
+                ? t('reader.toolsWorking')
+                : draft.operation?.kind === 'rewrite'
+                  ? t('reader.revising')
+                  : t('reader.waiting')
+          }
+        />
+      )}
       {streaming && total > 0 && draft.toolsRunning > 0 && <QuietLine>{t('reader.toolsWorking')}……</QuietLine>}
     </div>
   )
@@ -378,18 +412,6 @@ function MetaNode({ node }: { node: TimelineNode }) {
       <span aria-hidden className="h-px flex-1 bg-rule" />
     </div>
   )
-}
-
-/**
- * 只显示到 parentId 为止：重新生成、修改输入时新回合的父节点较早，父节点之后的回合先隐去。
- * 父节点是 root（重新生成第一个回合）时它不在时间线中，以"父节点为它的回合"为界。
- */
-function cutAfter(nodes: TimelineNode[], parentId: string | null | undefined): TimelineNode[] {
-  if (!parentId) return nodes
-  const i = nodes.findIndex((n) => n.id === parentId)
-  if (i >= 0) return nodes.slice(0, i + 1)
-  const j = nodes.findIndex((n) => n.parent_id === parentId)
-  return j >= 0 ? nodes.slice(0, j) : nodes
 }
 
 function RetryButton({ onClick }: { onClick: () => void }): ReactNode {

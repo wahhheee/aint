@@ -22,12 +22,18 @@ import (
 // draft 是进行中回合的内存草稿。只由回合 goroutine 访问（工具的读并行只读取不可变字段）。
 // 提交前所有变化都只在这里；崩溃即丢弃，不会产生半提交。
 type draft struct {
-	budget   Budget
-	delegate func(context.Context, string, string) (string, error)
-	id       string
-	started  time.Time
-	slot     *turnSlot // 写者槽位：提交后需要整理时交给整理任务
-	release  func()    // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
+	operation       *save.TurnOperation
+	reference       string // 仅供本次重写使用的原文与选项，不进入新分支的故事历史
+	staged          *save.PreparedCompaction
+	versionParent   string
+	reviewing       bool // 核对新版记忆时，普通回复不进入正文
+	contextMessages int  // 本轮玩家输入之前的消息数
+	budget          Budget
+	delegate        func(context.Context, string, string) (string, error)
+	id              string
+	started         time.Time
+	slot            *turnSlot // 写者槽位：提交后需要整理时交给整理任务
+	release         func()    // 让出存档的单一写者槽位；发布终态事件前调用（见 Manager.Submit）
 
 	// 只读上下文（prepare 阶段确定）
 	save      *save.Save
@@ -80,6 +86,8 @@ type draft struct {
 	err                             error // 原始错误（保留类型，用于给玩家的错误分类）；errMsg 是它的文字
 	status                          save.NodeStatus
 }
+
+func (d *draft) isChoices() bool { return d.operation != nil && d.operation.Kind == "choices" }
 
 // ---------------------------------------------------------------------------
 // tools.Env 实现

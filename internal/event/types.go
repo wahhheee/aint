@@ -42,9 +42,10 @@ const (
 )
 
 type TurnStartedData struct {
-	TurnID   string `json:"turn_id"`
-	ParentID string `json:"parent_id"`
-	Input    any    `json:"input"` // save.TurnInput
+	Operation any    `json:"operation,omitempty"` // *save.TurnOperation；非故事行动
+	TurnID    string `json:"turn_id"`
+	ParentID  string `json:"parent_id"`
+	Input     any    `json:"input"` // save.TurnInput
 }
 
 type TurnTextData struct {

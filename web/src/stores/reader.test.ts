@@ -145,3 +145,41 @@ describe('reduceEvent', () => {
     expect(s.context).toEqual({ used: 8400, threshold: 12000 })
   })
 })
+
+describe('回合操作恢复', () => {
+  it('重写失败清除替换草稿并保留重试所需的原始要求', () => {
+    const operation = { kind: 'rewrite' as const, node_id: 'old', instructions: '更含蓄', expected_head: 'edit' }
+    let s = reduceEvent(
+      empty,
+      ev({
+        type: 'session.snapshot',
+        data: {
+          compacting: false,
+          turn: {
+            turn_id: 'new',
+            parent_id: 'root',
+            input: { kind: 'free', text: '推门' },
+            operation,
+            started: true,
+            items: [{ t: 'text', markup: '新稿' }],
+            seq: 1,
+            tools_running: 0,
+          },
+        },
+      }),
+    )
+    expect(s.draft?.operation).toEqual(operation)
+    s = reduceEvent(s, ev({ type: 'turn.failed', data: { turn_id: 'new', code: 'network', message: '失败', recoverable: true } }))
+    expect(s.draft).toBeNull()
+    expect(s.failure?.operation).toEqual(operation)
+  })
+  it('补选项提交不等待不可见的补充节点出现在正文列表', () => {
+    const operation = { kind: 'choices' as const, node_id: 'story', expected_head: 'story' }
+    let s = reduceEvent(
+      empty,
+      ev({ type: 'turn.started', data: { turn_id: 'extra', parent_id: 'story', input: { kind: 'continue' }, operation } }),
+    )
+    s = reduceEvent(s, ev({ type: 'turn.committed', data: { turn_id: 'extra', node_id: 'extra', status: 'committed' } }))
+    expect(s.draft).toBeNull()
+  })
+})
