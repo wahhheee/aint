@@ -169,11 +169,7 @@ export const InputDock = forwardRef<InputDockHandle, Props>(function InputDock({
       : t('reader.placeholder')
 
   return (
-    // 宽度与正文列一致（--reading-width 以正文字号为单位换算，所以这里也用正文字号）
-    <div
-      className="relative z-10 mx-auto w-full max-w-[calc(var(--reading-width)+3rem)] px-4 pb-4 sm:px-6 sm:pb-5"
-      style={{ fontSize: 'var(--reading-size)' }}
-    >
+    <div className="reader-column relative z-10 pb-4 sm:pb-5">
       {commandBar.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           {commandBar.map((c) => (

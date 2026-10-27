@@ -1,5 +1,5 @@
-import { ArrowLeft, BookMarked, Braces, Ellipsis, GitBranch, PanelBottom, PanelRight } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowLeft, BookMarked, Braces, Ellipsis, GitBranch, PanelBottom, PanelLeft, PanelRight } from 'lucide-react'
+import type { ReactNode, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
@@ -20,6 +20,7 @@ export function ReaderTopBar({
   lastTurnId,
   onTogglePanels,
   panelsAvailable,
+  panelsOpen,
   onOpenDrawer,
   devTools,
   onOpenMemory,
@@ -29,7 +30,13 @@ export function ReaderTopBar({
   onCompact,
   debugControl,
   onInspect,
+  indexOpen,
+  onToggleIndex,
+  indexTriggerRef,
 }: {
+  indexOpen: boolean
+  onToggleIndex: () => void
+  indexTriggerRef: RefObject<HTMLButtonElement | null>
   saveId: string
   save?: Save
   /** 进度线上最近的回合（用量浮层的"本回合"） */
@@ -43,6 +50,7 @@ export function ReaderTopBar({
   /** 面板开关：宽屏收起 / 展开右侧栏，窄屏（或只有抽屉面板时）打开面板抽屉 */
   onTogglePanels: () => void
   panelsAvailable: boolean
+  panelsOpen: boolean
   /** 宽屏同时有侧栏与抽屉面板时，抽屉单独一个入口 */
   onOpenDrawer?: () => void
   /** 开发者工具（D-31）：控制状态编辑入口；模型调用调试使用独立开关。 */
@@ -60,6 +68,23 @@ export function ReaderTopBar({
       <IconButton label={t('reader.backToLibrary')} asLink="/">
         <ArrowLeft />
       </IconButton>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            ref={indexTriggerRef}
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('reader.turnIndex')}
+            aria-expanded={indexOpen}
+            aria-controls="reader-turn-index"
+            className={indexOpen ? 'bg-selected text-gold-text' : undefined}
+            onClick={onToggleIndex}
+          >
+            <PanelLeft />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{t(indexOpen ? 'reader.collapseTurnIndex' : 'reader.expandTurnIndex')}</TooltipContent>
+      </Tooltip>
       <div className="min-w-0 flex-1 leading-tight">
         <p className="truncate font-serif text-[15px] font-semibold tracking-[0.06em] text-ink">{save?.work_title}</p>
         {save && <p className="truncate text-xs text-ink-faint">{saveTitle(save)}</p>}
@@ -102,7 +127,7 @@ export function ReaderTopBar({
           </span>
         )}
         {panelsAvailable && (
-          <IconButton label={t('reader.panels')} onClick={onTogglePanels}>
+          <IconButton label={t('reader.panels')} onClick={onTogglePanels} expanded={panelsOpen}>
             <PanelRight />
           </IconButton>
         )}
@@ -134,7 +159,19 @@ export function ReaderTopBar({
   )
 }
 
-function IconButton({ label, children, onClick, asLink }: { label: string; children: ReactNode; onClick?: () => void; asLink?: string }) {
+function IconButton({
+  label,
+  children,
+  onClick,
+  asLink,
+  expanded,
+}: {
+  label: string
+  children: ReactNode
+  onClick?: () => void
+  asLink?: string
+  expanded?: boolean
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -143,7 +180,14 @@ function IconButton({ label, children, onClick, asLink }: { label: string; child
             <Link to={asLink}>{children}</Link>
           </Button>
         ) : (
-          <Button variant="ghost" size="icon-sm" aria-label={label} onClick={onClick}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={label}
+            onClick={onClick}
+            aria-expanded={expanded}
+            className={expanded ? 'bg-selected text-gold-text' : undefined}
+          >
             {children}
           </Button>
         )}

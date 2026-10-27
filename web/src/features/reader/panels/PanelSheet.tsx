@@ -2,13 +2,14 @@
  * 面板抽屉（《03-作品格式规范》11.1、《04-交互与界面设计》8.3）：drawer 面板是抽屉中的标签页；
  * 窄屏（< 1200 px）没有右侧栏，sidebar 面板也逐个成为标签页。手机上从底部拉出，平板上从右侧滑出。
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { PanelMeta, PanelRender } from '@/api/types'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 import { byPlace } from './layout'
 import { PanelHTML } from './PanelHTML'
@@ -68,15 +69,4 @@ export function PanelSheet({
       </SheetContent>
     </Sheet>
   )
-}
-
-function useMediaQuery(query: string): boolean {
-  const [match, setMatch] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const mql = window.matchMedia(query)
-    const onChange = () => setMatch(mql.matches)
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [query])
-  return match
 }

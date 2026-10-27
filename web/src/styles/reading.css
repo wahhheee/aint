@@ -16,6 +16,51 @@
   --reading-heading-font: var(--reading-font);
 }
 
+/* 提示、正文与输入共用可用阅读区域的版心；容器单位不受正文滚动条影响。 */
+.reader-rail {
+  container-type: inline-size;
+  --reader-gutter: 24px;
+}
+
+.reader-column {
+  width: min(var(--reading-width), calc(100cqw - 2 * var(--reader-gutter)));
+  margin-inline: auto;
+  font-size: var(--reading-size);
+}
+
+.reader-scroll {
+  scrollbar-gutter: stable both-edges;
+}
+
+/* 两侧栏共用时长与曲线，版心随可用宽度连续移动。 */
+.reader-side {
+  flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    width 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease;
+}
+
+.reader-side[data-open='true'] {
+  opacity: 1;
+}
+
+.reader-index[data-open='true'] {
+  width: 208px;
+}
+
+.reader-panels[data-open='true'] {
+  width: 320px;
+}
+
+@media (max-width: 639px) {
+  .reader-rail {
+    --reader-gutter: 16px;
+  }
+}
+
 .prose-book {
   font-family: var(--reading-font);
   font-size: var(--reading-size);

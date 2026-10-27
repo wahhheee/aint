@@ -3,11 +3,10 @@
  *
  *   ┌──────────────────────────────────────────────┬──────────────┐
  *   │ 顶栏：返回 · 作品 / 存档 · 用量环 · 工具        │              │
- *   │ 顶栏面板（局势一句话）                          │  侧栏面板     │
- *   │                                              │  （笔记本、   │
- *   │            正文流（居中的版心）                 │   封印……）    │
- *   │                                    悬浮面板   │              │
- *   │ 输入栏                                        │              │
+ *   ├────────┬─────────────────────────────────────┤  侧栏面板     │
+ *   │ 回合   │ 顶栏面板、正文流、输入栏共用版心       │  （笔记本、   │
+ *   │ 目录   │ 在两侧栏之间的可用区域内居中          │   封印……）    │
+ *   │        │                          悬浮面板    │              │
  *   └──────────────────────────────────────────────┴──────────────┘
  *
  * 组件分工：
@@ -31,6 +30,7 @@ import { errorMessage } from '@/api/errors'
 import { LoadError } from '@/components/common/LoadError'
 import { MarkupProvider, useMarkupContext } from '@/markup/context'
 import { workTagCSS } from '@/markup/workStyles'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { selectBusy, useReader } from '@/stores/reader'
 import { useUI } from '@/stores/ui'
 
@@ -115,6 +115,15 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
   const [helpOpen, setHelpOpen] = useState(false)
   const sidebarOpen = useUI((s) => s.sidebarOpen)
   const setSidebarOpen = useUI((s) => s.setSidebarOpen)
+  const desktop = useMediaQuery('(min-width: 1200px)')
+  const turnIndexOpen = useUI((s) => s.turnIndexOpen)
+  const setTurnIndexOpen = useUI((s) => s.setTurnIndexOpen)
+  const [mobileIndexOpen, setMobileIndexOpen] = useState(false)
+  const indexOpen = desktop ? turnIndexOpen : mobileIndexOpen
+  const setIndexOpen = desktop ? setTurnIndexOpen : setMobileIndexOpen
+  const indexTriggerRef = useRef<HTMLButtonElement>(null)
+  // 进入桌面布局时收起移动端抽屉，桌面目录偏好独立保留。
+  if (desktop && mobileIndexOpen) setMobileIndexOpen(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [drawer, setDrawer] = useState<'memory' | 'branches' | 'state' | null>(null)
   const debug = useDebugStatus(saveId)
@@ -216,12 +225,11 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
   // 宽屏：sidebar 面板在右侧栏，drawer 面板在抽屉；窄屏没有右侧栏，两者都在抽屉里
   const hasSidebar = hasPanels(ui.panels, panels, 'sidebar')
   const hasDrawer = hasPanels(ui.panels, panels, 'drawer')
-  const wide = () => window.matchMedia('(min-width: 1200px)').matches
   const [sheetWithSidebar, setSheetWithSidebar] = useState(false)
   const togglePanels = () => {
-    if (wide() && hasSidebar) setSidebarOpen(!sidebarOpen)
+    if (desktop && hasSidebar) setSidebarOpen(!sidebarOpen)
     else {
-      setSheetWithSidebar(!wide())
+      setSheetWithSidebar(!desktop)
       setSheetOpen(true)
     }
   }
@@ -259,11 +267,15 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
               </div>
             )}
             <ReaderTopBar
+              indexOpen={indexOpen}
+              onToggleIndex={() => setIndexOpen(!indexOpen)}
+              indexTriggerRef={indexTriggerRef}
               saveId={saveId}
               save={save}
               lastTurnId={lastTurnId}
               onTogglePanels={togglePanels}
               panelsAvailable={hasSidebar || hasDrawer}
+              panelsOpen={desktop && hasSidebar ? sidebarOpen : sheetOpen}
               onOpenDrawer={hasSidebar && hasDrawer ? openDrawer : undefined}
               devTools={devTools}
               onOpenMemory={() => setDrawer('memory')}
@@ -280,8 +292,23 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
                 />
               }
             />
-            <TopbarPanels meta={ui.panels} rendered={panels} />
             <Stream
+              indexOpen={indexOpen}
+              desktop={desktop}
+              onIndexOpenChange={setIndexOpen}
+              indexTriggerRef={indexTriggerRef}
+              topbar={<TopbarPanels meta={ui.panels} rendered={panels} />}
+              floating={<FloatPanels meta={ui.panels} rendered={panels} />}
+              footer={
+                <InputDock
+                  ref={dockRef}
+                  busy={busy}
+                  save={save}
+                  onSubmit={actions.submitText}
+                  onStop={() => void actions.stop()}
+                  onHelp={() => setHelpOpen(true)}
+                />
+              }
               opening={<OpeningSwitcher presentation={presentation} />}
               loadEarlier={loadEarlier}
               loadingEarlier={loadingEarlier}
@@ -289,25 +316,20 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
               onRetry={() => void actions.retry()}
               onContinue={() => void actions.submit({ kind: 'continue' })}
             />
-            <FloatPanels meta={ui.panels} rendered={panels} />
-            <div className="shrink-0 xl:pl-52">
-              <InputDock
-                ref={dockRef}
-                busy={busy}
-                save={save}
-                onSubmit={actions.submitText}
-                onStop={() => void actions.stop()}
-                onHelp={() => setHelpOpen(true)}
-              />
-            </div>
           </div>
 
-          {hasSidebar && sidebarOpen && (
+          {hasSidebar && desktop && (
             <aside
-              className="scroll-stable relative hidden w-[320px] shrink-0 border-l border-rule bg-paper/75 px-6 pt-[18px] pb-6 backdrop-blur-xl min-[1200px]:block"
+              id="reader-panels"
+              className="reader-side reader-panels relative"
+              data-open={sidebarOpen}
+              inert={!sidebarOpen}
+              aria-hidden={!sidebarOpen}
               aria-label={t('reader.panels')}
             >
-              <SidebarPanels meta={ui.panels} rendered={panels} />
+              <div className="scroll-stable h-full w-80 border-l border-rule bg-paper/75 px-6 pt-[18px] pb-6 backdrop-blur-xl">
+                <SidebarPanels meta={ui.panels} rendered={panels} />
+              </div>
             </aside>
           )}
         </div>

@@ -32,7 +32,7 @@ export function TopbarPanels({ meta, rendered }: { meta: PanelMeta[]; rendered?:
   const panels = byPlace(meta, rendered, 'topbar')
   if (panels.length === 0) return null
   return (
-    <div className="relative z-10 flex shrink-0 justify-center px-6 pb-1">
+    <div className="reader-column relative z-10 flex shrink-0 justify-center pb-1">
       <div className="max-w-full truncate rounded-full border border-rule bg-paper-raised/70 px-4 py-1 text-center font-serif text-[13px] leading-5 text-ink-muted backdrop-blur-md [&_p]:m-0">
         {panels.map(({ meta: m, render }) => (
           <PanelHTML key={m.id} html={render.html} />
