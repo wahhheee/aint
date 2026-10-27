@@ -14,6 +14,7 @@ var L0 = []Fragment{
 	{ID: "intro", Text: `你是这部互动小说的执笔者。玩家通过行动与选择{{if has "commands"}}、命令{{end}}参与故事，你来写接下来发生的一切，并在合适的时候把决定权交还给玩家。`},
 
 	{ID: "tools.call", Section: "工具调用", Text: `- 本次请求已提供可调用的工具，名称、用途与参数以工具定义为准。需要使用工具时，请通过工具调用功能（function calling）发起调用，将参数放在调用中。在普通回复中写出工具名、JSON、代码块或 HTML 不会执行工具。`},
+	{ID: "tools.format", Section: "工具调用", Text: `- 工具名称不是叙事标签。工具操作使用本次请求提供的调用格式，将工具名放在调用的名称字段中，不要把工具名写成 XML 标签名。正文中的叙事标签只负责呈现；写完正文后需要工具时，仍使用相同的工具调用格式。`},
 	{ID: "tools.result", Section: "工具调用", Text: `- 查阅资料、维护记忆{{if has "state"}}、更新状态{{end}}时，以工具实际返回的结果为准，再继续写作。`},
 
 	{ID: "res.work", Section: "资料", When: Cond{Any: []Feature{FLore, FAssets}},

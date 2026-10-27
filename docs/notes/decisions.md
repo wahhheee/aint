@@ -55,7 +55,7 @@
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
-| D-49 | 弱模型把工具调用写进正文（progress.md K8）：**暂不在运行时剥离或转换**，正文原样显示与回传。文档中说明：DeepSeek 建议用 Responses 协议接入；带自定义标签的作品宜用工具调用可靠的模型（Claude / GPT / Gemini 实测未出现） | — |
+| D-49 | 正文中以当前可用工具名为 XML 标签的伪调用不进入玩家显示；代码引用、转义与作品同名样式标签保留。不解析或执行 XML，混合原生调用整批退回并补齐错误结果，由模型重新发起原生调用，每回合最多纠正两次，沿用预算与取消；仍未完成时中断并保留正文。后续发送历史清理伪标签、退回的调用与结果、纠正提示，并移除修改位置起的 Native 和推理；成功操作与配对结果保留。存储及检查器保留原始消息；规则和真实验证见 [正文伪工具调用](tool-text-recovery.md) | `internal/runtime/tool_text.go`、`tool_history.go`、`turn.go` |
 | D-50 | 作品导入：①导入的版本总是成为作品的"最新版本"（不按 semver 比较）；②始终忽略 `__MACOSX`（macOS 压缩生成）；③`DELETE /works/import/{task}` 放弃导入并删除暂存；④并发导入不设上限（本地单用户）；⑤zip 炸弹判定：单个条目解压后超过 1 MiB 且压缩比超过 100 倍；⑥没有 UTF-8 标记的 zip 文件名按 GB18030 解码（中文 Windows 自带压缩工具），`golang.org/x/text` 作为直接依赖 | `internal/work/{importer,archive,ignore,fileset}.go` |
 | D-51 | 叙事标记语法细节：①反斜杠转义 `\\ \* \< \> \-` 得到字符本身；②只有**行首**的 `<ooc>` 开始可跨行的场外块，段中的 `<ooc>` 是行内标签、到段末自动闭合；③服务端纯文本（原文索引）保留场景标题、插图说明与场景分隔，去掉所有名称合法的标签（含作品没声明的）；④属性名区分大小写；⑤`scene` `cg` `bgm` `sfx` `pause` 是空元素；找不到开始标签的结束标签忽略；嵌套超过 4 层时忽略更深的开始标签 | `internal/markup`、`web/src/markup/parse.ts`、`testdata/markup/` |
 | D-52 | 截断续写去重的重叠下限为 8 字：8 字以内的重合视为巧合，不删正文 | `internal/runtime/continuation.go` |

@@ -36,7 +36,7 @@ task dev:server:real
 - 在设置 → 模型中添加供应商（协议、Base URL、API Key），勾选或手动添加模型，向导最后会做一次连接测试（真实调用，会产生少量费用）。
   第一个添加的模型自动设为主笔。密钥只写入 `.devdata/secrets.json`，不进数据库、不发给浏览器。
 - 中转站：Base URL 按站点文档填写（OpenAI 协议一般以 `/v1` 结尾）；有分组倍率时填在供应商的"价格倍率"里，模型单价照抄站点标价。
-- DeepSeek 建议用 Responses 协议接入（Anthropic 兼容接口在多轮工具调用上不可靠，见 [api-verification.md](notes/api-verification.md)）。
+- DeepSeek 的 Responses 与 Anthropic 兼容接口均可能把工具调用写成正文 XML；回合运行时会隔离这类标签并请求原生调用，每回合最多纠正两次，仍失败时保留正文并提示。后续请求会清理历史中的伪调用示范；检查器的原始响应仍保留错误输出，应以之后请求的上下文判断是否继续回传。范围、额外调用与实测见 [正文伪工具调用](notes/tool-text-recovery.md)。
 - 轻量模型（可选）：模型列表中某个模型的"⋯" → 设为轻量模型；之后可以在设置 → 上下文中改用轻量模型独立整理（不复用主笔的缓存）。
 - 模型预设随应用版本维护，模型设置中显示预设版本。“应用预设能力参数”填写窗口、输出上限与能力；“填入官方价格”单独填写价格。
   两项操作都先填入表单，保存后生效；更新应用不会覆盖已配置模型，中转站报价也不会随能力参数更新。
@@ -155,6 +155,7 @@ task test
   报告在 `.local/eval/<时间>/story.md`（`AINT_EVAL_OUT` 可指定），`AINT_EVAL_TRACE=<目录>` 录制原始报文。
 - Playwright 端到端：在 `web/` 首次执行 `pnpm exec playwright install chromium`，之后在仓库根执行 `task test:e2e`。测试使用独立临时目录、7879 / 5179 端口与假模型，不读取真实密钥；失败追踪位于 `web/test-results/`，CI 会上传。
 - 尚缺：测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
+- DeepSeek 工具纠正真实评测：`AINT_TOOL_TEXT_LIVE=<live.json 的绝对路径> go test ./internal/runtime -run '^TestToolTextLive$' -count=1 -v -timeout 35m`；默认跳过，覆盖两种接口与 off / low 推理的生成式开场、选项作答和状态更新，记录各回合纠正次数并检查发送历史。预算与报告见 [验证说明](notes/tool-text-recovery.md)。
 
 ### 4.1 M4 协议验收
 

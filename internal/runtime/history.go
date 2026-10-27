@@ -19,13 +19,14 @@ import (
 //
 // 保留的回合产生于整理之前：它们之前的历史已被摘要替换，所以去掉其中的推理与协议原生内容
 // （Claude 等模型的推理签名依赖完整的历史，历史改变后原样回传会被拒绝），文字与工具调用保留。
-// 处理是确定性的，同一阶段内每次构建得到同样的字节（前缀稳定）。
+// 历史伪调用在发送副本中清理；相同的已提交历史经清理后得到同样的字节。
+// 清理位置起的原生内容与推理被丢弃，存储消息不变。
 type epochContext struct {
 	n          int             // 阶段序号：进度线上整理节点的个数
 	block      string          // L4 阶段块（第 0 阶段可能为空）
 	history    []llm.Message   // 阶段块之后的历史消息（发送形态）
 	turns      []*save.Node    // 上下文中的回合（保留的 + 阶段内的），按回合号升序
-	msgs       [][]llm.Message // 各回合的消息（存储形态），与 turns 一一对应
+	msgs       [][]llm.Message // 各回合的消息（已去除伪调用示范），与 turns 一一对应
 	sizes      []int           // 各回合消息的 token 估算，与 turns 一一对应
 	compaction *save.Node      // 最近的整理节点；nil 表示第 0 阶段
 }
@@ -76,6 +77,7 @@ func (m *Manager) loadContext(ctx context.Context, w *work.Model, fs prompts.Fea
 	}
 
 	keeping := last < 0 // 第 0 阶段：全部回合都在上下文中
+	cleaner := toolHistoryCleaner{specs: m.d.Tools.Specs(fs, w), tags: w.Tags}
 	for i, n := range line {
 		if n.Kind != save.KindTurn {
 			continue
@@ -93,6 +95,7 @@ func (m *Manager) loadContext(ctx context.Context, w *work.Model, fs prompts.Fea
 		if err != nil {
 			return nil, err
 		}
+		msgs = cleaner.clean(msgs)
 		ec.msgs = append(ec.msgs, msgs)
 		if kept {
 			msgs = stripNative(msgs)

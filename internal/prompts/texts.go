@@ -6,6 +6,10 @@ const (
 	ContinueNotice = "<notes>上一段输出到达了单次长度上限，已写的内容都保留着。请从断点处接着写下去。</notes>"
 	// ForceChoicesNotice 正文自然结束但尚未交还选项时追加的 user 消息。
 	ForceChoicesNotice = "<notes>本回合的正文已写完，内容都保留着。请通过工具调用功能实际调用 offer_choices，将 2–4 个贴合当前情境的选项放入 choices 参数，平台会生成选项按钮。此步骤无需输出正文、选项列表、代码块或 HTML。</notes>"
+	// ToolTextRepairNotice 纠正正文中的伪工具标签；%s 是尚待重新调用的工具名。
+	ToolTextRepairNotice = "上一条回复把工具（%s）写成了正文 XML，这些操作没有执行；同一条回复中的原生工具调用也均未执行。故事正文已经保留，无需重复。请使用本次 API 提供的原生 function calling 完成这些操作，参数放在工具调用中。不要输出 XML、JSON 代码块或操作说明。"
+	// ToolTextRejectedCall 为混有伪调用的消息补齐未执行的原生工具结果。
+	ToolTextRejectedCall = "未执行：本条回复混有正文形式的伪工具调用。请根据随后的纠正提示重新发起原生工具调用。"
 	// CompactionPendingChoice 整理时为尚未作答的 offer_choices 补齐的工具结果（13.3）。
 	CompactionPendingChoice = "（玩家还没有作答，系统先整理上下文）"
 	// CompactionToolUnavailable 整理阶段调用了不使用的工具（13.3）。

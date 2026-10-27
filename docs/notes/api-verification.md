@@ -4,6 +4,14 @@
 > 适配器为标准库手写（D-44），测试代码：`internal/llm/*/*_test.go`（录制夹具回放）、`internal/provider/live_test.go`（真实调用，默认跳过）。
 > 中转站只写代号，地址与密钥不入库（`.local/secrets/`）。
 
+## DeepSeek 正文伪调用（2026-10-27）
+
+Responses 与 Anthropic 兼容接口在带叙事标签的作品上均可能输出伪工具 XML。只删除选项提示、保留 API 工具定义的对照实验未显示改善：基线 6 次中 4 次伪调用，删除提示后 6 次中 5 次伪调用，两组均没有原生选项调用，不能据此判断训练数据来源。
+
+运行时提供流式隔离、有界原生调用纠正与后续发送历史清理。四组接口 / 推理设置共 12 回合通过；Anthropic / low / 中等篇幅另跑 6 回合，逐回合纠正次数为 `[1, 0, 0, 0, 0, 0]`，均成功交还选项。首次输出仍可能错误，更多型号与长对话尚未覆盖。范围、用量与复现方式见 [正文伪工具调用](tool-text-recovery.md)。
+
+正常完整提示词的 strict 对照：官方 `/beta/responses` 已通过正反 schema 校验确认 strict 生效；同一兼容 schema 开启与关闭 strict 各测试六次，均为五次伪调用、一次无选项结束、零次原生选项调用。`/beta/chat/completions` 的两次 strict 复核也均出现伪调用。实验完整回传推理，未启用运行时纠正；没有观察到 strict 解决正文调用的收益。schema 限制和证据见 [strict 实验](tool-text-recovery.md#strict-对照实验2026-10-27)。
+
 ## M4 验收（2026-10-25）
 
 按 D-65 使用 T1《第一个故事》与 T3《雾港来信》的短流程：每个场景两回合，第二回合切换协议；
@@ -155,12 +163,11 @@ Gemini 跨模型工具历史依据 [thought signatures](https://ai.google.dev/ge
   未包含该说明的 ds-anthropic 20 回合测试中，模型从开场起就在正文末尾列举选项、不调用 offer_choices，并在后续回合模仿。
 - **伪工具调用**：ds-anthropic 在第 12 回合起把工具调用写成正文中的 XML，一旦出现就被后续回合模仿；提示词版本 2026.10.22-2
   包含"工具直接调用即可，正文里不需要写出工具名或参数"，该现象仍出现。同一模型经 Responses 接口 21 回合零出现，判断为 DeepSeek
-  Anthropic 兼容层在多轮工具历史上的问题。**DeepSeek 建议用 Responses 协议接入**；Anthropic 兼容接口可用于不依赖工具的场景。
-  若其他兼容接口也出现，再考虑在提交时剥离正文中的工具名标签（记入 progress.md 已知问题）。
+  在多轮工具历史上存在误写风险；两种接口的运行时纠正与验证见 [正文伪工具调用](tool-text-recovery.md)。
 - **带叙事标记的作品**：《雾港来信》（作品定义了 `<say>` `<gold>` 等标签与状态）上，deepseek-flash（Responses）连续 8 个回合都把
   `<update_state>{…}</update_state>`、`<offer_choices>{…}</offer_choices>` 写进正文、从不真正调用工具（只调用过 read）；
   含"标签只用于正文呈现，状态与选项通过工具完成"的实验提示词也有 5/5 回合出现该现象；正式提示词不含这句说明。同一作品上 claude 正常
-  （标签与工具调用都正确）。结论：deepseek-flash 在"作品自定义 XML 标签 + 工具"的组合下不可靠。暂不在运行时处理（D-49，progress.md K8）。
+  （标签与工具调用都正确）。deepseek-flash 在"作品自定义 XML 标签 + 工具"的组合下需要运行时纠正（D-49，progress.md K8）。
 - **失败提示**：运行器保留原始错误并按类型分类，上游 5xx 重试耗尽时显示对应的模型服务错误。
 - 首回合常调用 list / read / write：read / list 已实现（M3-1）；write 等记忆写入随 M3-2，目前返回"暂时不可用"，每次多花一次调用。
 

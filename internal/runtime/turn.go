@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"slices"
@@ -227,6 +228,8 @@ func (m *Manager) prepare(ctx context.Context, saveID, turnID, parentID string, 
 // loop 是回合主循环（《02-技术方案》9.2–9.3）。
 func (m *Manager) loop(ctx context.Context, d *draft) {
 	choicesNudged := false
+	toolTextRepairs := 0
+	unrepaired := map[string]bool{}
 	for {
 		if ctx.Err() != nil {
 			d.stopCanceled(ctx)
@@ -272,11 +275,52 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			return
 		}
 
+		if len(res.textTools) > 0 {
+			for _, name := range res.textTools {
+				unrepaired[name] = true
+			}
+			// 整批拒绝，避免纠正时重复执行同一条回复中夹带的原生写操作。
+			notice := llm.Message{Role: llm.RoleUser}
+			for _, call := range res.msg.ToolCalls() {
+				if slices.ContainsFunc(d.req.Tools, func(spec llm.ToolSpec) bool { return spec.Name == call.Name }) {
+					unrepaired[call.Name] = true
+				}
+				notice.Parts = append(notice.Parts, llm.Part{Kind: llm.PartToolResult, ToolResult: &llm.ToolResult{
+					CallID: call.ID, IsError: true, Parts: []llm.Part{llm.Text(prompts.ToolTextRejectedCall)},
+				}})
+			}
+			var pending []string
+			for name := range unrepaired {
+				pending = append(pending, name)
+			}
+			slices.Sort(pending)
+			notice.Parts = append(notice.Parts, llm.Text(fmt.Sprintf(prompts.ToolTextRepairNotice, strings.Join(pending, "、"))))
+			d.req.Messages = append(d.req.Messages, notice)
+			d.turnMsgs = append(d.turnMsgs, notice)
+			if toolTextRepairs >= 2 || res.stop == llm.StopRefusal {
+				d.stopToolText()
+				return
+			}
+			toolTextRepairs++
+			slog.InfoContext(ctx, "纠正正文中的伪工具调用", "tools", res.textTools, "attempt", toolTextRepairs)
+			continue
+		}
+
 		switch res.stop {
 		case llm.StopToolUse:
 			calls := res.msg.ToolCalls()
 			if len(calls) > 0 {
-				if m.runTools(ctx, d, calls) {
+				terminal := m.runTools(ctx, d, calls)
+				for _, record := range d.toolLog[len(d.toolLog)-len(calls):] {
+					if !record.IsError {
+						delete(unrepaired, record.Name)
+					}
+				}
+				if terminal {
+					if len(unrepaired) > 0 {
+						d.stopToolText()
+						return
+					}
 					d.stop = "choices"
 					return
 				}
@@ -284,6 +328,10 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			}
 			fallthrough
 		case llm.StopEnd:
+			if len(unrepaired) > 0 {
+				d.stopToolText()
+				return
+			}
 			if d.features.Has(prompts.FForceChoices) && d.choices == nil && d.hasNarrative() {
 				if !choicesNudged {
 					choicesNudged = true
@@ -354,6 +402,11 @@ func (d *draft) stopCanceled(ctx context.Context) {
 	}
 }
 
+func (d *draft) stopToolText() {
+	d.stop, d.status = "tool_format", save.StatusInterrupted
+	d.addNotice("warn", "模型未能正确调用工具，已保留故事正文，可以重新生成或点“继续”再试。")
+}
+
 // runTools 执行一批工具调用并把结果追加到消息中；返回是否遇到了终止型工具（offer_choices）。
 func (m *Manager) runTools(ctx context.Context, d *draft, calls []llm.ToolCall) (terminal bool) {
 	d.toolCalls += len(calls)
@@ -400,9 +453,10 @@ func (m *Manager) displayOf(name string) string {
 }
 
 type callResult struct {
-	msg  llm.Message
-	stop llm.StopReason
-	raw  string
+	msg       llm.Message
+	stop      llm.StopReason
+	raw       string
+	textTools []string
 }
 
 // callOnce 发起一次流式调用：正文增量实时推送；返回完整的助手消息与停止原因。
@@ -441,6 +495,7 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 	}
 
 	var text strings.Builder
+	toolText := newToolTextFilter(d.req.Tools, d.work.Tags)
 	res := &callResult{}
 	var u llm.Usage
 	var streamErr error
@@ -459,12 +514,18 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 		switch ev := ev.(type) {
 		case llm.TextDelta:
 			text.WriteString(ev.Text)
-			show(overlap.push(ev.Text))
+			show(overlap.push(toolText.push(ev.Text)))
 		case llm.Done:
 			// 工具调用以 Done.Message 为准（含协议原生数据）；ToolCallStart/ArgsDelta 目前不单独处理。
 			res.msg, res.stop, res.raw, u = ev.Message, ev.Stop, ev.Raw, ev.Usage
 		}
 	}
+	// 取消时尚未确认的标签前缀只保留在原始消息中，不向玩家显示半个工具名。
+	if ctx.Err() != nil {
+		toolText.pending = ""
+	}
+	show(overlap.push(toolText.flush()))
+	res.textTools = toolText.found
 	show(overlap.flush()) // 续写在缓冲满之前就结束时，剩余部分在这里放行
 
 	if res.msg.Role == "" {
@@ -531,6 +592,8 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 			code, msg, recoverable = describeError(d.err)
 		case "budget":
 			code, msg, recoverable = describeError(errTurnTimeout)
+		case "tool_format":
+			code, msg, recoverable = "tool_format", "模型未能正确调用工具，请重试或更换模型。", true
 		}
 		slog.InfoContext(ctx, "回合未产生内容，不提交", "stop", d.stop, "err", d.errMsg)
 		d.release()
