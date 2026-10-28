@@ -176,6 +176,10 @@ go test ./internal/runtime -run TestM4Live -count=1 -v -timeout 15m
 供应商出错时先用 curl 或 Python 对同一地址发送最小请求，判断是否为鉴权、余额或上游故障。
 已成功的回合可由录制响应在本地回放恢复，再从失败步骤继续，避免重复消费。不得把密钥或中转站地址写入仓库。
 
+Gemini 开场选项验证：`AINT_GEMINI_LIVE=<配置绝对路径> go test ./internal/runtime -run '^TestGeminiOpeningLive$' -count=1 -v -timeout 6m`。
+配置与 `live.json` 同格式，仅包含一个 Gemini 供应商。验证《雾港来信》的静态开场作答和下一轮选项作答，每回合至多六次调用、2048 输出 token / 次、两分钟，不自动重试。
+默认跳过；`AINT_GEMINI_OUT` 指定报告目录，默认 `.local/eval/gemini-opening/`。验证范围与报错排查见 [Gemini 工具结果排序](notes/gemini-turn-validation.md)。
+
 ## 5. 构建与发布
 
 ```bash

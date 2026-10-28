@@ -4,11 +4,11 @@
 //   - POST /v1beta/models/{model}:streamGenerateContent?alt=sse；systemInstruction = L0、L1 两个文本部件；
 //     工具用 functionDeclarations + parametersJsonSchema（直接使用作品工具的 JSON Schema）；
 //   - safetySettings 显式关闭全部可配置类别的安全过滤；
-//   - contents 中 user / model 交替，相邻同角色合并；
+//   - contents 中 user / model 交替，相邻同角色合并；user 的普通部件在前，functionResponse 在后，各组内部顺序不变；
 //   - 同协议同模型的模型消息原样回传 Native 中的部件（含 thoughtSignature；Gemini 3 起工具调用缺签名会报错）；
 //     跨模型重建时，每条模型消息的第一个 functionCall 部件带官方文档给出的占位签名 skip_thought_signature_validator；
 //   - 工具结果为 functionResponse（按调用 ID 找回工具名）；图片：Caps.ImageInToolResult 时放进 functionResponse.parts，
-//     否则作为同一条 user 内容中紧随其后的 inlineData 部件；
+//     否则作为同一条 user 内容中位于 functionResponse 之前的 inlineData 部件；
 //   - 缓存：只依赖隐式缓存（前缀稳定即可），CacheMark 忽略。
 //
 // 推理档位映射（Caps.ReasoningMap 的值）：omit = 不发 thinkingConfig；minimal / low / medium / high = thinkingLevel；
@@ -221,12 +221,44 @@ func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]
 		}
 		out.Contents = append(out.Contents, content{Role: role, Parts: parts})
 	}
+	for i := range out.Contents {
+		c := &out.Contents[i]
+		if c.Role == "user" {
+			if err := c.orderToolResults(); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	gen := &generation{MaxOutputTokens: req.MaxOutput, Temperature: req.Temperature, ThinkingConfig: thinking(m.Caps, req.Reasoning)}
 	if gen.MaxOutputTokens > 0 || gen.Temperature != nil || gen.ThinkingConfig != nil {
 		out.GenerationConfig = gen
 	}
 	return jsonx.Marshal(out)
+}
+
+// orderToolResults 在同角色消息合并后排列用户部件。部分 Gemini 接入拒绝工具结果后附带文字的请求，
+// 因此普通文字与图片在前，工具结果在后；各组内部顺序和工具结果内嵌图片保持不变。
+func (c *content) orderToolResults() error {
+	var ordinary, responses []jsonx.Value
+	for _, raw := range c.Parts {
+		var p struct {
+			FunctionResponse jsonx.Value `json:"functionResponse"`
+		}
+		if err := jsonx.Unmarshal(raw, &p); err != nil {
+			return fmt.Errorf("用户消息的内容损坏: %w", err)
+		}
+		if len(p.FunctionResponse) > 0 {
+			responses = append(responses, raw)
+		} else {
+			ordinary = append(ordinary, raw)
+		}
+	}
+	parts := make([]jsonx.Value, 0, len(ordinary)+len(responses))
+	parts = append(parts, ordinary...)
+	parts = append(parts, responses...)
+	c.Parts = parts
+	return nil
 }
 
 // parts 转换一条消息的内容。
@@ -285,7 +317,7 @@ func (p *Provider) image(ctx context.Context, ref *llm.ImageRef) (jsonx.Value, e
 	return jsonx.Marshal(dataPart{InlineData: inlineData{MIMEType: mime, Data: data}})
 }
 
-// toolResult 生成 functionResponse；图片按能力放进 functionResponse.parts 或作为随后的部件。
+// toolResult 生成 functionResponse；图片按能力内嵌或独立发送，独立部件由 Body 在合并用户消息后排序。
 func (p *Provider) toolResult(ctx context.Context, tr *llm.ToolResult, names map[string]string, imageInResult bool) ([]jsonx.Value, error) {
 	var texts []string
 	var images []jsonx.Value

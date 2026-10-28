@@ -143,7 +143,7 @@ func TestBody(t *testing.T) {
 		`"systemInstruction":{"parts":[{"text":"L0"},{"text":"L1"}]}`,
 		`{"role":"user","parts":[{"text":"L3"},{"text":"开场"}]}`,
 		`{"role":"model","parts":` + string(native) + `}`,
-		`{"role":"user","parts":[{"functionResponse":{"id":"c1","name":"read","response":{"output":"内容"}}},{"text":"<input>继续</input>"}]}`,
+		`{"role":"user","parts":[{"text":"<input>继续</input>"},{"functionResponse":{"id":"c1","name":"read","response":{"output":"内容"}}}]}`,
 		`"tools":[{"functionDeclarations":[{"name":"read","description":"读取","parametersJsonSchema":{"type":"object"}}]}]`,
 		`"safetySettings":[` +
 			`{"category":"HARM_CATEGORY_HARASSMENT","threshold":"OFF"},` +

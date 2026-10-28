@@ -142,6 +142,20 @@ func checkOpeningWire(t *testing.T, req *llm.Request) {
 					t.Fatalf("请求缺少 %s：%s", want, raw)
 				}
 			}
+			if tc.name == "Gemini" {
+				var contents []struct {
+					Role  string        `json:"role"`
+					Parts []jsonx.Value `json:"parts"`
+				}
+				if err := jsonx.Unmarshal(out["contents"], &contents); err != nil {
+					t.Fatal(err)
+				}
+				last := contents[len(contents)-1]
+				if last.Role != "user" || len(last.Parts) != 2 || !strings.Contains(string(last.Parts[0]), "<pace>") ||
+					!strings.Contains(string(last.Parts[1]), `"functionResponse":`) {
+					t.Fatalf("Gemini 开场作答应先发文字、再发工具结果：%s", raw)
+				}
+			}
 		})
 	}
 }
