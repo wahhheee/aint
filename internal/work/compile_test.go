@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/png"
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 
@@ -13,7 +14,11 @@ import (
 
 func compileExample(t *testing.T, name string) (*Model, *Report) {
 	t.Helper()
-	sub, err := fs.Sub(examples.Works(), name)
+	source := examples.Works()
+	if name == "misty-harbor" {
+		source = os.DirFS("../../testdata/works")
+	}
+	sub, err := fs.Sub(source, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +30,7 @@ func compileExample(t *testing.T, name string) (*Model, *Report) {
 }
 
 func TestCompileExamples(t *testing.T) {
-	for _, name := range []string{"first-story", "misty-harbor"} {
+	for _, name := range []string{"first-story", "inverted-stars", "misty-harbor"} {
 		t.Run(name, func(t *testing.T) {
 			_, rep := compileExample(t, name)
 			for _, i := range rep.Issues {

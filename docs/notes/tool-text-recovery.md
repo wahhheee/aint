@@ -70,9 +70,9 @@ DeepSeek Flash，完整平台提示词 `2026.10.26-2`、《雾港来信》生成
 
 `/beta/chat/completions` 的 strict 模式另按关闭思考、低思考各复核一次，两次都出现正文伪调用，共五次 API 请求。有效 strict 组生成的 28 次原生调用参数均通过对应 schema 子集校验，但仍将 `offer_choices` 写成正文标签；没有原生选项调用。原生参数合规与正确选择调用通道是两个不同的观测指标。
 
-这组样本没有显示 strict 对正文伪调用的收益，与文档限定的“输出函数调用时约束参数”范围一致。结果只针对该模型、作品和提示词，不代表其他模型或参数约束任务无效。正式适配器未启用 strict，运行时继续使用有界纠正与历史清理。
+这组样本没有显示 strict 对正文伪调用的收益，与文档限定的“输出函数调用时约束参数”范围一致。该结论的测试范围为表中模型、作品与提示词。正式适配器未启用 strict，运行时继续使用有界纠正与历史清理。
 
-实验工具在临时内存中模拟记忆和状态，资料从实际作品文件读取，不修改存档；这不是完整运行时验收。可复现脚本为 `.local/scripts/probe_deepseek_strict.py`，有效行为记录为 `.local/eval/deepseek-strict/story-v2-*`，汇总为 `stories-responses.json`；所有文件均不入库。`python .local/scripts/probe_deepseek_strict.py` 执行端点探测，追加 `story 3` 执行三组行为对照，会使用本地凭据产生真实调用费用。
+实验工具在临时内存中模拟记忆和状态，资料从实际作品文件读取；完整运行时回归见前文测试入口。本地探测脚本为 `.local/scripts/probe_deepseek_strict.py`，有效行为记录为 `.local/eval/deepseek-strict/story-v2-*`，汇总为 `stories-responses.json`；所有文件均不入库。`python .local/scripts/probe_deepseek_strict.py` 执行端点探测，追加 `story 3` 执行三组行为对照，会使用本地凭据产生真实调用费用。
 
 ## 真实运行时验证（2026-10-26）
 

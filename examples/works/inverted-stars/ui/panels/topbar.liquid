@@ -1,0 +1,1 @@
+{%- if state.day -%}第 {{ state.day }} 日{%- endif -%}{%- if state.phase != "" %} · {{ state.phase }}{%- endif -%}{%- if state.location != "" %} · {{ state.location }}{%- endif -%}{%- if state.situation != "" %} · {{ state.situation }}{%- endif -%}{%- if state.silver != nil %} · 银币 {{ state.silver }}{%- endif -%}

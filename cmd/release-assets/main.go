@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wahhheee/aint/examples"
 	"github.com/wahhheee/aint/internal/pkg/fsx"
@@ -21,14 +22,31 @@ func main() {
 }
 
 func prepare() error {
+	// 发布暂存目录仅存放本次随包分发的作品。
+	if err := os.RemoveAll(".release/examples"); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(".release/examples", fsx.DirPerm); err != nil {
 		return err
 	}
-	usage, err := os.ReadFile("docs/release-usage.md")
+	usage, err := os.ReadFile("docs/usage.md")
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(".release/使用说明.md", usage, fsx.PrivateFilePerm); err != nil { //nolint:gosec // 输出路径是固定的发布暂存文件，不包含外部路径输入。
+		return err
+	}
+	authoring, err := os.ReadFile("docs/authoring.md")
+	if err != nil {
+		return err
+	}
+	guide := strings.NewReplacer(
+		"(../skills/", "(skills/",
+		"(../schemas/", "(schemas/",
+		"(../examples/", "(https://github.com/wahhheee/aint/tree/main/examples/",
+		"(../testdata/", "(https://github.com/wahhheee/aint/tree/main/testdata/",
+	).Replace(string(authoring))
+	if err := os.WriteFile(".release/创作指南.md", []byte(guide), fsx.PrivateFilePerm); err != nil { //nolint:gosec // 输出路径为固定的发布暂存文件，指南内容不参与路径构造。
 		return err
 	}
 	entries, err := fs.ReadDir(examples.Works(), ".")

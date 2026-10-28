@@ -2,10 +2,12 @@
 
 | 目录 | 内容 |
 | --- | --- |
+| `works/` | 《雾港来信》测试作品；Go 测试与浏览器测试显式导入 |
+| `eval/` | 真实模型评测的行动序列与检查问题 |
 | `fake/` | 假模型脚本（格式见 `internal/llm/fake/script.go`）：复现问题、端到端测试 |
 | `markup/` | 叙事标记解析的共享测试向量（输入 → 期望 AST 与纯文本），Go（`internal/markup/vectors_test.go`）与 TypeScript（`web/src/markup/parse.test.ts`）两端都运行 |
 
-TODO：协议录制回放夹具（M4-8）、恶意 zip 与边界作品集（T5）。
+协议录制夹具见 `internal/llm/*/testdata/` 与 `internal/provider/testdata/README.md`。导入边界与异常压缩包由 `internal/work/` 的测试临时构造。
 
 ## markup/：叙事标记测试向量
 

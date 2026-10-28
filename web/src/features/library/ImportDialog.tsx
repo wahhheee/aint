@@ -183,10 +183,10 @@ function RemoteSource({ source, imp }: { source: 'github' | 'url' | 'dev'; imp: 
   const label = source === 'github' ? t('import.githubLabel') : source === 'url' ? t('import.urlLabel') : t('import.devLabel')
   const placeholder =
     source === 'github'
-      ? 'https://github.com/someone/misty-harbor/tree/v0.3.0'
+      ? 'https://github.com/someone/inverted-stars/tree/v0.3.0'
       : source === 'url'
         ? 'https://example.com/work.zip'
-        : 'D:\\works\\misty-harbor'
+        : 'D:\\works\\inverted-stars'
   return (
     <form
       className="space-y-2.5 pt-4"

@@ -1,0 +1,98 @@
+format: 1
+id: aint.inverted-stars
+version: 0.1.0
+title: 倒悬的街角
+authors:
+  - name: wahhheee
+license: CC-BY-NC-4.0
+subtitle: 鸦羽巷七号事务所
+description: 在建于万丈深渊之上的垂直巨城奥尔良，经营一间不起眼的探索事务所。头顶是切碎晚霞的日冕天轮与百米银摆，脚下是倒悬星穹与失重浮岛，而推开你木门的姑娘们各怀心事。
+tags:
+  - 西幻
+  - 奇观冒险
+  - 都市暗流
+  - 动态世界
+language: zh-CN
+content_rating: teen
+engine: ">=2.0 <3.0"
+
+narrator:
+  instructions: prompts/narrator.md
+  length: "1200-2200"
+
+docs:
+  default_load: index
+
+new_game:
+  fields:
+    - key: protagonist.name
+      label: 你的名字
+      type: text
+      default: "洛恩"
+      max_length: 16
+      hint: "灰羽探索事务所的年轻所长"
+    - key: protagonist.origin
+      label: 过往底色
+      type: select
+      default: "深渊第一斥候"
+      options:
+        - "深渊第一斥候"
+        - "折光塔叛逃的学者"
+        - "自上层放逐的没落贵族"
+      hint: "影响你的拿手本领，以及与城中人物的旧日渊源"
+
+openings:
+  - id: alley-after-rain
+    title: 雨停后的鸦羽巷
+    description: 第 1 日暮色 · 从灰羽事务所的日常切入：拎着热烤饼回到二楼，一眼看穿克莱尔下午去了底层黑市，而桌上正摆着一封来自上层的重金密信。
+    mode: static
+    file: prompts/openings/alley-after-rain.md
+  - id: floating-woods
+    title: 失重林海的晴昼
+    description: 第 1 日白昼 · 从地下三百米的奇观切入：陪薇薇安学姐跨越倒悬星穹下的失重浮岛，却发现封锁了四十年的古水闸刚刚被人偷偷开启过。
+    mode: static
+    file: prompts/openings/floating-woods.md
+    initial_state:
+      phase: "白昼"
+      location: "深渊二层 · 失重浮岛林海"
+      silver: 53
+      situation: "浮水悬空，古水闸有新开启的痕迹"
+      bonds:
+        薇薇安: "慵懒促狭的同行雇主 · 正拉着你追查私开水闸的人"
+        克莱尔: "留守事务所看店的搭档 · 叮嘱你早点回地面"
+      items:
+        - "修长单手直剑"
+        - "旧黄铜指北针"
+      memos:
+        - "护送薇薇安前往深渊二层古水闸回收她私藏的观测记录仪"
+  - id: black-thorn-night
+    title: 黑荆棘馆的微醺夜
+    description: 第 1 日夜色 · 从猎人酒馆的夜色切入：芙蕾雅刚在后巷替人拦下上层审判庭的追兵，而她指给你看的角落卡座里，正坐着微服逃出来的银发千金。
+    mode: static
+    file: prompts/openings/black-thorn-night.md
+    initial_state:
+      phase: "夜色"
+      location: "灰羽街区 · 黑荆棘馆"
+      silver: 42
+      situation: "银摆掠过夜空，角落有贵客乔装待访"
+      bonds:
+        芙蕾雅: "默契熟稔的酒友大姐姐 · 刚在后巷替人挡下审判庭的暗探"
+        奥黛丽: "乔装坐在角落的名门千金 · 正等着单独见你一面"
+        克莱尔: "在事务所留守算账的搭档 · 给你留了门灯"
+      items:
+        - "修长单手直剑"
+        - "旧黄铜指北针"
+      memos:
+        - "兰开斯特家的歌剧首席正乔装坐在酒馆角落，似乎有要事找你"
+
+features:
+  free_input: true
+  force_choices: true
+  dice: false
+  timed_choices: false
+  ooc: true
+
+presentation:
+  dialogue: plain
+  stage: true
+  text_effects: false

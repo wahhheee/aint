@@ -30,6 +30,10 @@ archives:
       - src: .release/使用说明.md
         dst: .
         strip_parent: true
+      - src: .release/创作指南.md
+        dst: .
+        strip_parent: true
+      - skills/**
       - schemas/**
       - src: .release/examples/*.zip
         dst: examples

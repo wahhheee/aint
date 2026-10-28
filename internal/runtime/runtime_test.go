@@ -6,6 +6,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -93,6 +94,7 @@ func openEnvWith(ctx context.Context, dir string, models runtime.ModelResolver, 
 	tm := tmpl.New()
 	works := work.NewService(db, blobs)
 	works.EnsureBuiltins(ctx, examples.Works())
+	works.EnsureBuiltins(ctx, os.DirFS("../../testdata/works"))
 	saves := save.NewService(db, blobs, works, tm)
 	images := media.NewStore(db, blobs, "")
 	bus := event.NewBus(0)

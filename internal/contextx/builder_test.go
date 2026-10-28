@@ -3,6 +3,7 @@ package contextx_test
 import (
 	"context"
 	"io/fs"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -21,7 +22,11 @@ import (
 
 func build(t *testing.T, name string, caps llm.Caps) (*contextx.Built, prompts.FeatureSet) {
 	t.Helper()
-	sub, _ := fs.Sub(examples.Works(), name)
+	source := examples.Works()
+	if name == "misty-harbor" {
+		source = os.DirFS("../../testdata/works")
+	}
+	sub, _ := fs.Sub(source, name)
 	set, err := work.FromFS(sub, work.DefaultLimits)
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +175,7 @@ func emptyHeading(text string) string {
 func TestAssemblyConsistency(t *testing.T) {
 	allTools := []string{"read", "list", "search", "write", "edit", "remove", "get_state", "update_state",
 		"offer_choices", "roll_dice", "delegate"}
-	for _, name := range []string{"first-story", "misty-harbor"} {
+	for _, name := range []string{"first-story", "inverted-stars", "misty-harbor"} {
 		for _, caps := range []llm.Caps{{}, {Vision: true}} {
 			built, _ := build(t, name, caps)
 			sys := systemText(built.Request)
@@ -250,7 +255,7 @@ func TestToolGuideCacheTracksDefinitions(t *testing.T) {
 
 // token 估算（I-TOKENS）：各层都有数，常驻图片按尺寸估算；超过建议值时给出警告。
 func TestAnalyzeTokens(t *testing.T) {
-	sub, _ := fs.Sub(examples.Works(), "misty-harbor")
+	sub := os.DirFS("../../testdata/works/misty-harbor")
 	set, err := work.FromFS(sub, work.DefaultLimits)
 	if err != nil {
 		t.Fatal(err)

@@ -1,7 +1,36 @@
-# 决策记录：脚手架评审（2026-10-20）
+# 设计决策
 
 本文记录当前决策及其代码位置。
-编号范围 D-23～D-71；本地设计材料在 `.local/docs/`。
+编号范围 D-01～D-73。任务状态见 [项目进度](../progress.md)。
+
+## 基础设计
+
+| 编号 | 决策 | 代码位置 |
+| --- | --- | --- |
+| D-01 | Go 后端与 React / TypeScript 前端，前端资源嵌入单个可执行文件 | `cmd/aint`、`web/embed.go` |
+| D-02 | 发布目标为 Windows、macOS、Linux，各提供 amd64 与 arm64 | `.goreleaser.yaml` |
+| D-03 | 记忆使用模型可读写的文档，原文检索使用 SQLite FTS5 | `internal/vfs`、`internal/store` |
+| D-04 | 记忆随回合提交；达到上下文阈值时执行记忆落盘与摘要整理 | `internal/runtime/compact.go` |
+| D-05 | 模型协议为 Anthropic Messages、OpenAI Responses、Gemini | `internal/llm` |
+| D-06 | 使用项目自身的回合运行器与标准库协议适配器 | `internal/runtime`、D-44 |
+| D-07 | 存档导出、作品脚本、服务端扩展、在线创作编辑器与生图接入属于后续范围 | `docs/progress.md` |
+| D-08 | Liquid 用于开场、执笔指令、命令与面板；执笔指令只引用初始状态。条件与循环写在模板内 | `internal/tmpl`、`internal/contextx` |
+| D-09 | 存档保存树形分支，状态与记忆随分支；普通游玩自动保存，复制操作创建另一份存档 | `internal/save` |
+| D-10 | 玩家身份、视角与参与方式由作品的指令和命令定义 | `internal/work/compile.go` |
+| D-11 | 主笔可访问作品全部资料，按加载方式与索引选择读取内容 | `internal/contextx`、`internal/vfs` |
+| D-12 | 后台助手由平台提供，默认关闭，用于资料检索与记忆维护 | `internal/helper` |
+| D-13 | 阅读页以正文流为主，配合背景、插图、音频与文字演出 | `web/src/features/reader` |
+| D-14 | 上下文由稳定前缀、阶段块和回合历史组成，常规回合追加消息 | `internal/contextx`、`internal/runtime/history.go` |
+| D-15 | 使用标准库 UUID v7、JSON v2 与 PBKDF2；业务 JSON 经 jsonx 封装 | `internal/pkg`、`internal/access` |
+| D-16 | 存档可手动命名，退出阅读时可选用轻量模型生成标题；手动命名优先 | `internal/runtime/title.go` |
+| D-17 | 默认监听本机，可设置访问密码；请求检查 Host 与 Origin | `internal/access`、`internal/server` |
+| D-18 | 项目名 AINT，程序标识为 aint，环境变量前缀为 AINT_ | `cmd/aint` |
+| D-19 | 默认数据目录在程序旁的 aint-data，可用 --data 指定，同一目录单实例运行 | `internal/app` |
+| D-20 | 提示词和工具按作品版本、存档设置与模型能力组装 | `internal/contextx` |
+| D-21 | 平台提示词说明工具用法与操作边界，文风由作品定义；未启用的标签按普通文字显示 | `internal/prompts`、`web/src/markup` |
+| D-22 | 剧情推进与规则解释由主笔结合作品完成；状态操作检查类型，可选启用掷骰 | `internal/state`、`internal/tools` |
+
+## 默认值与呈现
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
@@ -22,14 +51,14 @@
 | D-37 | 开发版本是"树哈希即版本身份"的例外：每部作品至多一个，原地更新，不参与去重 | `store/migrations/0001_init.sql`（部分唯一索引） |
 | D-38 | 视觉语言取材线装书：宣纸白、墨、磁青、泥金；书架以线装书封面呈现 | `web/src/styles/globals.css`、`features/library/WorkCover.tsx` |
 | D-39 | `GET /events`、`GET /saves?limit=`、`GET /saves/{id}` 返回呈现信息；回合 ID 即节点 ID；前端自动提交生成式开场；第 0 阶段块与执笔指令即时渲染；内置常用图标子集；TypeScript 6.0 | 见 `docs/architecture.md` |
-| D-40 | 运行时代码 Apache-2.0；示例作品单独许可（《雾港来信》CC-BY-NC-4.0） | `LICENSE` |
+| D-40 | 运行时代码、文档与技能 Apache-2.0；《倒悬的街角》和测试作品《雾港来信》CC-BY-NC-4.0，《第一个故事》Apache-2.0 | `LICENSE` |
 
 ## 界面设计（2026-10-21）
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
 | D-41 | 夜读（深色）使用**纯黑底**（`#000`），面与浮层用略亮一两级的黑加发丝线区分；阅读页有舞台背景时铺背景图并压暗四周。外壳为宽屏左侧栏（品牌、导航、作品目录）+ 唯一滚动的内容区，内容区始终预留滚动条位置；页面标题固定在同一位置。根字号 16px，尺寸落在 4px 网格上，字号阶梯 12 / 13 / 14 / 16 / 20 / 28 / 36。主操作用墨色（深色时为暖白），泥金只标记"当前选中"；选中态只改颜色与底色、不改字重 | `web/src/styles/globals.css`、`app/ShellLayout.tsx`、`components/common/PageHeader.tsx` |
-| D-42 | 标志为**月洞门**：纯黑圆角方块是墙，墙上一扇被门槛截平的圆门，门里是黄昏（深靛的天、地平线上一线金光、一轮小月、山脚隐入雾中的两层远山），门里的光洒在门槛上——走进一个故事，就像穿过园林里的一扇月洞门。不用文字。图形只有一份 `web/public/favicon.svg`，界面里的品牌标识直接引用它；另有 180px 满版的 `apple-touch-icon.png` | `web/public/favicon.svg`、`components/brand/BrandMark.tsx` |
+| D-42 | 标志为**月洞门**：纯黑圆角方块是墙，墙上一扇被门槛截平的圆门，门里是黄昏（深靛的天、地平线上一线金光、一轮小月、山脚隐入雾中的两层远山），门里的光洒在门槛上。图形只有一份 `web/public/favicon.svg`，界面里的品牌标识直接引用它；另有 180px 满版的 `apple-touch-icon.png` | `web/public/favicon.svg`、`components/brand/BrandMark.tsx` |
 
 ## 开发阶段约定（2026-10-21）
 
@@ -112,11 +141,11 @@
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
-| D-71 | 作品显式声明非空 `openings` 列表，ID 稳定且唯一，第一项默认；每项独立指定静态正文或生成指引及可选初始状态覆盖。状态依次应用默认值、开场覆盖、开局表单。开场及其中断续写不计玩家首轮；首次玩家模型交互成功保存后永久锁定，含场外对话，回退、删除与复制均不解锁。切换由现有写者槽位串行执行，事务重建初始节点与开场、清除试读分支、保留用量；生成式切换回来重新生成。只有一个开场不显示切换控件。详见 [多开场](../openings.md) | `work/openings.go`、`save/opening.go`、`runtime/opening.go`、`reader/OpeningSwitcher.tsx` |
+| D-71 | 作品显式声明非空 `openings` 列表，ID 稳定且唯一，第一项默认；每项独立指定静态正文或生成指引及可选初始状态覆盖。状态依次应用默认值、开场覆盖、开局表单。开场及其中断续写不计玩家首轮；首次玩家模型交互成功保存后永久锁定，含场外对话，回退、删除与复制均不解锁。切换由现有写者槽位串行执行，事务重建初始节点与开场、清除试读分支、保留用量；生成式切换回来重新生成。只有一个开场不显示切换控件。详见 [多开场](../../skills/aint-work/references/format.md#开场-openings) | `work/openings.go`、`save/opening.go`、`runtime/opening.go`、`reader/OpeningSwitcher.tsx` |
 
 ## 回合重写与补选项（2026-10-27）
 
 | 编号 | 决策 | 代码位置 |
 | --- | --- | --- |
-| D-72 | `/rewrite 要求` 与回合菜单重写最后一轮；原输入保留，旧版正文与选项作为本次临时参考，从回合前快照重演。界面原位展示，成功形成版本，失败或取消恢复原版；原分支后续编辑不带入。回合内整理暂存，与新版原子提交；新写记忆提交前以成稿有界核对，不带旧稿与修改要求，不改状态，失败整体回滚。详见 [重写与主动补选项](../turn-operations.md) | `runtime/operation.go`、`save/service.go`、`reader/stream/` |
+| D-72 | `/rewrite 要求` 与回合菜单重写最后一轮；原输入保留，旧版正文与选项作为本次临时参考，从回合前快照重演。界面原位展示，成功形成版本，失败或取消恢复原版；原分支后续编辑不带入。回合内整理暂存，与新版原子提交；新写记忆提交前以成稿有界核对，不带旧稿与修改要求，不改状态，失败整体回滚。详见 [重写与主动补选项](../architecture.md#重写的上下文与提交) | `runtime/operation.go`、`save/service.go`、`reader/stream/` |
 | D-73 | `/choices` 与缺选项按钮只为当前正文补充选择，不依赖强制选项设置、不规定剧情方向。执行器只允许查询与 `offer_choices`，普通文字只留调试记录；附属节点保持状态、记忆与回合号，选择正常回填，按分支保存与恢复 | `runtime/operation.go`、`tools/registry.go`、`save/timeline.go`、`runtime/history.go` |

@@ -1,0 +1,23 @@
+panels:
+  - id: topbar
+    title: 时空与局势
+    place: topbar
+    template: ui/panels/topbar.liquid
+    format: markdown
+    order: 1
+  - id: bonds
+    title: 人物印象
+    place: sidebar
+    template: ui/panels/bonds.liquid
+    format: markdown
+    order: 1
+    collapsed: false
+  - id: journal
+    title: 手札与行囊
+    place: sidebar
+    template: ui/panels/journal.liquid
+    format: markdown
+    order: 2
+    collapsed: false
+command_bar:
+  - 小憩

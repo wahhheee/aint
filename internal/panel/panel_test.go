@@ -1,17 +1,16 @@
 package panel
 
 import (
-	"io/fs"
+	"os"
 	"strings"
 	"testing"
 
-	"github.com/wahhheee/aint/examples"
 	"github.com/wahhheee/aint/internal/tmpl"
 	"github.com/wahhheee/aint/internal/work"
 )
 
 func TestRenderExamplePanels(t *testing.T) {
-	sub, _ := fs.Sub(examples.Works(), "misty-harbor")
+	sub := os.DirFS("../../testdata/works/misty-harbor")
 	set, err := work.FromFS(sub, work.DefaultLimits)
 	if err != nil {
 		t.Fatal(err)

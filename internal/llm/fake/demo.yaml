@@ -1,130 +1,73 @@
-# 内置演示脚本（aint --fake-llm demo）。
-# 内容配合内置示例《雾港来信》，覆盖：场景标记、台词、作品样式标签、场景分隔、状态更新（面板随之刷新）、掷骰、选项、场外回应。
+# 内置演示脚本（aint --fake-llm demo），配合《倒悬的街角》的默认开场。
+# 按固定顺序演示正文、状态面板、选项、场外回应与记忆整理。
 responses:
   - first_delay_ms: 700
     chunk_runes: 3
     delay_ms: 28
     text: |
-      <scene bg="harbor-night" title="第一夜 · 雾"/>
+      克莱尔把热茶推到你面前，另一只手按着桌上的信封。
 
-      雾是从傍晚开始漫上来的。先是码头上的缆桩看不清了，接着是对街的路灯，最后连邮局门口那块褪了色的招牌，也只剩下一团昏黄的光晕。
+      「先看这个。送信的人给了五枚银币，只说要你亲自拆。」
 
-      林舟推门进来的时候，带进了一股潮湿的冷气。他把湿透的帽子挂上衣架，水珠沿着帽檐一颗一颗往下落，在木地板上洇出一小圈深色。
-
-      <say who="lin">「你也收到了那封信？」</say>
-
-      他没有看你，只是盯着柜台上那盏煤油灯，像是在等它先开口。灯芯噼啪响了一声。
-
-      你注意到他的右手一直揣在口袋里，袖口有一道新鲜的擦痕。
-
-      ---
-
-      墙上的挂钟走到十一点四十分。柜台后面，老陈的椅子空着，椅背上搭着他那件从不离身的灰呢外套。
-
-      <gold>老陈在午夜前从未离开过柜台。</gold>
+      信纸带着极淡的香气。落款是上层圣咏歌剧院，约见的地方却在灰羽街区。楼下风铃轻响，有人停在门外，没有敲门。
     tool_calls:
       - name: update_state
-        args: {op: append, path: sealed, value: 老陈在午夜前从未离开过柜台。}
-      - name: update_state
-        args: {op: append, path: clues, value: 林舟袖口有一道新鲜的擦痕}
-      - name: update_state
-        args: {op: set, path: situation, value: 林舟也收到了信；老陈的椅子空着。}
+        args: {op: set, path: situation, value: 歌剧院来信，门外有人等候}
       - name: offer_choices
         args:
-          prompt: 雾还在变浓。
           choices:
-            - {id: a, label: 追问他手上的伤, detail: 他下意识把手往口袋深处藏了藏}
-            - {id: b, label: 装作不在意，去看信件柜}
-            - {id: c, label: 把那封信拿给他看}
-
+            - {id: a, label: 读完来信，问克莱尔送信人的模样}
+            - {id: b, label: 下楼看看门外的人}
+            - {id: c, label: 先和克莱尔商量今晚的安排}
   - first_delay_ms: 500
     chunk_runes: 3
     delay_ms: 26
     text: |
-      林舟沉默了很久。久到你以为他不会回答了。
+      木门打开时，巷子里的灯刚亮。来客穿着旅行斗篷，递来一枚刻着水闸纹样的铜牌。
 
-      <say who="lin">「三年前的那个晚上，雾也是这么大。」</say>他终于开口，声音很轻，「船没有回来。名单上……本来应该有我。」
+      「有人今天去过二层的旧水闸。您若想知道是谁，明天白昼之前到升降台找我。」
 
-      他把手从口袋里抽出来。掌心里躺着一把银色的钥匙，锈迹斑斑，齿痕却磨得发亮，像是被人反复握过许多次。
-
-      <aside>远处传来一声汽笛，低沉、悠长，在雾里绕了很久才散去。</aside>
-
-      <say who="lin">「这是在缆绳下面捡到的。就在今天傍晚，老陈不见之前。」</say>
+      她没有等你追问便转身离开。克莱尔倚在楼梯边，看着你掌心的铜牌，把本来要说的话咽了回去。
     tool_calls:
       - name: update_state
-        args: {op: append, path: clues, value: 林舟在缆绳下捡到一把银色钥匙}
+        args: {op: append, path: memos, value: 明天白昼前在升降台寻找送来水闸铜牌的人}
       - name: update_state
-        args: {op: inc, path: trust.林舟, value: 2}
-      - name: offer_choices
-        args:
-          prompt: 钥匙在灯下泛着冷光。
-          choices:
-            - {id: a, label: 接过钥匙，仔细端详}
-            - {id: b, label: 问他为什么现在才说}
-            - {id: c, label: 提议一起去码头看看, detail: 午夜就快到了}
-
-  - first_delay_ms: 600
-    chunk_runes: 3
-    delay_ms: 26
-    text: |
-      <scene bg="post-office" title="邮局 · 午夜前"/>
-
-      你们一前一后穿过雾。脚下的石板路湿滑，远处灯塔的光每隔七秒扫过一次，把雾照成一片短暂的银白。
-
-      信件柜的第三格是空的。准确地说，是"被清空了"——格子底部留着一圈浅浅的灰痕，形状和一只信封分毫不差。
-
-      <say who="lin">「有人在我们之前来过。」</say>
-
-      你蹲下身，在柜脚边发现了一小片撕下的邮票。邮票上的日期，是明天。
-    tool_calls:
-      - name: roll_dice
-        args: {expr: 1d20, reason: 在柜脚的阴影里摸索}
-      - name: update_state
-        args: {op: append, path: clues, value: 信件柜第三格被清空，柜脚有一片日期为明天的邮票}
-      - name: update_state
-        args: {op: set, path: situation, value: 有人抢先清空了信件柜。}
+        args: {op: set, path: situation, value: 水闸铜牌与明日的约见}
       - name: offer_choices
         args:
           choices:
-            - {id: a, label: 收起邮票，什么也不说}
-            - {id: b, label: 把发现告诉林舟}
-            - {id: c, label: 去灯塔, detail: 那道光扫过的间隔似乎变了}
-
-# 玩家场外发言（/ooc）时的回应，不计入上面的循环。
+            - {id: a, label: 问克莱尔是否认得铜牌}
+            - {id: b, label: 去黑荆棘馆打听旧水闸}
+            - {id: c, label: 收好铜牌，准备明天的行囊}
 ooc:
-  first_delay_ms: 400
-  chunk_runes: 3
-  delay_ms: 22
+  first_delay_ms: 300
+  chunk_runes: 8
+  delay_ms: 20
   text: |
-    <ooc>收到：「{{input}}」。
-
-    接下来我会放慢节奏，把线索藏得更深一些。想回到故事里，直接写下你的行动就好。</ooc>
-
-# 上下文整理（上下文达到阈值或 /compact）时依次使用：先写一份章节纪要，再给出交接摘要。
+    <ooc>收到：「{{input}}」。当前使用固定演示脚本。连接自己的模型后，执笔者会结合你的输入继续故事。</ooc>
 compact:
-  - delay_ms: 200
+  - delay_ms: 100
     tool_calls:
       - name: write
         args:
-          path: /memory/chronicle/01-fog-night.md
+          path: /memory/chronicle/01-alley.md
           content: |
-            # 第一夜 · 雾
-            - 林舟也收到了那封信；他的袖口有一道新鲜的擦痕。
-            - 老陈在午夜前从未离开过柜台，今晚他的椅子却空着。
-            - 信件柜第三格被清空，柜脚有一片日期为明天的邮票。
-  - first_delay_ms: 300
-    chunk_runes: 12
-    delay_ms: 20
+            # 鸦羽巷的来信
+            - 事务所收到来自圣咏歌剧院的约见信。
+            - 一位来客送来水闸铜牌，约在明天白昼前到升降台见面。
+  - first_delay_ms: 100
+    chunk_runes: 20
+    delay_ms: 10
     text: |
       ## 故事至今
-      雾夜里，玩家与林舟在邮局重逢。两人都收到了同一封信，老陈却不在柜台后面（纪要见 /memory/chronicle/01-fog-night.md）。
+      玩家和克莱尔在灰羽事务所收到歌剧院来信，以及一位来客送来的水闸铜牌。
       ## 当前场景
-      邮局，接近午夜。煤油灯还亮着，信件柜的第三格空着。
+      鸦羽巷七号事务所，雨后的暮色。明天白昼前可以去升降台赴约。
       ## 人物与关系
-      林舟：对玩家有所保留，右手藏着一把银色的钥匙。
+      克莱尔是住店搭档，关心来信与铜牌的来历。
       ## 线索·伏笔·承诺
-      日期为明天的邮票（未确认来源）；灯塔的光扫过的间隔似乎变了。
+      歌剧院的约见、二层旧水闸的新动静、铜牌送信人。
       ## 玩家
-      倾向先观察、再开口。
+      玩家决定接下来调查哪个方向。
       ## 写作备忘
-      保持雾与灯光的意象；林舟说话简短。
+      保持人物对白与街区生活的细节，资料见 /memory/chronicle/01-alley.md。

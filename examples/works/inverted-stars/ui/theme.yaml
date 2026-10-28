@@ -1,0 +1,21 @@
+fonts:
+  body: serif
+  heading: serif
+colors:
+  light:
+    background: "#f7f5f0"
+    text: "#22201e"
+    muted: "#6e685f"
+    accent: "#8c5a2b"
+    panel: "#efeae1"
+  dark:
+    background: "#13151a"
+    text: "#e6e4df"
+    muted: "#8f94a0"
+    accent: "#c99b5b"
+    panel: "#1b1e26"
+reading:
+  max_width: 40em
+  line_height: 1.9
+  paragraph_spacing: 0.9em
+  indent: 2em

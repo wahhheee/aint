@@ -59,12 +59,12 @@ tasks:
   # ---------------------------------------------------------------- 创作者工具（调试提示词组装的利器）
 
   prompt:
-    desc: 打印作品按需组装后的完整提示词，如 task prompt -- examples/works/misty-harbor --vision
+    desc: 打印作品按需组装后的完整提示词，如 task prompt -- examples/works/inverted-stars --vision
     cmds:
       - go run ./cmd/aint work prompt {{.CLI_ARGS}}
 
   validate:
-    desc: 校验作品，如 task validate -- examples/works/misty-harbor
+    desc: 校验作品，如 task validate -- examples/works/inverted-stars
     cmds:
       - go run ./cmd/aint work validate {{.CLI_ARGS}}
 
@@ -140,7 +140,7 @@ tasks:
       - go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/aint{{exeExt}} ./cmd/aint
 
   build:cross:
-    desc: 交叉编译六个目标平台（发布前检查；发布打包见 docs/release.md）
+    desc: 交叉编译六个目标平台（发布打包见 docs/development.md 第 5 节）
     deps: [build:web]
     env:
       CGO_ENABLED: "0"

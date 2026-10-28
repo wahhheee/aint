@@ -1,0 +1,16 @@
+<ui-stat label="状态" icon="shield" value="{{ state.protagonist.condition | default: '精神饱满' }}"></ui-stat>
+<ui-stat label="银币" icon="coins" value="{{ state.silver | default: 0 }} 枚"></ui-stat>
+{%- if state.items.size > 0 %}
+
+**随身行囊**
+{% for item in state.items limit: 8 -%}
+- {{ item }}
+{% endfor -%}
+{%- endif -%}
+{%- if state.memos.size > 0 %}
+
+**事务所备忘**
+{% for memo in state.memos reversed limit: 6 -%}
+- {{ memo }}
+{% endfor -%}
+{%- endif -%}

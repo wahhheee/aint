@@ -94,8 +94,8 @@ go run ./cmd/aint serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 ### 3.4 上下文整理与分支
 
 - **很快触发整理**：新建存档时把预算调低（存档设置覆盖全局设置），例如
-  `POST /api/v1/saves {"work_id": "aint.misty-harbor", "settings": {"context_budget": 9000, "keep_recent": 2000}}`，
-  假模型下十来个回合就会整理；也可以点用量环里的"立即整理"或输入 `/compact`。全局默认值在设置 → 上下文。
+  `POST /api/v1/saves {"work_id": "aint.inverted-stars", "settings": {"context_budget": 16000, "keep_recent": 2000}}`，
+  具体触发回合数取决于作品常驻内容与已生成正文；也可以点用量环里的"立即整理"或输入 `/compact`。全局默认值在设置 → 上下文。
 - **整理做了什么**：日志 `上下文整理完成`（原因、方式、摘要掉的回合区间、保留起点、落盘写了几个文件、整理前后的上下文规模、调用次数）；
   整理节点的 `epoch_block` 是新阶段块（blob，文本），`messages` 是整理过程的全部消息（不进入之后的上下文）；`--trace-llm` 中用途为 `compact` 的调用。
 - **之后的请求长什么样**：`--trace-llm` 中整理之后的第一个 `narrate` 请求，首条消息是新阶段块，后接保留的回合（推理与协议原生内容已去掉）。
@@ -154,6 +154,7 @@ task test
   `AINT_EVAL=<live.json 的绝对路径> AINT_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
   报告在 `.local/eval/<时间>/story.md`（`AINT_EVAL_OUT` 可指定），`AINT_EVAL_TRACE=<目录>` 录制原始报文。
 - Playwright 端到端：在 `web/` 首次执行 `pnpm exec playwright install chromium`，之后在仓库根执行 `task test:e2e`。测试使用独立临时目录、7879 / 5179 端口与假模型，不读取真实密钥；失败追踪位于 `web/test-results/`，CI 会上传。
+- 《雾港来信》位于 `testdata/works/misty-harbor/`，由 Go 测试装配和 Playwright 全局准备导入；程序内嵌示例位于 `examples/works/`。
 - 尚缺：测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
 - DeepSeek 工具纠正真实评测：`AINT_TOOL_TEXT_LIVE=<live.json 的绝对路径> go test ./internal/runtime -run '^TestToolTextLive$' -count=1 -v -timeout 35m`；默认跳过，覆盖两种接口与 off / low 推理的生成式开场、选项作答和状态更新，记录各回合纠正次数并检查发送历史。预算与报告见 [验证说明](notes/tool-text-recovery.md)。
 
@@ -188,17 +189,32 @@ task build
 
 - `CGO_ENABLED=0`，纯 Go（`modernc.org/sqlite`），六个目标平台可交叉编译：`task build:cross`。
 - 版本号由 `git describe` 注入 `internal/buildinfo`。
-- GoReleaser 快照、标签触发的草稿发布与产物检查见 [发布构建](release.md)。
+
+### 5.1 发布包
+
+`.goreleaser.yaml` 定义 Windows、macOS、Linux 的 amd64 / arm64 六种产物，全部关闭 CGO。每份压缩包包含可执行文件、许可证、使用说明、创作指南、作品 Schema、aint-work 技能和两部示例 zip；`checksums.txt` 覆盖发布压缩包。
+
+### 5.2 本地验证
+
+使用 GoReleaser 2.19.0 和仓库规定的 Go / pnpm 版本。先运行 `task check` 和 `task build:web`，再运行 `goreleaser check` 与 `goreleaser release --snapshot --clean`。快照不会上传发布页，不需要模型密钥。构建产物位于 `dist/`，示例暂存于 `.release/`。Schema 变更后运行 `go run ./cmd/schema-gen`；测试会检查定义与已提交的文件一致。
+
+验证六份包均有可执行文件、使用与创作说明、10 个 Schema、完整技能与两部示例 zip，核对 `checksums.txt`。在本机解压后使用临时数据目录启动，确认静态页面、`version` 和示例导入可用。其他系统的实际运行与发布候选版验收属于 M6-11。
+
+### 5.3 GitHub Actions
+
+`release.yml` 在推送 `v*` 标签时运行检查并创建 **草稿发布**。维护者检查产物、补齐发布说明和预览阶段数据变更提示后，再手动发布草稿。手动运行 workflow 只生成 snapshot 并上传 Actions artifact，不创建 Release。
+
+发布流程需要仓库自带 `GITHUB_TOKEN` 的 contents 写权限，不读取 `.local/`、个人模型密钥或运行时数据。实际发布标签必须在约定的版本验收完成后创建。
 
 ## 6. 代码约定
 
 - 开始一个任务前先看 [progress.md](progress.md) 中该任务的"已有 / 缺口"，再用 `git grep -nE "M3-1([^0-9]|$)"` 列出代码中的全部相关位置；
   做完按该文档顶部的"更新规则"更新进度。
 
-- 注释使用简体中文；尚未完成的地方写 `TODO(任务编号)：说明`，编号对应实施计划（如 `TODO(M3-6)`），文档冲突写 `TODO(待确认)`。
+- 注释使用简体中文；尚未完成的地方写 `TODO(任务编号)：说明`，编号对应 progress.md 的任务明细（如 `TODO(M3-6)`），文档冲突写 `TODO(待确认)`。
 - 注释与普通文档描述当前行为和有明确依据的原因；写法见 [AGENTS.md 的“注释与文档写法”](../AGENTS.md#注释与文档写法)。
 - 提交信息：Conventional Commits + 简体中文，例如 `feat(runtime): 回合截断续写`、`fix(web): 选项键盘快捷键冲突`。
-- Go：`task fmt` 格式化（gofmt + goimports，本项目的包单独成组）；包级注释写清"职责 / 不负责什么 / 调试方法"。
+- Go：`task fmt` 格式化（gofmt + goimports，本项目的包单独成组）；包级注释写清职责、约束与调试方法。
 - 前端：ESLint + Prettier；文案进 `i18n/zh-CN.ts`；`components/ui` 是 shadcn 生成的组件，可以按设计语言修改。
 - 修改前后端契约时同步两边（见 [architecture.md](architecture.md) 第 7 节）。
 
@@ -247,4 +263,4 @@ $env:AINT_OPERATION_OUT = Join-Path $PWD .local/eval/turn-operations
 go test ./internal/runtime -run '^TestOperationLive$' -count=1 -v
 ```
 
-配置的 `providers` 列表使用 `protocol`、`base_url`、`key`、`model` 字段；只测试模型名以 `deepseek-` 开头的条目。每组依次重写、再次重写、补选项、选择续写。检查目录中的 `story.md` 与 `raw/`，不要打印私有配置。测试结束后删除本会话的两个环境变量，恢复默认跳过真实调用：`Remove-Item Env:AINT_OPERATION_LIVE, Env:AINT_OPERATION_OUT`。设计与边界见 [重写与主动补选项](turn-operations.md)。
+配置的 `providers` 列表使用 `protocol`、`base_url`、`key`、`model` 字段；只测试模型名以 `deepseek-` 开头的条目。每组依次重写、再次重写、补选项、选择续写。检查目录中的 `story.md` 与 `raw/`，不要打印私有配置。测试结束后删除本会话的两个环境变量，恢复默认跳过真实调用：`Remove-Item Env:AINT_OPERATION_LIVE, Env:AINT_OPERATION_OUT`。设计与边界见 [重写与主动补选项](architecture.md#重写的上下文与提交)。

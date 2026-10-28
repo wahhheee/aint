@@ -5,15 +5,16 @@
 ## 项目
 
 AINT（AINT Is Not Tavern / Agentic Interactive Narrative Theatre）：以作品为单位、本地运行的 AI 互动小说运行时。Go 后端 + React 前端，单可执行文件分发。
-当前处于开发预览阶段：M0–M3 完成（真实模型、作品能力、记忆与整理、分支），M4–M5 完成，M6 进行中，未完成处以 `TODO(任务编号)` 标注。
+当前处于开发预览阶段：M0–M2、M4–M5 完成，M3 的长篇真实模型评测待做，M6 进行中，未完成处以 `TODO(任务编号)` 标注。
 
 ## 先读这些
 
 - `docs/progress.md`：**进度**——每个任务的状态、已有与缺口、建议的下一步、按功能找任务；搜任务编号找代码
 - `docs/architecture.md`：分层与依赖方向、回合生命周期、前后端契约、**扩展指南（想加 X 改哪里）**
 - `docs/development.md`：开发命令与**调试手册**
-- `docs/notes/decisions.md`：已确认的决策（D-23～D-73）；`docs/notes/open-questions.md`：待确认事项
-- `.local/docs/`（不入库）：需求、技术方案、作品格式规范、交互设计、实施计划。`TODO(M3-6)` 这类编号对应实施计划
+- `docs/notes/decisions.md`：当前决策（D-01～D-73）；`docs/notes/open-questions.md`：待确认事项
+- `docs/README.md`：公开文档索引与术语；`docs/usage.md`、`docs/authoring.md`：使用与创作指南
+- `skills/aint-work/`：作品创作技能；`references/format.md` 集中维护作品格式。`TODO(M3-6)` 这类编号对应 `docs/progress.md` 的任务明细
 
 ## 现阶段不做向后兼容（D-43）
 
@@ -38,6 +39,8 @@ AINT（AINT Is Not Tavern / Agentic Interactive Narrative Theatre）：以作品
 
 ## 注释与文档写法
 
+- 平铺直叙，直接写当前行为、用途和操作。少用比喻；避免预设质疑、自行反驳和泛泛的保证或免责。具体约束写明触发条件、结果和处理方法。
+
 - **注释描述当前代码**：写清职责、行为、约束与边界，不记录修改过程。即使在修 bug，也不要写“修复 xxx”“将 xxx 改成 xxx”“原来……现在……”之类的注释。
 - 对容易让人疑惑的实现，可以解释**为什么这样做**，例如控制复杂度、优化性能或满足具体业务约束。原因必须有明确依据；未提供原因时省略，不自行推测或补写理由。
 - 用户让 AI 编写或修改代码不是技术或业务原因。注释、文档及变更记录中都不得用“按用户要求”“根据用户反馈”“用户让做的”“用户确认”等表述交代指令来源或充当理由。
@@ -53,7 +56,7 @@ task check      # 提交前：lint + test，与 CI 相同
 task test       # Go + 前端测试
 task lint       # golangci-lint（go vet、staticcheck、gosec 等）、go.mod 整洁、ESLint、tsc、Prettier
 task fmt        # gofmt + goimports、Prettier
-task prompt -- examples/works/misty-harbor   # 查看组装后的提示词
+task prompt -- examples/works/inverted-stars   # 查看组装后的提示词
 ```
 
 在 `web/` 内执行 pnpm（不要在仓库根用 `pnpm -C web`，见 development.md 常见问题）。

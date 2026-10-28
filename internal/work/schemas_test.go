@@ -40,7 +40,7 @@ func TestJSONSchemas(t *testing.T) {
 		}
 	}
 	count := 0
-	for _, root := range []string{"../../examples/works"} {
+	for _, root := range []string{"../../examples/works", "../../testdata/works"} {
 		err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err

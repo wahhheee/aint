@@ -1,0 +1,13 @@
+{%- assign order = "克莱尔,奥黛丽,薇薇安,芙蕾雅" | split: "," -%}
+{%- for k in order -%}
+{%- if state.bonds[k] != nil and state.bonds[k] != "" -%}
+- **{{ k }}**：{{ state.bonds[k] }}
+{% endif -%}
+{%- endfor -%}
+{%- for p in state.bonds -%}
+{%- unless order contains p[0] -%}
+{%- if p[1] != "" -%}
+- **{{ p[0] }}**：{{ p[1] }}
+{% endif -%}
+{%- endunless -%}
+{%- endfor -%}

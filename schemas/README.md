@@ -2,7 +2,7 @@
 
 这些 JSON Schema 覆盖 `work.yaml`、`state.yaml`、`assets.yaml`、`ui/layout.yaml`、`ui/markup.yaml`、`ui/theme.yaml`，以及设定、命令、开场和记忆的 Markdown frontmatter。Markdown 正文、Liquid、CSS、素材与跨文件引用使用 `aint work validate` 检查。
 
-`work.yaml` 必须声明非空的 `openings` 列表；每项的 `id`、`title`、`mode` 必填，静态开场同时需要 `file`。文件 frontmatter 使用 `opening-frontmatter.schema.json`，`initial_state` 的路径与类型由作品校验器检查。完整示例与切换规则见 [多开场](../docs/openings.md)。
+`work.yaml` 必须声明非空的 `openings` 列表；每项的 `id`、`title`、`mode` 必填，静态开场同时需要 `file`。文件 frontmatter 使用 `opening-frontmatter.schema.json`，`initial_state` 的路径与类型由作品校验器检查。完整示例与切换规则见 [多开场](../skills/aint-work/references/format.md#开场-openings)。
 
 在 VS Code 安装 Red Hat YAML 扩展，将发布包的 `schemas/` 放在作品目录旁，在作品的 `.vscode/settings.json` 中配置：
 
