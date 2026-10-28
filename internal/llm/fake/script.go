@@ -28,25 +28,31 @@ import (
 //	compact:                 # 可选：上下文整理（请求用途为 compact）时依次使用，不计入 responses 的循环
 //	  - tool_calls: [{name: write, args: {path: /memory/chronicle/01.md, content: "……"}}]
 //	  - text: "## 故事至今 ……"   # 最后一项是交接摘要；整理中的调用次数超过列表长度时一直用最后一项
+//	operations:              # 按存档与调用用途分别依次使用，耗尽后沿用最后一项
+//	  rewrite:
+//	    - text: "雨声还在继续。"
+//	      wait_for_cancel: true # 输出正文后等待取消，不发工具与结束事件
+//	    - text: "雨声渐密。"
 //
 // 每个存档独立计数，依次循环使用 responses。正文与工具参数中的字符串都可以写 {{input}}。
 type Script struct {
-	Operations map[string]Response `yaml:"operations"` // 按调用用途指定响应（如 rewrite、choices）
-	Responses  []Response          `yaml:"responses"`
-	OOC        *Response           `yaml:"ooc"`
-	Compact    []Response          `yaml:"compact"`
+	Operations map[string][]Response `yaml:"operations"`
+	Responses  []Response            `yaml:"responses"`
+	OOC        *Response             `yaml:"ooc"`
+	Compact    []Response            `yaml:"compact"`
 }
 
 // Response 是一次调用的脚本。
 type Response struct {
-	Text         string     `yaml:"text"`
-	ChunkRunes   int        `yaml:"chunk_runes"`
-	DelayMS      int        `yaml:"delay_ms"`
-	FirstDelayMS int        `yaml:"first_delay_ms"`
-	ToolCalls    []ToolCall `yaml:"tool_calls"`
-	Stop         string     `yaml:"stop"`
-	Error        string     `yaml:"error"`
-	Usage        *llm.Usage `yaml:"usage"`
+	Text          string     `yaml:"text"`
+	ChunkRunes    int        `yaml:"chunk_runes"`
+	DelayMS       int        `yaml:"delay_ms"`
+	FirstDelayMS  int        `yaml:"first_delay_ms"`
+	WaitForCancel bool       `yaml:"wait_for_cancel"`
+	ToolCalls     []ToolCall `yaml:"tool_calls"`
+	Stop          string     `yaml:"stop"`
+	Error         string     `yaml:"error"`
+	Usage         *llm.Usage `yaml:"usage"`
 }
 
 // ToolCall 是脚本中的工具调用。

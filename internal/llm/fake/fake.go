@@ -42,16 +42,22 @@ func Model() *llm.Model {
 	}
 }
 
-// Provider 是假模型供应商。按存档（Request.CacheKey）分别计数，依次循环使用脚本中的响应。
+// Provider 是假模型供应商。普通响应按存档（Request.CacheKey）循环，操作响应按存档与用途顺序读取。
 type Provider struct {
-	script *Script
-	mu     sync.Mutex
-	calls  map[string]int
+	script         *Script
+	mu             sync.Mutex
+	calls          map[string]int
+	operationCalls map[operationKey]int
+}
+
+type operationKey struct {
+	save    string
+	purpose string
 }
 
 // New 创建假模型。
 func New(s *Script) *Provider {
-	return &Provider{script: s, calls: make(map[string]int)}
+	return &Provider{script: s, calls: make(map[string]int), operationCalls: make(map[operationKey]int)}
 }
 
 func (p *Provider) Protocol() llm.Protocol { return llm.ProtocolFake }
@@ -66,17 +72,20 @@ func (p *Provider) Stream(ctx context.Context, _ *llm.Model, req *llm.Request) (
 	}
 	var resp Response
 	n := 0
-	special, specialOK := p.script.Operations[req.Purpose]
+	special := p.script.Operations[req.Purpose]
 	switch {
 	case req.Purpose == "compact" && len(p.script.Compact) > 0:
 		i := min(compactCalls(req), len(p.script.Compact)-1)
 		resp, n = p.script.Compact[i], 1000+i
-	case specialOK:
+	case len(special) > 0:
 		p.mu.Lock()
 		n = p.calls[req.CacheKey]
 		p.calls[req.CacheKey] = n + 1
+		key := operationKey{save: req.CacheKey, purpose: req.Purpose}
+		i := p.operationCalls[key]
+		p.operationCalls[key] = i + 1
 		p.mu.Unlock()
-		resp = special
+		resp = special[min(i, len(special)-1)]
 	case p.script.OOC != nil && lastPlayerIsOOC(req):
 		resp = *p.script.OOC
 	default:
@@ -119,6 +128,10 @@ type stream struct {
 func (s *stream) Next() (llm.Event, error) {
 	if s.finished {
 		return nil, io.EOF
+	}
+	if s.resp.WaitForCancel && s.pos == len(s.text) {
+		<-s.ctx.Done()
+		return nil, s.ctx.Err()
 	}
 	delay := time.Duration(s.resp.delay()) * time.Millisecond
 	if !s.started {

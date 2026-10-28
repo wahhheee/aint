@@ -22,20 +22,21 @@ ooc:
 
 operations:
   rewrite:
-    text: |
-      你停下脚步。雨声渐密，远处那盏灯在水面上晃了一下。
-      那封信还在口袋里，你却不急着把它拿出来。
-    first_delay_ms: 1000
-    chunk_runes: 12
-    delay_ms: 250
+    - text: 雨声还在继续。
+      chunk_runes: 100
+      wait_for_cancel: true
+    - text: |
+        你停下脚步。雨声渐密，远处那盏灯在水面上晃了一下。
+        那封信还在口袋里，你却不急着把它拿出来。
+      chunk_runes: 12
+      delay_ms: 1
   choices:
-    text: 好的，我来生成选项。
-    first_delay_ms: 1000
-    chunk_runes: 100
-    delay_ms: 1
-    tool_calls:
-      - name: offer_choices
-        args:
-          choices:
-            - {id: a, label: 走近那盏灯}
-            - {id: b, label: 留在雨棚下}
+    - text: 好的，我来生成选项。
+      chunk_runes: 100
+      delay_ms: 1
+      tool_calls:
+        - name: offer_choices
+          args:
+            choices:
+              - {id: a, label: 走近那盏灯}
+              - {id: b, label: 留在雨棚下}

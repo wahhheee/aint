@@ -89,6 +89,8 @@ go run ./cmd/aint serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 
 脚本可以模拟：任意正文与叙事标记、工具调用、截断（`stop: max_tokens`）、错误（`error: rate_limited`）、首字延迟；
 `ooc:` 段是玩家场外发言时的回应，`compact:` 段是上下文整理时依次使用的回复（先写记忆、再给摘要；内置的 `demo` 脚本都有示例）。
+`operations:` 按用途（如 `rewrite`、`choices`）列出响应序列，每个存档分别计数，耗尽后沿用最后一项。
+响应设置 `wait_for_cancel: true` 时在正文输出后等待取消，不发工具与结束事件；可用于验证刷新后恢复与停止操作。
 正文与工具参数中的字符串都可以写 `{{input}}`（换成玩家最近一次输入），方便每回合写入不同的记忆。
 
 ### 3.4 上下文整理与分支
