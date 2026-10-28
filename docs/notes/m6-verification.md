@@ -36,7 +36,6 @@
 - `aint-work` 技能校验、公开 Markdown 的本地链接与标题锚点检查通过。
 - GoReleaser 配置检查与六平台 snapshot 构建通过；核对每份包中的使用说明、创作指南、完整技能、10 个 Schema、两部示例 zip 和 SHA-256。发布包只包含《倒悬的街角》与《第一个故事》。
 - Windows/amd64 包：静态页面、初始书架、三个开场建档，以及创作教程中的 init → validate → prompt → pack → zip 校验通过。
-- 浏览器全量 33 项中 32 项通过。mobile 的 `operations.spec.ts` 在补选项后的刷新步骤未显示选项；独立重跑时停在生成式开场后的回合菜单入口。复现：在 `web/` 执行 `pnpm exec playwright test operations.spec.ts --project mobile`。追踪写入 `web/test-results/`，记为 K14，修复工作归 M5-12。
-- K14 诊断：在 mobile、desktop 延后首次时间线响应到 `turn.committed` 之后，均得到后端 1 个回合、页面已提交列表为空、时间线只请求 1 次。`useReaderSession` 的失效刷新复用了尚无缓存的首次请求；旧响应随后写入，时间线以 `staleTime: Infinity` 保持该结果。修复应覆盖首次查询与提交事件交错，以及补选项期间刷新页面的情况。
+- 浏览器全量 36 项通过，包含内嵌作品三种视口、开场、回合操作、导入与访问控制。K14 的时间线加载竞态修复及受控延迟回归见 [M5 验证](m5-verification.md#时间线同步验收2026-10-28)。
 
 本次验证使用假模型，未进行真实模型调用。M6-7 的内容定稿与真实试玩、M6-11 的其他系统运行和发布候选版验收待做。

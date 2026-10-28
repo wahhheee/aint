@@ -25,6 +25,15 @@ export function useReaderSession(saveId: string) {
     const { reset, dispatch, setConnection } = useReader.getState()
     reset(saveId)
     let initialized = false
+
+    // 存档查询键包含时间线、面板、记忆与用量。取消事件前的请求，使首次查询也重新读取当前状态。
+    const refreshSave = async (resetTimeline = false) => {
+      const filters = { queryKey: qk.save(saveId) }
+      await qc.cancelQueries(filters)
+      if (resetTimeline) void qc.resetQueries({ queryKey: qk.timeline(saveId) })
+      await qc.invalidateQueries(filters)
+    }
+
     return openEventStream(`/saves/${saveId}/events`, {
       onStatus: (status) => setConnection(status === 'open' && !initialized ? 'connecting' : status),
       onResync: () => {
@@ -37,31 +46,22 @@ export function useReaderSession(saveId: string) {
           case 'session.snapshot':
             initialized = true
             setConnection('open')
-            void qc.invalidateQueries({ queryKey: qk.save(saveId) })
+            void refreshSave()
             void qc.invalidateQueries({ queryKey: qk.recentSaves })
             break
           case 'turn.committed':
-            void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.save(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.usage(saveId) })
+            void refreshSave()
             void qc.invalidateQueries({ queryKey: qk.recentSaves })
-            void qc.invalidateQueries({ queryKey: qk.memory(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.tree(saveId) })
             break
           case 'turn.failed':
-            void qc.invalidateQueries({ queryKey: qk.save(saveId) })
+            void refreshSave()
             break
           case 'panels':
             qc.setQueryData(qk.panels(saveId), { panels: ev.data.panels })
             break
           case 'timeline.changed':
           case 'compaction.done':
-            if (ev.type === 'timeline.changed' && ev.data.reason === 'opening') void qc.resetQueries({ queryKey: qk.timeline(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.usage(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.save(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.memory(saveId) })
-            void qc.invalidateQueries({ queryKey: qk.tree(saveId) })
+            void refreshSave(ev.type === 'timeline.changed' && ev.data.reason === 'opening')
             void qc.invalidateQueries({ queryKey: qk.recentSaves })
             break
           case 'compaction.failed':

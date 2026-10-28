@@ -1,4 +1,47 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+import type { Timeline } from '../src/api/types'
+
+/** 暂存提交前的时间线响应，直到页面已显示最新提交，再让旧响应到达。 */
+async function delayOldTimeline(page: Page, isOld: (timeline: Timeline) => boolean) {
+  const released = Promise.withResolvers<void>()
+  let held = 0
+  await page.route('**/api/v1/saves/*/timeline?*', async (route) => {
+    const response = await route.fetch()
+    if (isOld(await response.json())) {
+      held++
+      await released.promise
+    }
+    await route.fulfill({ response })
+  })
+  return {
+    held: () => held,
+    release: async () => {
+      released.resolve()
+      await page.unrouteAll({ behavior: 'wait' })
+    },
+  }
+}
+
+test('开场提交期间首次时间线仍在加载时显示回合菜单', async ({ page, request }) => {
+  await request.patch('/api/v1/settings', { data: { reading: { typewriter: 'instant' }, theme: 'light', onboarded: true } })
+  const created = await request.post('/api/v1/saves', { data: { work_id: 'aint.first-story' } })
+  expect(created.ok()).toBeTruthy()
+  const save = await created.json()
+  const delayed = await delayOldTimeline(page, (timeline) => timeline.nodes.length === 0)
+  try {
+    await page.goto(`/play/${save.id}`)
+    await expect.poll(delayed.held).toBeGreaterThan(0)
+    const turn = page.locator('[data-turn]')
+    await expect(turn).toHaveCount(1)
+    await expect(turn.getByRole('button', { name: '回合操作', exact: true })).toBeEnabled()
+    await delayed.release()
+    await turn.getByRole('button', { name: '回合操作', exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: '按要求重写', exact: true })).toBeVisible()
+  } finally {
+    await delayed.release()
+  }
+})
 
 test('重写原位替换、刷新后取消恢复、补选项与选择续写', async ({ page, request }, info) => {
   await request.patch('/api/v1/settings', { data: { reading: { typewriter: 'instant' }, theme: 'light', onboarded: true } })
@@ -33,10 +76,20 @@ test('重写原位替换、刷新后取消恢复、补选项与选择续写', as
   await input.fill('/choices')
   await page.getByRole('button', { name: '发送', exact: true }).click()
   await expect(page.getByText('正在生成选项', { exact: false })).toBeVisible()
-  await page.reload()
-  await expect(page.locator('.prose-book').filter({ hasText: '那封信还在口袋里' })).toHaveCount(1)
   const choice = page.locator('article button').filter({ hasText: '走近那盏灯' }).last()
-  await expect(choice).toBeVisible()
+  const delayed = await delayOldTimeline(
+    page,
+    (timeline) =>
+      !timeline.nodes.some((node) => node.display.some((item) => item.t === 'choices' && item.items.some((c) => c.label === '走近那盏灯'))),
+  )
+  try {
+    await page.reload()
+    await expect.poll(delayed.held).toBeGreaterThan(0)
+    await expect(choice).toBeVisible()
+  } finally {
+    await delayed.release()
+  }
+  await expect(page.locator('.prose-book').filter({ hasText: '那封信还在口袋里' })).toHaveCount(1)
   await expect(page.locator('[data-turn]')).toHaveCount(1)
   await expect(page.getByText('好的，我来生成选项。', { exact: false })).toHaveCount(0)
   const after = await request.get(`/api/v1/saves/${save.id}/state`).then((r) => r.json())
