@@ -4,6 +4,8 @@ AINT 在本机运行，浏览器用于阅读与设置。首次运行自动导入
 
 ## 选择与启动
 
+目前仅验证 Windows 平台的实际运行，具体为 Windows/amd64；Windows/arm64、macOS 和 Linux 的实际运行待验证。
+
 Windows 选择 `windows`，macOS 选择 `darwin`，Linux 选择 `linux`；Intel / AMD 常见电脑使用 `amd64`，Apple 芯片与 ARM 设备使用 `arm64`。
 
 解压到可写的普通目录。Windows 双击 `aint.exe`，或在 PowerShell 运行 `./aint.exe`。macOS / Linux 在终端进入解压目录后运行 `./aint`，必要时先执行 `chmod +x aint`。程序会打开浏览器；没有自动打开时访问终端显示的地址。关闭终端或按 Ctrl+C 停止服务。
@@ -58,6 +60,8 @@ SHA-256 校验和在发布页的 `checksums.txt`。Windows 可用 `Get-FileHash 
 两个操作都需要当前存档没有生成或整理任务。多页面使用时，目标回合与当前进度同时校验；旧页面的请求会被拒绝并重新同步。
 
 ## 数据与升级
+
+当前版本暂不支持程序自动更新和存档导出。更新程序需手动下载发布包；备份存档需停止 AINT 后复制完整数据目录。
 
 数据默认存放在可执行文件旁的 `aint-data/`，也可以通过 `serve --data <目录>` 指定。设置页「存储」可查看实际路径。这里包含模型密钥、访问密码记录、作品和存档。数据目录放在本机磁盘；备份时先停止 AINT，再复制完整目录。分享作品使用导出 zip。
 

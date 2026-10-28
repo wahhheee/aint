@@ -3,6 +3,7 @@
 | 读者与任务 | 文档 |
 | --- | --- |
 | 安装、配置模型、游玩和备份 | [使用说明](usage.md) |
+| 首个预览版的内容、下载与验证范围 | [v0.1.0-alpha.1 发布说明](releases/v0.1.0-alpha.1.md) |
 | 创建作品、试玩、打包和更新 | [创作指南](authoring.md) |
 | 查作品字段、默认值、模板和校验规则 | [格式参考](../skills/aint-work/references/format.md) |
 | 让 AI 助手创作作品 | [aint-work 技能](../skills/aint-work/SKILL.md) |

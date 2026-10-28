@@ -8,6 +8,8 @@ AINT 是在本机运行的 AI 互动小说运行时。玩家导入作品，配�
 
 **当前为开发预览。** 已支持 Anthropic Messages、OpenAI Responses、Gemini 三种协议，作品导入与更新、开发目录、分支、重写、音频、用量与费用、调试检查器和访问密码。后续工作包括长篇真实模型评测、示例定稿和发布候选版验收，见[项目进度](docs/progress.md)。
 
+目前仅验证 Windows 平台的实际运行，具体为 Windows/amd64；其他平台与架构的实际运行待验证。当前版本暂不支持程序自动更新和存档导出。版本内容与下载说明见 [v0.1.0-alpha.1 发布说明](docs/releases/v0.1.0-alpha.1.md)。
+
 ## 开始使用
 
 从[发布页](https://github.com/wahhheee/aint/releases)选择对应系统与处理器的压缩包，解压后运行 `aint.exe`（Windows）或 `./aint`（macOS / Linux）。浏览器打开后，在「设置 → 模型」中添加供应商并设为主笔，再从书架开启存档。

@@ -42,7 +42,8 @@
 - 假模型操作响应按存档与用途依次执行。取消用例输出一段正文后等待取消；测试在正文出现后刷新，核对草稿恢复并停止，再执行下一次成功重写。
 - 时间线用例在操作前保存快照，暂存下次导航的首次查询，显示最新状态后返回旧快照；提交以 HTTP 202 为同步点。
 - `task check` 通过（Go 全量、静态检查、前端 443 项），假模型 `-race` 测试通过；浏览器全量 36 项通过，每次导航额外延迟 2 秒的专项 6 项通过。
-- 同次 CI 的 [macOS 作业](https://github.com/wahhheee/aint/actions/runs/40716719334/job/122916293553) 因 GitHub 托管 macOS ARM 运行器容量不足，排队约 15 分钟后取消，未取得运行器。Windows / Linux Go 测试、静态检查、前端检查及六平台编译通过。远端 CI 待本次修正推送后复验。
+- 同次 CI 的 [macOS 作业](https://github.com/wahhheee/aint/actions/runs/40716719334/job/122916293553) 因 GitHub 托管 macOS ARM 运行器容量不足，排队约 15 分钟后取消，未取得运行器。Windows / Linux Go 测试、静态检查、前端检查及六平台编译通过。
+- 修正提交 `87bd067` 的 [CI 复验](https://github.com/wahhheee/aint/actions/runs/40724280632) 全部通过，包含三个操作系统的 Go 测试、静态检查、前端检查、浏览器回归和六平台编译。
 
 ## 命令与产物
 
