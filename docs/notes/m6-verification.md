@@ -48,3 +48,10 @@
 - Windows/amd64 程序报告版本 `0.1.0-alpha.1`、提交 `f85923f8530a`。使用独立临时数据目录验证静态页面与资源、初始书架、《倒悬的街角》三个开场建档，以及《第一个故事》假模型开场正文和选项，均通过。
 - 创作命令 init → validate → prompt → pack → zip 校验通过；随包的《倒悬的街角》《第一个故事》zip 校验通过。
 - 实际运行验证仅覆盖 Windows/amd64；Windows/arm64、macOS 和 Linux 的实际运行待验证。本次发布包验证未调用真实模型。M6-11 保持部分完成。
+
+## 2026-10-29 alpha.2 发布记录
+
+- [v0.1.0-alpha.2](https://github.com/wahhheee/aint/releases/tag/v0.1.0-alpha.2) 已发布为 Pre-release，标签对应 `6e24ef124910b26a48536d64934cf2b8a3869a4e`。
+- [CI](https://github.com/wahhheee/aint/actions/runs/40817159353) 全部通过，包括三平台 Go 测试、静态检查、前端 443 项测试、42 项浏览器测试和六平台交叉编译；[标签发布构建](https://github.com/wahhheee/aint/actions/runs/40817170167) 通过。
+- 发布正文包含上下文档位、费用确认、默认值、窄屏布局与更新下载说明。
+- 本次发布包未完成本地运行验收。已有 Windows/amd64 发布包运行验收覆盖 alpha.1；M6-11 保持部分完成。
