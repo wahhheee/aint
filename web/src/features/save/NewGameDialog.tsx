@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router'
 import { errorMessage, isApiError } from '@/api/errors'
 import { useCreateSave, useModels, useProviders, useSettings } from '@/api/queries'
 import type { FormField, Pace, Reasoning, SaveSettings, WorkDetail } from '@/api/types'
+import { confirmContextBudget } from '@/lib/confirmContextBudget'
 import { modelLabel } from '@/lib/modelLabel'
 import { AdvancedPlaySettings } from './AdvancedPlaySettings'
 import { OpeningSelect } from './OpeningSelect'
@@ -53,6 +54,8 @@ export function NewGameDialog({ work, open, onOpenChange }: Props) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    const budget = advanced.context_budget || settings.data?.context.budget || 0
+    if (!(await confirmContextBudget(budget, settings.data?.context.budget))) return
     if (helpers && !settings.data?.play.helpers && !(await confirmAction(t('background.helperCost')))) return
     create.mutate(
       {

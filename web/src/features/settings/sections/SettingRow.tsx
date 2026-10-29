@@ -3,7 +3,7 @@
  *
  *   SectionTitle    分区标题 + 一句说明
  *   SettingGroup    一组设置：可选的小标题 + 圆角容器，行与行之间是发丝线
- *     SettingRow    左侧名称与说明，右侧控件（控件宽度固定，数值变化不推动版面）
+ *     SettingRow    左侧名称与说明，右侧控件；窄屏时控件位于说明下方（控件宽度固定，数值变化不推动版面）
  */
 import type { ReactNode } from 'react'
 
@@ -45,7 +45,7 @@ export function SettingGroup({
 export function SettingRow({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-full sm:basis-0">
         <div className="text-sm leading-5 text-ink">{label}</div>
         {hint && <div className="mt-0.5 text-xs leading-5 text-ink-faint">{hint}</div>}
       </div>

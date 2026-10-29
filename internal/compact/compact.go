@@ -35,7 +35,7 @@ const (
 
 // DefaultParams 是默认整理参数。
 var DefaultParams = Params{
-	ReserveMin: 8_000, ReserveRatio: 0.05, Budget: 128_000, KeepRecent: 12_000,
+	ReserveMin: 8_000, ReserveRatio: 0.05, Budget: 256_000, KeepRecent: 24_000,
 	SummaryTarget: 3_000, SummaryMax: 6_000, FlushMaxCalls: 8, Mode: ModeInline,
 }
 

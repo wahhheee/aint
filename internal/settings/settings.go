@@ -92,7 +92,7 @@ func Defaults() Settings {
 		},
 		Audio:   Audio{Master: 0.6, BGM: 1, SFX: 1},
 		Play:    Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "off"},
-		Context: Context{Budget: 128_000, KeepRecent: 12_000, Mode: "inline"},
+		Context: Context{Budget: 256_000, KeepRecent: 24_000, Mode: "inline"},
 		Models:  ModelRoles{},
 	}
 }

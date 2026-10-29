@@ -9,7 +9,7 @@ func TestThreshold(t *testing.T) {
 		t.Fatalf("128k 窗口的阈值 = %d", got)
 	}
 	// 大窗口：受预算限制
-	if got := p.Threshold(1_000_000, 32_000); got != 128_000 {
+	if got := p.Threshold(1_000_000, 32_000); got != 256_000 {
 		t.Fatalf("1M 窗口的阈值 = %d", got)
 	}
 	if got := p.With(20_000, 0, "").Threshold(200_000, 32_000); got != 20_000 {

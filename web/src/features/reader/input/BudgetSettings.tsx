@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch'
 import { AdvancedPlaySettings } from '@/features/save/AdvancedPlaySettings'
 import { useSaveSettings } from '@/features/save/useSaveSettings'
+import { confirmContextBudget } from '@/lib/confirmContextBudget'
 
 /** 预算与后台助手独立于模型选择，篇幅由输入栏直接设置。 */
 export function BudgetSettings({ save }: { save: Save }) {
@@ -49,6 +50,9 @@ function BudgetSettingsForm({ save, onDone }: { save: Save; onDone: () => void }
   const value = { ...save.settings, ...patch }
   const { update, disabled } = useSaveSettings(save.id, onDone)
   const submit = async () => {
+    const budget = value.context_budget || global.data?.context.budget || 0
+    const currentBudget = save.settings.context_budget || global.data?.context.budget
+    if (!(await confirmContextBudget(budget, currentBudget))) return
     if (value.helpers && !save.settings.helpers && !(await confirmAction(t('background.helperCost')))) return
     update.mutate(patch)
   }

@@ -44,7 +44,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title={t('settings.title')} />
-      <div className="grid gap-8 lg:grid-cols-[184px_minmax(0,680px)] lg:gap-14">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[184px_minmax(0,680px)] lg:gap-14">
         <nav aria-label={t('settings.title')} className="lg:sticky lg:top-10 lg:self-start">
           <ul className="no-scrollbar -mx-5 flex gap-1 overflow-x-auto px-5 sm:-mx-8 sm:px-8 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
             {SECTIONS.map((s) => {

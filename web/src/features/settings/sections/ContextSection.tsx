@@ -8,12 +8,13 @@ import type { ContextSettings } from '@/api/types'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { confirmContextBudget } from '@/lib/confirmContextBudget'
 import { formatTokens } from '@/lib/format'
 
 import { SectionTitle, SettingGroup, SettingRow } from './SettingRow'
 
-const BUDGETS = [32_000, 64_000, 128_000, 256_000]
-const KEEPS = [6_000, 12_000, 24_000]
+const BUDGETS = [32_000, 64_000, 128_000, 256_000, 512_000]
+const KEEPS = [6_000, 12_000, 24_000, 48_000]
 
 export function ContextSection() {
   const { t } = useTranslation()
@@ -25,12 +26,25 @@ export function ContextSection() {
   const ctx = data.context
   const lightModel = models.data?.find((m) => m.id === data.models.light)
   const patch = (c: Partial<ContextSettings>) => update.mutate({ context: c })
+  const changeTokens = async (key: 'budget' | 'keep_recent', value: string) => {
+    if (!value) return
+    const next = Number(value)
+    if (key === 'budget' && !(await confirmContextBudget(next, ctx.budget))) return
+    patch({ [key]: next })
+  }
 
   const tokens = (key: 'budget' | 'keep_recent', values: number[]) => (
-    <ToggleGroup type="single" variant="segmented" value={String(ctx[key])} onValueChange={(v) => v && patch({ [key]: Number(v) })}>
+    <ToggleGroup
+      type="single"
+      variant="segmented"
+      aria-label={t(key === 'budget' ? 'settings.context.budget' : 'settings.context.keepRecent')}
+      value={String(ctx[key])}
+      disabled={update.isPending}
+      onValueChange={(v) => void changeTokens(key, v)}
+    >
       {/* 当前值不在预设里时（直接改过设置）也显示出来 */}
       {(values.includes(ctx[key]) ? values : [...values, ctx[key]].sort((a, b) => a - b)).map((v) => (
-        <ToggleGroupItem key={v} value={String(v)} className="tabular">
+        <ToggleGroupItem key={v} value={String(v)} className="tabular px-2 sm:px-3">
           {formatTokens(v)}
         </ToggleGroupItem>
       ))}
