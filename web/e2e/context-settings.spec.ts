@@ -95,12 +95,17 @@ test('开局与游玩保存高预算前确认费用，取消保留表单', async
   const id = page.url().split('/').at(-1)!
   const savedBudget = async () => (await request.get(`/api/v1/saves/${id}`).then((r) => r.json())).save.settings.context_budget
   expect(await savedBudget()).toBe(512000)
+  // 延迟设置写入，确认框关闭后仍须等待保存完成。
+  await page.route(`**/api/v1/saves/${id}`, async (route) => {
+    if (route.request().method() === 'PATCH') await new Promise((resolve) => setTimeout(resolve, 300))
+    await route.continue()
+  })
 
   await page.getByRole('button', { name: '上下文与成本', exact: true }).click()
   await budget.fill('256000')
   await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect.poll(savedBudget).toBe(256000)
   await expect(budget).toHaveCount(0)
-  expect(await savedBudget()).toBe(256000)
 
   await page.getByRole('button', { name: '上下文与成本', exact: true }).click()
   await budget.fill('512000')
@@ -112,8 +117,9 @@ test('开局与游玩保存高预算前确认费用，取消保留表单', async
   expect(await savedBudget()).toBe(256000)
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await confirm.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(confirm).toHaveCount(0)
+  await expect.poll(savedBudget).toBe(512000)
   await expect(budget).toHaveCount(0)
-  expect(await savedBudget()).toBe(512000)
 
   await page.getByRole('button', { name: '上下文与成本', exact: true }).click()
   await page.getByRole('spinbutton', { name: '保留原文（token）', exact: true }).fill('48000')
