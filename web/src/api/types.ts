@@ -592,10 +592,17 @@ export interface PanelRender {
 
 // ---------------------------------------------------------------- 模型
 
-export type Protocol = 'openai-responses' | 'anthropic' | 'gemini' | 'fake'
+export type Protocol = 'openai-responses' | 'anthropic' | 'gemini' | 'vertex' | 'fake'
+
+export interface VertexOptions {
+  project?: string
+  location?: string
+  auth_mode?: 'api_key' | 'access_token' | 'service_account'
+}
 
 /** provider.ProviderView（密钥只给掩码） */
 export interface ProviderView {
+  options?: VertexOptions
   id: string
   name: string
   protocol: Protocol
@@ -612,6 +619,7 @@ export interface ProviderView {
 
 /** provider.ProviderInput：修改时省略的字段保持不变（api_key 为空表示不改密钥） */
 export interface ProviderInput {
+  options?: VertexOptions
   name?: string
   protocol?: Protocol
   base_url?: string

@@ -14,6 +14,7 @@ const (
 	ProtocolOpenAIResponses Protocol = "openai-responses"
 	ProtocolAnthropic       Protocol = "anthropic"
 	ProtocolGemini          Protocol = "gemini"
+	ProtocolVertex          Protocol = "vertex"
 	ProtocolFake            Protocol = "fake" // 脚本化假模型：测试、演示、--fake-llm
 )
 

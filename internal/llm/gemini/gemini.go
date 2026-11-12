@@ -27,6 +27,7 @@ import (
 
 	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/llm/wire"
+	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/jsonx"
 )
 
@@ -41,8 +42,11 @@ const synthPrefix = "gsyn_"
 
 // Provider 是 Gemini 适配器。
 type Provider struct {
-	cfg llm.ProviderConfig
-	ep  *wire.Endpoint
+	cfg         llm.ProviderConfig
+	ep          *wire.Endpoint
+	protocol    llm.Protocol
+	modelPrefix string
+	accessToken func(context.Context) (string, error)
 }
 
 // New 创建适配器。
@@ -55,10 +59,10 @@ func New(cfg llm.ProviderConfig) *Provider {
 	auth.Set("X-Goog-Api-Key", cfg.APIKey)
 	ep := wire.NewEndpoint(llm.ProtocolGemini, wire.TrimVersion(base, "v1beta", "v1"), auth, cfg.Headers, cfg.HTTP, cfg.TraceDir)
 	ep.Classify = classify
-	return &Provider{cfg: cfg, ep: ep}
+	return &Provider{cfg: cfg, ep: ep, protocol: llm.ProtocolGemini, modelPrefix: "/v1beta/models/"}
 }
 
-func (p *Provider) Protocol() llm.Protocol { return llm.ProtocolGemini }
+func (p *Provider) Protocol() llm.Protocol { return p.protocol }
 
 // Stream 发起一次流式调用。
 func (p *Provider) Stream(ctx context.Context, m *llm.Model, req *llm.Request) (llm.Stream, error) {
@@ -66,16 +70,28 @@ func (p *Provider) Stream(ctx context.Context, m *llm.Model, req *llm.Request) (
 	if err != nil {
 		return nil, err
 	}
-	path := "/v1beta/models/" + wire.PathEscape(m.Name) + ":streamGenerateContent?alt=sse"
-	rc, err := p.ep.PostStream(ctx, path, body, wire.Call{Purpose: req.Purpose, Model: m.Name})
+	path := p.modelPrefix + wire.PathEscape(m.Name) + ":streamGenerateContent?alt=sse"
+	ep := *p.ep
+	if p.accessToken != nil {
+		token, tokenErr := p.accessToken(ctx)
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		ep.Header = p.ep.Header.Clone()
+		ep.Header.Set("Authorization", "Bearer "+token)
+	}
+	rc, err := ep.PostStream(ctx, path, body, wire.Call{Purpose: req.Purpose, Model: m.Name})
 	if err != nil {
 		return nil, err
 	}
-	return newStream(ctx, rc, llm.NativeKey(llm.ProtocolGemini, m.Name)), nil
+	return newStream(ctx, rc, llm.NativeKey(p.Protocol(), m.Name)), nil
 }
 
 // ListModels 拉取模型列表（GET /v1beta/models）。
 func (p *Provider) ListModels(ctx context.Context) ([]llm.RemoteModel, error) {
+	if p.Protocol() == llm.ProtocolVertex {
+		return nil, errs.NotImplemented("Vertex AI 请手动填写 Gemini 模型 ID")
+	}
 	var out struct {
 		Models []struct {
 			Name        string `json:"name"`
@@ -173,7 +189,7 @@ type functionResponse struct {
 
 // Body 构建请求体（确定性 JSON）。导出供测试与前缀比对使用。
 func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]byte, error) {
-	key := llm.NativeKey(llm.ProtocolGemini, m.Name)
+	key := llm.NativeKey(p.Protocol(), m.Name)
 	out := request{SafetySettings: []safetySetting{
 		{Category: "HARM_CATEGORY_HARASSMENT", Threshold: "OFF"},
 		{Category: "HARM_CATEGORY_HATE_SPEECH", Threshold: "OFF"},
@@ -182,6 +198,9 @@ func (p *Provider) Body(ctx context.Context, m *llm.Model, req *llm.Request) ([]
 		{Category: "HARM_CATEGORY_CIVIC_INTEGRITY", Threshold: "OFF"},
 		{Category: "HARM_CATEGORY_JAILBREAK", Threshold: "OFF"},
 	}}
+	if p.Protocol() == llm.ProtocolVertex {
+		out.SafetySettings = out.SafetySettings[:4]
+	}
 	var sys content
 	for _, s := range req.System {
 		if s.Text != "" {

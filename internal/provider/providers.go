@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/wahhheee/aint/internal/llm"
+	"github.com/wahhheee/aint/internal/llm/gemini"
 	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/ids"
 	"github.com/wahhheee/aint/internal/pkg/jsonx"
@@ -17,13 +18,14 @@ import (
 
 // ProviderView 是前端看到的供应商（密钥只给掩码）。
 type ProviderView struct {
-	ID              string            `json:"id"`
-	Name            string            `json:"name"`
-	Protocol        llm.Protocol      `json:"protocol"`
-	BaseURL         string            `json:"base_url"`
-	Headers         map[string]string `json:"headers,omitzero"`
-	KeyMasked       string            `json:"key_masked"`
-	PriceMultiplier float64           `json:"price_multiplier"`
+	Options         *gemini.VertexOptions `json:"options,omitzero"`
+	ID              string                `json:"id"`
+	Name            string                `json:"name"`
+	Protocol        llm.Protocol          `json:"protocol"`
+	BaseURL         string                `json:"base_url"`
+	Headers         map[string]string     `json:"headers,omitzero"`
+	KeyMasked       string                `json:"key_masked"`
+	PriceMultiplier float64               `json:"price_multiplier"`
 	// TestOK 是最近一次连接测试的结果；为空表示还没测试过。
 	TestOK    *bool  `json:"test_ok,omitzero"`
 	TestedAt  *int64 `json:"tested_at,omitzero"`
@@ -32,12 +34,13 @@ type ProviderView struct {
 
 // ProviderInput 是添加或修改供应商的输入。修改时为空的字段保持不变（APIKey 为空表示不改密钥）。
 type ProviderInput struct {
-	Name            string            `json:"name,omitzero"`
-	Protocol        llm.Protocol      `json:"protocol,omitzero"`
-	BaseURL         string            `json:"base_url,omitzero"`
-	APIKey          string            `json:"api_key,omitzero"`
-	Headers         map[string]string `json:"headers,omitzero"`
-	PriceMultiplier float64           `json:"price_multiplier,omitzero"`
+	Options         *gemini.VertexOptions `json:"options,omitzero"`
+	Name            string                `json:"name,omitzero"`
+	Protocol        llm.Protocol          `json:"protocol,omitzero"`
+	BaseURL         string                `json:"base_url,omitzero"`
+	APIKey          string                `json:"api_key,omitzero"`
+	Headers         map[string]string     `json:"headers,omitzero"`
+	PriceMultiplier float64               `json:"price_multiplier,omitzero"`
 }
 
 // authHeaders 是不允许写在额外请求头里的头（密钥只放 API Key，存 secrets.json）。
@@ -45,17 +48,20 @@ var authHeaders = map[string]bool{"authorization": true, "x-api-key": true, "x-g
 
 func secretKey(providerID string) string { return "provider:" + providerID }
 
-const providerColumns = `id, name, protocol, base_url, COALESCE(headers, '{}'), secret_ref, price_multiplier, test_ok, tested_at, created_at`
+const providerColumns = `id, name, protocol, base_url, COALESCE(headers, '{}'), secret_ref, price_multiplier, test_ok, tested_at, created_at, COALESCE(options, 'null')`
 
 func (s *Service) scanProvider(row interface{ Scan(...any) error }) (ProviderView, string, error) {
 	var v ProviderView
-	var headers, ref string
+	var headers, ref, options string
 	var ok sql.NullBool
 	var at sql.NullInt64
-	if err := row.Scan(&v.ID, &v.Name, &v.Protocol, &v.BaseURL, &headers, &ref, &v.PriceMultiplier, &ok, &at, &v.CreatedAt); err != nil {
+	if err := row.Scan(&v.ID, &v.Name, &v.Protocol, &v.BaseURL, &headers, &ref, &v.PriceMultiplier, &ok, &at, &v.CreatedAt, &options); err != nil {
 		return v, "", err
 	}
 	_ = jsonx.Unmarshal([]byte(headers), &v.Headers)
+	if err := jsonx.Unmarshal([]byte(options), &v.Options); err != nil {
+		return v, "", err
+	}
 	if len(v.Headers) == 0 {
 		v.Headers = nil
 	}
@@ -117,6 +123,9 @@ func (s *Service) Create(ctx context.Context, in ProviderInput) (ProviderView, e
 	if err := validateProvider(in); err != nil {
 		return ProviderView{}, err
 	}
+	if err := validateVertex(in, in.APIKey); err != nil {
+		return ProviderView{}, err
+	}
 	id := ids.New()
 	ref := secretKey(id)
 	if err := s.secrets.Set(ref, in.APIKey); err != nil {
@@ -126,8 +135,8 @@ func (s *Service) Create(ctx context.Context, in ProviderInput) (ProviderView, e
 	if err != nil {
 		return ProviderView{}, err
 	}
-	err = s.exec(ctx, `INSERT INTO providers (id, name, protocol, base_url, headers, secret_ref, price_multiplier, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, in.Name, in.Protocol, strings.TrimRight(in.BaseURL, "/"), string(headers), ref, in.PriceMultiplier, store.NowMillis())
+	err = s.exec(ctx, `INSERT INTO providers (id, name, protocol, base_url, headers, secret_ref, price_multiplier, created_at, options)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, in.Name, in.Protocol, strings.TrimRight(in.BaseURL, "/"), string(headers), ref, in.PriceMultiplier, store.NowMillis(), string(jsonx.MustMarshal(in.Options)))
 	if err != nil {
 		_ = s.secrets.Delete(ref)
 		return ProviderView{}, err
@@ -147,7 +156,10 @@ func (s *Service) Update(ctx context.Context, id string, in ProviderInput) (Prov
 	if in.Protocol != "" && in.Protocol != cur.Protocol {
 		return cur, errs.Invalid("协议不能修改；请另外添加一个供应商")
 	}
-	next := ProviderInput{Name: cur.Name, Protocol: cur.Protocol, BaseURL: cur.BaseURL, Headers: cur.Headers, PriceMultiplier: cur.PriceMultiplier}
+	next := ProviderInput{Name: cur.Name, Protocol: cur.Protocol, BaseURL: cur.BaseURL, Headers: cur.Headers, PriceMultiplier: cur.PriceMultiplier, Options: cur.Options}
+	if in.Options != nil {
+		next.Options = in.Options
+	}
 	if in.Name != "" {
 		next.Name = strings.TrimSpace(in.Name)
 	}
@@ -163,6 +175,28 @@ func (s *Service) Update(ctx context.Context, id string, in ProviderInput) (Prov
 	if err := validateProvider(next); err != nil {
 		return cur, err
 	}
+	key := strings.TrimSpace(in.APIKey)
+	if next.Protocol == llm.ProtocolVertex {
+		oldMode, newMode := "api_key", "api_key"
+		if cur.Options != nil && cur.Options.AuthMode != "" {
+			oldMode = cur.Options.AuthMode
+		}
+		if next.Options != nil && next.Options.AuthMode != "" {
+			newMode = next.Options.AuthMode
+		}
+		if oldMode != newMode && key == "" {
+			return cur, errs.Invalid("切换 Vertex AI 认证方式时请填写对应的新凭据")
+		}
+		if key == "" {
+			key, err = s.secrets.Resolve(ref)
+			if err != nil {
+				return cur, err
+			}
+		}
+		if err := validateVertex(next, key); err != nil {
+			return cur, err
+		}
+	}
 	if key := strings.TrimSpace(in.APIKey); key != "" {
 		if strings.HasPrefix(ref, "env:") { // 手动输入的密钥存入 secrets.json，使用供应商专属引用
 			ref = secretKey(id)
@@ -175,8 +209,8 @@ func (s *Service) Update(ctx context.Context, id string, in ProviderInput) (Prov
 	if err != nil {
 		return cur, err
 	}
-	err = s.exec(ctx, `UPDATE providers SET name = ?, base_url = ?, headers = ?, secret_ref = ?, price_multiplier = ?,
-		test_ok = NULL, tested_at = NULL WHERE id = ?`, next.Name, strings.TrimRight(next.BaseURL, "/"), string(headers), ref, next.PriceMultiplier, id)
+	err = s.exec(ctx, `UPDATE providers SET name = ?, base_url = ?, headers = ?, secret_ref = ?, price_multiplier = ?, options = ?,
+		test_ok = NULL, tested_at = NULL WHERE id = ?`, next.Name, strings.TrimRight(next.BaseURL, "/"), string(headers), ref, next.PriceMultiplier, string(jsonx.MustMarshal(next.Options)), id)
 	if err != nil {
 		return cur, err
 	}
@@ -230,6 +264,14 @@ func validateProvider(in ProviderInput) error {
 	return nil
 }
 
+func validateVertex(in ProviderInput, key string) error {
+	if in.Protocol != llm.ProtocolVertex {
+		return nil
+	}
+	_, err := gemini.NewVertex(llm.ProviderConfig{BaseURL: in.BaseURL, APIKey: key, Options: jsonx.MustMarshal(in.Options)})
+	return err
+}
+
 // loadProvider 读取适配器配置（含解析后的密钥）与价格倍率。
 func (s *Service) loadProvider(ctx context.Context, id string) (llm.ProviderConfig, float64, error) {
 	v, ref, err := s.scanProvider(s.db.Read().QueryRowContext(ctx, `SELECT `+providerColumns+` FROM providers WHERE id = ?`, id))
@@ -239,7 +281,7 @@ func (s *Service) loadProvider(ctx context.Context, id string) (llm.ProviderConf
 	if err != nil {
 		return llm.ProviderConfig{}, 0, err
 	}
-	cfg := llm.ProviderConfig{ID: v.ID, Name: v.Name, Protocol: v.Protocol, BaseURL: v.BaseURL, Headers: v.Headers}
+	cfg := llm.ProviderConfig{ID: v.ID, Name: v.Name, Protocol: v.Protocol, BaseURL: v.BaseURL, Headers: v.Headers, Options: jsonx.MustMarshal(v.Options)}
 	if cfg.APIKey, err = s.secrets.Resolve(ref); err != nil {
 		return cfg, 0, errs.Wrap(err, errs.CodeModelMissing, "供应商「%s」的 API Key 不可用", v.Name)
 	}

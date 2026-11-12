@@ -105,7 +105,7 @@ CREATE TABLE uploads (
 CREATE TABLE providers (
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL,
-  protocol   TEXT NOT NULL,              -- openai-responses | anthropic | gemini
+  protocol   TEXT NOT NULL,              -- openai-responses | anthropic | gemini | vertex
   base_url   TEXT NOT NULL,
   headers    TEXT,                       -- JSON：额外请求头（不含密钥）
   options    TEXT,                       -- JSON：协议级选项

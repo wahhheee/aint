@@ -570,7 +570,7 @@ const zhCN = {
       separate: '轻量模型',
     },
     providers: {
-      intro: 'AINT 不附带任何模型。连接一个你自己的模型服务，支持 OpenAI Responses、Anthropic 与 Gemini 三种协议。',
+      intro: 'AINT 不附带任何模型。连接一个你自己的模型服务，支持 OpenAI Responses、Anthropic、Gemini 与 Google Vertex AI。',
       add: '添加供应商',
       empty: '还没有连接任何模型服务。',
       services: '模型服务',
@@ -600,6 +600,18 @@ const zhCN = {
         'openai-responses': 'OpenAI 官方，以及兼容 Responses 接口的服务（如 DeepSeek）。',
         anthropic: 'Claude 官方，以及兼容 Messages 接口的服务（如 DeepSeek）。',
         gemini: 'Google Gemini（generateContent），以及兼容的中转服务。',
+        vertex: 'Google Vertex AI 的 Gemini 模型，支持 API Key、访问令牌与服务账号。',
+      },
+      vertex: {
+        auth: '认证方式',
+        apiKey: 'API Key（Express / 标准模式）',
+        accessToken: 'OAuth 访问令牌',
+        serviceAccount: '服务账号 JSON（自动刷新令牌）',
+        project: 'Google Cloud 项目 ID（Express 模式留空）',
+        location: '区域（如 global、us-central1）',
+        jsonPlaceholder: '粘贴完整的服务账号 JSON',
+        hint: '凭据填在上方 API Key 中。API Key 不填项目时使用 Express；服务账号可从 JSON 读取项目 ID。标准模式按区域选择官方端点，自定义 Base URL 按填写的地址使用。访问令牌过期后需手动更新。',
+        manualModels: 'Vertex AI 请手动填写 Gemini 模型 ID，如 gemini-3.8-flash；可用模型取决于项目与区域。',
       },
       form: {
         addTitle: '添加供应商',

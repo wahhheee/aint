@@ -136,6 +136,8 @@ func NewAdapter(cfg llm.ProviderConfig) (llm.Provider, error) {
 		return anthropic.New(cfg), nil
 	case llm.ProtocolGemini:
 		return gemini.New(cfg), nil
+	case llm.ProtocolVertex:
+		return gemini.NewVertex(cfg)
 	}
 	return nil, errs.Invalid("不支持的协议：%s", cfg.Protocol)
 }
@@ -149,6 +151,8 @@ func DefaultBaseURL(p llm.Protocol) string {
 		return anthropic.DefaultBaseURL
 	case llm.ProtocolGemini:
 		return gemini.DefaultBaseURL
+	case llm.ProtocolVertex:
+		return gemini.VertexBaseURL
 	}
 	return ""
 }

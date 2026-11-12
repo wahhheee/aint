@@ -122,6 +122,10 @@ var deepseekReasoning = map[llm.Protocol]map[string]string{
 
 // PresetFor 返回与模型名最匹配的预设（最长前缀）；没有匹配时 ok=false。返回的是副本，可以修改。
 func PresetFor(protocol llm.Protocol, model string) (Preset, bool) {
+	// Vertex AI 的 Gemini 模型使用相同的能力与推理参数；价格可在模型设置中修正。
+	if protocol == llm.ProtocolVertex {
+		protocol = llm.ProtocolGemini
+	}
 	best, found := Preset{}, false
 	for _, p := range Presets {
 		if p.Protocol != protocol && p.ReasoningBy[protocol] == nil {

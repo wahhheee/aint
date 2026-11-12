@@ -10,12 +10,14 @@ export const PROTOCOLS: { id: RealProtocol; label: string; baseUrl: string }[] =
   { id: 'anthropic', label: 'Anthropic Messages', baseUrl: 'https://api.anthropic.com' },
   { id: 'openai-responses', label: 'OpenAI Responses', baseUrl: 'https://api.openai.com/v1' },
   { id: 'gemini', label: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com' },
+  { id: 'vertex', label: 'Google Vertex AI', baseUrl: 'https://aiplatform.googleapis.com' },
 ]
 
 export const PROTOCOL_LABEL: Record<Protocol, string> = {
   'openai-responses': 'OpenAI Responses',
   anthropic: 'Anthropic Messages',
   gemini: 'Gemini',
+  vertex: 'Google Vertex AI',
   fake: '演示模型',
 }
 

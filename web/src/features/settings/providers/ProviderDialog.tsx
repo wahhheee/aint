@@ -16,13 +16,14 @@ import { useTranslation } from 'react-i18next'
 import { api } from '@/api/endpoints'
 import { errorMessage } from '@/api/errors'
 import { useModels, useProviderMutations, useSettings, useUpdateSettings } from '@/api/queries'
-import type { ProviderView } from '@/api/types'
+import type { ProviderView, VertexOptions } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
@@ -59,8 +60,10 @@ export function ProviderDialog({ open, onOpenChange, provider, step: initialStep
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent
+        className={cn('max-h-[90dvh] min-w-0 sm:max-w-lg', step === 'form' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto')}
+      >
+        <DialogHeader className="shrink-0">
           <DialogTitle className="title-book">{title}</DialogTitle>
           <DialogDescription className={cn(step !== 'pick' && 'sr-only')}>
             {step === 'pick' ? t('settings.providers.pick.desc') : title}
@@ -109,10 +112,14 @@ function ProviderForm({
   const [name, setName] = useState(provider?.name ?? '')
   const [baseUrl, setBaseUrl] = useState(provider?.base_url ?? defaultBaseUrl('anthropic'))
   const [apiKey, setApiKey] = useState('')
+  const [authMode, setAuthMode] = useState<VertexOptions['auth_mode']>(provider?.options?.auth_mode ?? 'api_key')
+  const [project, setProject] = useState(provider?.options?.project ?? '')
+  const [location, setLocation] = useState(provider?.options?.location ?? 'global')
   const [multiplier, setMultiplier] = useState(String(provider?.price_multiplier ?? 1))
   const [headers, setHeaders] = useState(formatHeaders(provider?.headers))
   const [localError, setLocalError] = useState('')
   const mutation = provider ? updateProvider : createProvider
+  const credentialsRequired = !provider || (protocol === 'vertex' && authMode !== (provider.options?.auth_mode ?? 'api_key'))
 
   const pickProtocol = (p: RealProtocol) => {
     // 还是上一个协议的默认地址时跟着换；用户改过就保留
@@ -127,7 +134,14 @@ function ProviderForm({
     const m = Number(multiplier)
     if (h === null) return setLocalError(t('settings.providers.form.headersHint'))
     if (!Number.isFinite(m) || m <= 0) return setLocalError(t('settings.providers.form.multiplierHint'))
-    const input = { name, base_url: baseUrl, api_key: apiKey || undefined, headers: h, price_multiplier: m }
+    const input = {
+      name,
+      base_url: baseUrl,
+      api_key: apiKey || undefined,
+      headers: h,
+      price_multiplier: m,
+      options: protocol === 'vertex' ? { auth_mode: authMode, project: project.trim(), location: location.trim() } : undefined,
+    }
     if (provider) {
       updateProvider.mutate({ id: provider.id, input }, { onSuccess: onSaved })
     } else {
@@ -136,96 +150,149 @@ function ProviderForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6">
-      <div className="space-y-2">
-        <Label>{t('settings.providers.form.protocol')}</Label>
-        <RadioGroup value={protocol} onValueChange={(v) => pickProtocol(v as RealProtocol)} disabled={!!provider} className="gap-2">
-          {PROTOCOLS.map((p) => (
-            <label
-              key={p.id}
-              className={cn(
-                'flex cursor-pointer items-start gap-3 rounded-xl border border-rule px-4 py-3 transition-colors has-[[data-state=checked]]:border-rule-strong has-[[data-state=checked]]:bg-selected',
-                provider && 'cursor-default opacity-70',
-              )}
-            >
-              <RadioGroupItem value={p.id} className="mt-0.5" />
-              <span className="min-w-0">
-                <span className="block text-sm text-ink">{p.label}</span>
-                <span className="mt-0.5 block text-xs leading-5 text-ink-faint">{t(`settings.providers.protocols.${p.id}`)}</span>
-              </span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
+    <form onSubmit={submit} className="flex min-h-0 min-w-0 flex-col gap-4">
+      <div className="min-h-0 min-w-0 space-y-6 overflow-x-hidden overflow-y-auto px-1 pb-1">
+        <div className="space-y-2">
+          <Label>{t('settings.providers.form.protocol')}</Label>
+          <RadioGroup value={protocol} onValueChange={(v) => pickProtocol(v as RealProtocol)} disabled={!!provider} className="gap-2">
+            {PROTOCOLS.map((p) => (
+              <label
+                key={p.id}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-xl border border-rule px-4 py-3 transition-colors has-[[data-state=checked]]:border-rule-strong has-[[data-state=checked]]:bg-selected',
+                  provider && 'cursor-default opacity-70',
+                )}
+              >
+                <RadioGroupItem value={p.id} className="mt-0.5" />
+                <span className="min-w-0">
+                  <span className="block text-sm text-ink">{p.label}</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-ink-faint">{t(`settings.providers.protocols.${p.id}`)}</span>
+                </span>
+              </label>
+            ))}
+          </RadioGroup>
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="prov-name">{t('settings.providers.form.name')}</Label>
-        <Input
-          id="prov-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('settings.providers.form.namePlaceholder')}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="prov-url">{t('settings.providers.form.baseUrl')}</Label>
-        <Input id="prov-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="font-mono text-[13px]" required />
-        <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.baseUrlHint')}</p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="prov-key">{t('settings.providers.form.apiKey')}</Label>
-        <Input
-          id="prov-key"
-          type="password"
-          autoComplete="off"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder={provider ? `${provider.key_masked}（${t('settings.providers.form.apiKeyKeep')}）` : 'sk-…'}
-          required={!provider}
-          className="font-mono text-[13px]"
-        />
-        <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.apiKeyHint')}</p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="prov-mult">{t('settings.providers.form.multiplier')}</Label>
-        <Input
-          id="prov-mult"
-          inputMode="decimal"
-          value={multiplier}
-          onChange={(e) => setMultiplier(e.target.value)}
-          className="tabular w-28"
-        />
-        <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.multiplierHint')}</p>
-      </div>
-
-      <Collapsible defaultOpen={!!provider?.headers}>
-        <CollapsibleTrigger className="group flex items-center gap-1 text-[13px] text-ink-muted hover:text-ink">
-          <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-          {t('settings.providers.form.advanced')}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-2 pt-3">
-          <Textarea
-            value={headers}
-            onChange={(e) => setHeaders(e.target.value)}
-            rows={3}
-            className="font-mono text-[13px]"
-            placeholder="anthropic-beta: …"
+        <div className="space-y-2">
+          <Label htmlFor="prov-name">{t('settings.providers.form.name')}</Label>
+          <Input
+            id="prov-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('settings.providers.form.namePlaceholder')}
+            required
           />
-          <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.headersHint')}</p>
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
 
-      {(localError || mutation.isError) && (
-        <p role="alert" className="rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-[13px] leading-6 text-ink">
-          {localError || errorMessage(mutation.error)}
-        </p>
-      )}
+        <div className="space-y-2">
+          <Label htmlFor="prov-url">{t('settings.providers.form.baseUrl')}</Label>
+          <Input id="prov-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="font-mono text-[13px]" required />
+          <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.baseUrlHint')}</p>
+        </div>
 
-      <DialogFooter>
+        <div className="space-y-2">
+          <Label htmlFor="prov-key">{t('settings.providers.form.apiKey')}</Label>
+          {protocol === 'vertex' && authMode === 'service_account' ? (
+            <Textarea
+              id="prov-key"
+              autoComplete="off"
+              spellCheck={false}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={provider ? t('settings.providers.form.apiKeyKeep') : t('settings.providers.vertex.jsonPlaceholder')}
+              required={credentialsRequired}
+              rows={4}
+              className="field-sizing-fixed h-36 min-w-0 max-w-full resize-none overflow-auto font-mono text-[13px] [overflow-wrap:anywhere]"
+            />
+          ) : (
+            <Input
+              id="prov-key"
+              type="password"
+              autoComplete="off"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={provider ? `${provider.key_masked}（${t('settings.providers.form.apiKeyKeep')}）` : 'sk-…'}
+              required={credentialsRequired}
+              className="font-mono text-[13px]"
+            />
+          )}
+          <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.apiKeyHint')}</p>
+        </div>
+
+        {protocol === 'vertex' && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="prov-auth">{t('settings.providers.vertex.auth')}</Label>
+              <Select
+                value={authMode}
+                onValueChange={(value) => {
+                  setAuthMode(value as VertexOptions['auth_mode'])
+                  setApiKey('')
+                }}
+              >
+                <SelectTrigger id="prov-auth" className="w-full min-w-0 bg-paper-sunken text-ink">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
+                  <SelectItem value="api_key">{t('settings.providers.vertex.apiKey')}</SelectItem>
+                  <SelectItem value="access_token">{t('settings.providers.vertex.accessToken')}</SelectItem>
+                  <SelectItem value="service_account">{t('settings.providers.vertex.serviceAccount')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prov-project">{t('settings.providers.vertex.project')}</Label>
+              <Input
+                id="prov-project"
+                value={project}
+                onChange={(e) => setProject(e.target.value)}
+                required={authMode === 'access_token'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prov-location">{t('settings.providers.vertex.location')}</Label>
+              <Input id="prov-location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="global" />
+            </div>
+            <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.vertex.hint')}</p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="prov-mult">{t('settings.providers.form.multiplier')}</Label>
+          <Input
+            id="prov-mult"
+            inputMode="decimal"
+            value={multiplier}
+            onChange={(e) => setMultiplier(e.target.value)}
+            className="tabular w-28"
+          />
+          <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.multiplierHint')}</p>
+        </div>
+
+        <Collapsible defaultOpen={!!provider?.headers}>
+          <CollapsibleTrigger className="group flex items-center gap-1 text-[13px] text-ink-muted hover:text-ink">
+            <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
+            {t('settings.providers.form.advanced')}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 pt-3">
+            <Textarea
+              value={headers}
+              onChange={(e) => setHeaders(e.target.value)}
+              rows={3}
+              className="font-mono text-[13px]"
+              placeholder="anthropic-beta: …"
+            />
+            <p className="text-xs leading-5 text-ink-faint">{t('settings.providers.form.headersHint')}</p>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {(localError || mutation.isError) && (
+          <p role="alert" className="rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-[13px] leading-6 text-ink">
+            {localError || errorMessage(mutation.error)}
+          </p>
+        )}
+      </div>
+      <DialogFooter className="shrink-0 border-t border-rule pt-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
           {t('common.cancel')}
         </Button>
@@ -248,6 +315,7 @@ function ModelPicker({ provider, onDone }: { provider: ProviderView; onDone: (fi
     queryFn: () => api.providers.remoteModels(provider.id),
     retry: false,
     staleTime: 60_000,
+    enabled: provider.protocol !== 'vertex',
   })
   const [filter, setFilter] = useState('')
   const [manual, setManual] = useState('')
@@ -294,8 +362,12 @@ function ModelPicker({ provider, onDone }: { provider: ProviderView; onDone: (fi
 
   return (
     <div className="space-y-4">
-      {remote.isPending && <p className="text-sm text-ink-muted">{t('settings.providers.pick.loading')}</p>}
-      {remote.isError && <p className="text-[13px] leading-6 text-warn">{t('settings.providers.pick.listFailed')}</p>}
+      {remote.isLoading && <p className="text-sm text-ink-muted">{t('settings.providers.pick.loading')}</p>}
+      {provider.protocol === 'vertex' ? (
+        <p className="text-[13px] leading-6 text-ink-muted">{t('settings.providers.vertex.manualModels')}</p>
+      ) : (
+        remote.isError && <p className="text-[13px] leading-6 text-warn">{t('settings.providers.pick.listFailed')}</p>
+      )}
       {remote.data && remote.data.length > 0 && (
         <>
           <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('settings.providers.pick.filter')} />

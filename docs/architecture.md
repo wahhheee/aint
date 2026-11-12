@@ -163,6 +163,7 @@ runtime ──► llm.Provider（中立类型）
 - **能力矩阵**（`llm.Caps`）决定请求怎么写：`Reasoning` + `ReasoningMap`（推理档位 → 协议参数，如 Claude Sonnet 5.5 的 off 写作
   `between_tools`）、`Cache`（breakpoints / implicit / none）、看图与工具结果含图。内置预设在 `provider/presets.go`，添加模型时按名字预填。
 - 请求体由 `jsonx` 确定性序列化，每个适配器导出 `Body()` 便于测试与前缀比对。
+- **Vertex AI**：`vertex` 渠道复用 `llm/gemini` 的请求和流解析，使用独立的原生历史键。Express 使用全局 publisher 路径；标准模式加入项目和区域，默认地址随区域选择。`providers.options` 保存非敏感认证选项，凭据保存在 `secrets.json`。服务账号使用 RS256 JWT 向 Google 官方令牌端点换取令牌，提前一分钟刷新；令牌交换不进入模型请求追踪。
 - 调试：`--trace-llm` 写中立追踪（`logs/llm-trace/`）与协议原始报文（`logs/llm-trace/raw/`，鉴权头脱敏，可直接做回放夹具）。
 - 游玩检查器：`runtime/inspect.go` 按存档控制内存记录；`llm.ObserveStream` 包住供应商与重试层，`wire` 通过 context 中的观察器上报各次 HTTP 尝试。
   记录结构化上下文、明文推理、输出、工具参数与结果、状态前后值；`vfs.Table.Snapshot` 固定文件清单并复制可写记忆，之后按需读取文件。

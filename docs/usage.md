@@ -18,12 +18,28 @@ SHA-256 校验和在发布页的 `checksums.txt`。Windows 可用 `Get-FileHash 
 
 ## 配置模型与开启存档
 
-1. 打开「设置 → 模型」，选择添加供应商，填写协议、API 地址与密钥。支持 Anthropic Messages、OpenAI Responses 和 Gemini，以及提供这些协议的兼容服务。
+1. 打开「设置 → 模型」，选择添加供应商，填写协议、API 地址与密钥。支持 Anthropic Messages、OpenAI Responses、Gemini 和 Google Vertex AI，以及提供这些协议的兼容服务。
 2. 拉取模型列表或手动填写模型 ID，运行连接测试。模型需要支持工具调用；含图片的作品可选择支持看图的模型。
 3. 将模型设为主笔。轻量模型可用于独立整理、后台助手和存档标题，在对应设置中开启功能。
 4. 返回书架，打开作品并新建存档。选择开场，填写作品提供的开局表单，调整模型、篇幅与推理档位后开始。
 
 模型调用使用你配置的 API，服务商按其规则计费。可在模型设置中填写价格，用量环显示当前回合与存档累计费用；不同货币分别统计。尚未配置价格的模型会显示“未配置价格”。
+
+### Google Vertex AI
+
+添加供应商时选择「Google Vertex AI」，按所持凭据选择认证方式，并在 API Key 中填写凭据：
+
+- **API Key**：填入 Google Cloud API Key。Express 模式留空项目 ID，区域保留 `global`；标准模式填写项目 ID 与区域。
+- **OAuth 访问令牌**：填写访问令牌、项目 ID 与区域。令牌过期后需要在编辑供应商中更新。
+- **服务账号 JSON**：粘贴完整服务账号 JSON；后端自动获取、缓存并刷新访问令牌。项目 ID 可留空以使用 JSON 中的 `project_id`，或填写其他已授权项目。
+
+Base URL 默认是 `https://aiplatform.googleapis.com`。标准模式选择 `us-central1` 等区域时，默认地址自动使用对应区域端点；`global` 使用全球端点。自定义网关按填写的 Base URL 使用，可以包含网关路径前缀。不要在 Base URL 中填写项目、区域或模型路径。
+
+Vertex AI 不提供向导使用的模型列表，请手动添加 Gemini 模型 ID（如 `gemini-3.8-flash`）。模型可用性和权限取决于 Google Cloud 项目与区域；服务账号需有目标项目的 Vertex AI 调用权限。已知 Gemini 模型复用能力预设，价格可按 Vertex AI 的实际计费设置。此渠道接入 Google 的 Gemini 模型。
+
+凭据只保存在本机 `secrets.json`；项目、区域和认证方式保存在数据库。服务账号令牌交换不写入模型请求追踪，模型请求的认证头会脱敏。更换认证方式时必须填写对应的新凭据。
+
+接口路径依据 [Express REST 参考](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/express-mode/rest/v1/publishers.models/streamGenerateContent) 与 [标准生成接口](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference)。
 
 ## 导入与管理作品
 
