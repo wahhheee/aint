@@ -47,17 +47,25 @@ var Pace = map[string]struct {
 	"long":   {"长", 2000, 4000},
 }
 
+// MemoryIndexGuide 是主笔、整理与记忆助手共用的索引写法。
+const MemoryIndexGuide = `/memory/index.md 的每个条目标明文件路径，兼顾文件的用途或覆盖范围，以及其中最重要的事实、当前结论或未决事项。让执笔者既知道何时需要打开文件，也能在不打开时获得约八成核心信息；原文件补充细节、依据和历史过程。用途与内容可以自然合写，使用括号、分句或其他简洁形式，不限定固定格式。保留事实、推测与未决事项的区别。平台会在阶段开始时注入这份索引，后续内容变化时请同步更新。`
+
 // CompactionTask 是整理指令（20.3）。text/template；可用 has 与 .SummaryChars、.MemoryLarge、.Guide。
 // inline 模式下它是接在当前上下文末尾的一条 user 消息；separate 模式下接在本阶段原文之后。
 const CompactionTask = `<system_task kind="compaction">
-接下来要整理上下文：此前的对话会由一份交接摘要接替，最近几个回合的原文会保留下来。请按顺序完成两步。
+接下来要整理上下文：此前的对话会由一份交接摘要接替，最近几个回合的原文会保留下来。请按顺序完成三步。
 
 第一步，记下要紧的事。回顾本阶段，把今后还用得上、而 /memory 里还没有的内容写进记忆：新的设定事实，人物处境、关系与认知的变化，伏笔、承诺与悬念，玩家的重要选择。再为本阶段写一份章节纪要，放在 /memory/chronicle/。
 {{- if .MemoryLarge}}
 记忆总量已经较大，可以顺便合并重复、删去过时的内容。
 {{- end}}
+{{- if has "state"}}
+同时核对当前状态，可以用 get_state 查阅、update_state 修订。根据已经发生且能够确认的事实，合并重复记录、修正描述，并依照字段含义移除已结束或已无用途的事项；仍有历史意义的内容先写入记忆。不确定的事项保留其不确定性，整理时不推进剧情，也不凭空改变资源、物品或人物经历。
+{{- end}}
 
-第二步，写交接摘要。这一步直接输出摘要本身即可，结构如下：
+第二步，同步 /memory/index.md，反映整理后的文件与内容；尚未建立索引时创建它。` + MemoryIndexGuide + `
+
+第三步，写交接摘要。这一步直接输出摘要本身即可，结构如下：
 ## 故事至今
 ## 当前场景
 ## 人物与关系
@@ -74,18 +82,22 @@ const CompactionTask = `<system_task kind="compaction">
 // 整理过程中的固定文案（13.3）。
 const (
 	// CompactionSummaryNudge 落盘调用次数用完、仍未给出摘要时追加的 user 消息。
-	CompactionSummaryNudge = "记忆就记到这里，现在请直接输出交接摘要。"
+	CompactionSummaryNudge = "记录整理到这里，现在请直接输出交接摘要。"
 	// CompactionSummaryShorter 摘要超过硬上限时追加的 user 消息（%d 为目标字数）。
 	CompactionSummaryShorter = "这份摘要偏长，请压缩到约 %d 字，直接输出摘要本身。"
 	// CompactionSummaryEmpty 没有给出摘要时追加的 user 消息。
-	CompactionSummaryEmpty = "还没有看到交接摘要，请按第二步的结构直接输出摘要本身。"
+	CompactionSummaryEmpty = "还没有看到交接摘要，请按第三步的结构直接输出摘要本身。"
+	// CompactionPendingState 说明回合内整理的状态写入边界；%s 是本回合已修改的路径。
+	CompactionPendingState = "<notes>本次仅整理已提交的历史。进行中的回合已修改这些状态路径：%s；它们及其上下级路径留待本回合结束后整理，其他状态可以正常修订。</notes>"
+	// CompactionResume 标记回合内整理结束，已有工具读取结果可能早于整理中的修订。
+	CompactionResume = "<notes>本回合开始前的历史已整理，新阶段块包含整理后的记录。本回合已经执行的工具写入仍然有效，无需重复执行；整理前的读取结果可能已过时，需要当前值或文件内容时请重新查阅。继续完成本回合，已有正文保留。</notes>"
 )
 
 // CompactionSeparateSystem 是 separate 模式（轻量模型单独整理）的系统提示。
 const CompactionSeparateSystem = `你在为一部互动小说的执笔者整理上下文。执笔者与玩家已经写了很长一段故事，接下来要用一份交接摘要接替较早的对话。
-你会看到作品标题、上一份交接摘要（如有）、本阶段的故事原文、当前状态与记忆目录；/work 是作品资料，/memory 是执笔者的记忆笔记，/transcript 是全部原文，可以用 read、list、search 查阅，用 write、edit、remove 整理记忆。
+你会看到作品标题、上一份交接摘要（如有）、本阶段的故事原文、状态说明与当前值、记忆索引；/work 是作品资料，/memory 是执笔者的记忆笔记，/transcript 是全部原文，可以用 read、list、search 查阅，用 write、edit、remove 整理记忆，并使用提供的状态工具核对和修订已有记录。
 这些操作通过本次请求提供的工具调用功能执行，具体用法见下方；普通回复中的工具名、JSON 或代码块不会执行工具。
-请按消息末尾 <system_task> 的要求完成：先把要紧的事写进 /memory，再直接输出交接摘要本身。`
+请按 <system_task> 的要求完成：先维护记忆与状态，再同步索引，最后直接输出交接摘要本身。`
 
 // EpochIntro 是整理后阶段块的首句（13.4）：%d、%d 为保留原文的起止回合。
 const EpochIntro = "以下是上下文整理后的交接信息，其后保留了第 %d–%d 回合的原文。"
@@ -93,10 +105,13 @@ const EpochIntro = "以下是上下文整理后的交接信息，其后保留了
 // EpochIntroNoKept 是没有保留原文时（极少见：阶段内只有整理节点之后的回合）阶段块的首句。
 const EpochIntroNoKept = "以下是上下文整理后的交接信息。"
 
+// EpochSnapshot 说明快照与保留历史的先后关系：%d、%d 为整理截止回合与新阶段起点。
+const EpochSnapshot = "本阶段块包含截至第 %d 回合及本次整理的最新记录。后面保留的旧回合及工具结果反映当时的情况，不覆盖此处快照；从第 %d 回合起的新修改继续生效，需要确认当前内容时可调用工具查阅。"
+
 // HelperResearch / HelperCurate 是后台助手提示词（20.4）。运行时按助手能力渲染。
 const (
 	HelperResearch = `你是这部互动小说执笔者的资料助手。请按任务查阅{{if has "lore"}}/work、{{end}}/memory、/transcript{{if has "vision"}}、/uploads{{end}}，整理成一份简洁的调查结果：每条结论附上出处（文件路径或回合号），并标明哪些是原文明确写到的、哪些是推测。1500 字以内即可。`
-	HelperCurate   = `你是这部互动小说执笔者的记忆整理助手。请按任务整理记忆文件：合并重复、补充修订，让每个文件保持简短，并同步更新 /memory/index.md。仍然有用的信息请保留，不确定的内容可以标注"未确认"。完成后用 300 字以内说明改动。`
+	HelperCurate   = `你是这部互动小说执笔者的记忆整理助手。请按任务整理记忆文件：合并重复、补充修订，让每个文件保持简短，并同步更新 /memory/index.md。` + MemoryIndexGuide + `仍然有用的信息请保留，不确定的内容可以标注"未确认"。完成后用 300 字以内说明改动。`
 )
 
 // SaveTitle 是存档标题提示词（20.5）。由运行时在独立上下文中使用。

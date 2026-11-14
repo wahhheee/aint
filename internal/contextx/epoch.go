@@ -11,12 +11,12 @@ import (
 )
 
 // RenderEpoch0 渲染第 0 阶段（开局）的阶段块（《02-技术方案》13.4）：
-// 只含初始状态与记忆目录中存在的部分；全部为空时返回空串（不生成 L4，也不放断点 ②）。
+// 包含初始状态与记忆索引；没有状态、索引文件及目录条目时不生成 L4，也不放断点 ②。
 //
 // 第 0 阶段块只由存档创建时的初始状态与初始记忆决定（二者不可变），因此每次构建时即时渲染即可，
 // 结果字节稳定，不需要像整理产生的阶段块那样存为 blob。
 // 整理产生的阶段块由 RenderEpoch 渲染，存为 compaction 节点的 blob，阶段内原样复用。
-func RenderEpoch0(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, memory []save.MemoryEntry) string {
+func RenderEpoch0(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, memory save.MemoryIndex) string {
 	parts := epochParts(fs, schema, st, "开局", memory)
 	if len(parts) == 0 {
 		return ""
@@ -32,22 +32,22 @@ type EpochInput struct {
 	KeptTo   int
 	Summary  string
 	State    map[string]any // 阶段开始时的状态
-	Memory   []save.MemoryEntry
+	Memory   save.MemoryIndex
 }
 
-// RenderEpoch 渲染整理产生的阶段块：说明首句、交接摘要、阶段开始时的状态（作品定义了状态时）、记忆目录（/memory 非空时）。
+// RenderEpoch 渲染整理产生的阶段块：时间边界、交接摘要、阶段开始时的状态与记忆索引。
 func RenderEpoch(fs prompts.FeatureSet, schema *state.Schema, in EpochInput) string {
 	intro := prompts.EpochIntroNoKept
 	if in.KeptFrom > 0 {
 		intro = fmt.Sprintf(prompts.EpochIntro, in.KeptFrom, in.KeptTo)
 	}
-	parts := []string{intro, "<summary>\n" + strings.TrimSpace(in.Summary) + "\n</summary>"}
+	parts := []string{intro, fmt.Sprintf(prompts.EpochSnapshot, in.FromTurn-1, in.FromTurn), "<summary>\n" + strings.TrimSpace(in.Summary) + "\n</summary>"}
 	parts = append(parts, epochParts(fs, schema, in.State, fmt.Sprintf("阶段开始（第 %d 回合）", in.FromTurn), in.Memory)...)
 	return fmt.Sprintf("<epoch n=\"%d\" from_turn=\"%d\">\n%s\n</epoch>", in.N, in.FromTurn, strings.Join(parts, "\n"))
 }
 
-// epochParts 是阶段块中的状态快照与记忆目录（各自只在有内容时出现）。
-func epochParts(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, asOf string, memory []save.MemoryEntry) []string {
+// epochParts 是阶段块中的状态快照与记忆索引。
+func epochParts(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, asOf string, memory save.MemoryIndex) []string {
 	var parts []string
 	if fs.Has(prompts.FState) && !schema.Empty() {
 		if b, err := state.YAML(schema, st); err == nil {
@@ -60,13 +60,16 @@ func epochParts(fs prompts.FeatureSet, schema *state.Schema, st map[string]any, 
 	return parts
 }
 
-// RenderMemoryIndex 渲染阶段块与独立整理共用的记忆目录；没有记忆时不生成块。
-func RenderMemoryIndex(memory []save.MemoryEntry) string {
-	if len(memory) == 0 {
+// RenderMemoryIndex 渲染完整索引文件或自动目录；没有文件也没有目录条目时不生成块。
+func RenderMemoryIndex(memory save.MemoryIndex) string {
+	if memory.Text != nil {
+		return "<memory_index path=\"/memory/index.md\">\n" + *memory.Text + "\n</memory_index>"
+	}
+	if len(memory.Entries) == 0 {
 		return ""
 	}
 	var lines []string
-	for _, e := range memory {
+	for _, e := range memory.Entries {
 		line := "- " + e.Path
 		if e.Summary != "" {
 			line += " — " + e.Summary

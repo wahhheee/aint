@@ -4,15 +4,15 @@
 // 流程（inline 模式，默认）：
 //
 //	当前完整上下文（命中缓存）+ 整理指令（prompts.CompactionTask）
-//	  → 落盘循环（≤ FlushMaxCalls 轮 read/list/search/write/edit/remove）
+//	  → 落盘循环（≤ FlushMaxCalls 轮资料查阅、记忆与状态维护）
 //	  → 交接摘要（校验非空与长度，超长要求压缩一次）
-//	  → 提交 compaction 节点（阶段块 + keep_from + 新记忆清单）
+//	  → 提交 compaction 节点（阶段块 + keep_from + 新状态快照与记忆清单）
 //	  → 新阶段：L0–L3 不变（命中缓存），L4 换成新阶段块 + 保留原文
 //
 // separate 模式用轻量模型单独整理：输入是上一份摘要、本阶段各回合的原文、当前状态与记忆目录，不复用主笔的缓存。
 //
 // 触发点：回合提交后上下文达到阈值（玩家阅读期间）、回合内达到硬上限、API 报上下文超限（紧急，重试一次）、手动。
-// 整理期间 offer_choices / update_state / roll_dice 返回 prompts.CompactionToolUnavailable（工具定义不变）。
+// 整理期间 offer_choices / roll_dice 返回 prompts.CompactionToolUnavailable（工具定义不变）。
 package compact
 
 // Params 是整理参数（13.1）。

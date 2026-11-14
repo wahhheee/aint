@@ -101,6 +101,7 @@ go run ./cmd/aint serve --data .devdata --fake-llm testdata/fake/my-case.yaml
 - **整理做了什么**：日志 `上下文整理完成`（原因、方式、摘要掉的回合区间、保留起点、落盘写了几个文件、整理前后的上下文规模、调用次数）；
   整理节点的 `epoch_block` 是新阶段块（blob，文本），`messages` 是整理过程的全部消息（不进入之后的上下文）；`--trace-llm` 中用途为 `compact` 的调用。
 - **之后的请求长什么样**：`--trace-llm` 中整理之后的第一个 `narrate` 请求，首条消息是新阶段块，后接保留的回合（推理与协议原生内容已去掉）。
+- **状态与索引**：整理中的 `update_state` 结果只随整理成功提交；检查器可查看各次工具后的状态。新阶段的 `<memory_index path="/memory/index.md">` 包含整理后的完整索引，文件不存在时才使用自动目录。回合内整理拒绝修改当前回合已写入的路径及其上下级，其他修改与草稿结果合并。
 - **整理方式**：设置 → 上下文。轻量模型在设置 → 模型的"⋯"菜单中设定；没有轻量模型时 separate 自动改用 inline。
 - **分支**：`GET /api/v1/saves/{id}/tree` 看分叉点与各段；`GET /api/v1/saves/{id}/timeline` 的 `has_later` 表示 head 在较早的回合；
   修改正文、移动 head、编辑记忆或状态等操作完成后，存档事件流推送 `timeline.changed`。

@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"reflect"
 	"sync"
 
 	"github.com/wahhheee/aint/internal/compact"
 	"github.com/wahhheee/aint/internal/contextx"
 	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/ids"
 	"github.com/wahhheee/aint/internal/pkg/logx"
+	"github.com/wahhheee/aint/internal/prompts"
 	"github.com/wahhheee/aint/internal/save"
+	"github.com/wahhheee/aint/internal/state"
 	"github.com/wahhheee/aint/internal/vfs"
 	"github.com/wahhheee/aint/internal/work"
 )
@@ -77,6 +81,9 @@ func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason co
 		return
 	}
 	node, stats, err := m.compactVersion(ctx, sv, line, reason, target, nil)
+	if err == nil {
+		m.publishPanels(ctx, saveID)
+	}
 	release()
 	if err != nil {
 		msg := compactionError(err)
@@ -104,16 +111,21 @@ func compactionError(err error) string {
 }
 
 // compactInTurn 在回合内整理（13.2 第 2、3 点）：对本回合之前的历史执行整理，整理节点成为本回合的父节点，
-// 再以新阶段块 + 保留的回合 + 本回合已有的消息重建请求；本回合的消息全部保留，记忆写入沿用。
+// 再以新阶段块 + 保留的回合 + 本回合已有的消息重建请求；本回合的状态与记忆写入保留在整理后的快照上。
 func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Reason) error {
 	line, err := m.d.Saves.ProgressLineAt(ctx, d.save.ID, d.parent.ID)
 	if err != nil {
 		return err
 	}
 	m.publish(d.save.ID, event.CompactionStarted, event.CompactionStartedData{Reason: string(reason)})
-	commit := m.d.Saves.CommitCompaction
-	if d.operation != nil {
-		commit = func(ctx context.Context, c save.CompactionCommit) (*save.Node, error) {
+	var merged map[string]any
+	commit := func(ctx context.Context, c save.CompactionCommit) (*save.Node, error) {
+		var mergeErr error
+		merged, mergeErr = rebaseTurnState(d.work.State, c.State, d.stateLog)
+		if mergeErr != nil {
+			return nil, mergeErr
+		}
+		if d.operation != nil {
 			p, err := m.d.Saves.StageCompaction(ctx, c)
 			if err != nil {
 				return nil, err
@@ -121,14 +133,27 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 			d.staged = p
 			return p.Node, nil
 		}
+		return m.d.Saves.CommitCompaction(ctx, c)
 	}
-	node, stats, err := m.compactWith(ctx, d.save, line, reason, nil, d.work, commit)
+	node, stats, err := m.compactWith(ctx, d.save, line, reason, nil, d.work, d.stateLog, commit)
 	if err != nil {
 		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{Message: compactionError(err)})
 		return err
 	}
 	m.publish(d.save.ID, event.CompactionDone, event.CompactionDoneData{NodeID: node.ID, Stats: stats})
 	d.compacted, d.parent = true, node
+	var changed []state.Change
+	for _, name := range d.work.State.Order {
+		if !reflect.DeepEqual(d.state[name], merged[name]) {
+			changed = append(changed, state.Change{Op: state.OpSet, Path: name, Before: d.state[name], After: merged[name]})
+		}
+	}
+	d.state = merged
+	if len(changed) > 0 && d.onState != nil {
+		d.onState(changed)
+	}
+	// 整理节点已保存基准；本回合只有实际写过状态时才需要另存快照。
+	d.stateChanged = len(d.stateLog) > 0
 
 	mf, err := m.d.Saves.LoadMemory(ctx, node.MemoryHash)
 	if err != nil {
@@ -155,9 +180,29 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 	msgs := built.Request.Messages // 以本回合的玩家消息结尾，再接本回合已有的其余消息
 	d.contextMessages = len(msgs) - 1
 	msgs = append(msgs, d.turnMsgs[1:]...)
+	notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.CompactionResume)}}
+	msgs = append(msgs, notice)
+	d.turnMsgs = append(d.turnMsgs, notice)
 	d.req.Messages = msgs
 	built.Request = d.req
 	d.built = built
 	d.lastInput = 0 // 上下文已经换了，之前的用量不再代表下一次请求
 	return nil
+}
+
+// rebaseTurnState 在整理后的状态上恢复本回合已经完成的写入结果，不重复执行增减或追加。
+func rebaseTurnState(schema *state.Schema, base map[string]any, changes []state.Change) (map[string]any, error) {
+	if len(changes) == 0 {
+		return base, nil
+	}
+	ops := make([]state.Op, 0, len(changes))
+	for _, change := range changes {
+		op := state.Op{Op: state.OpSet, Path: change.Path, Value: change.After}
+		if change.After == nil {
+			op.Op = state.OpDelete
+		}
+		ops = append(ops, op)
+	}
+	next, _, err := state.Apply(schema, base, ops)
+	return next, err
 }

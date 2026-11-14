@@ -199,6 +199,11 @@ func renderCommands(m *work.Model, fs prompts.FeatureSet) string {
 // 同样列出元素的字段（list 元素写作"x 中每项的 y"，map 的值写作 update_state 路径的形式"x.<键>.y"），
 // 元素本身写了 desc 时单列一行。
 func renderStateDesc(m *work.Model, _ prompts.FeatureSet) string {
+	return RenderStateDesc(m.State)
+}
+
+// RenderStateDesc 为主笔与独立整理提供相同的状态字段类型、含义与子字段说明。
+func RenderStateDesc(schema *state.Schema) string {
 	var lines []string
 	var walk func(label, indent string, f *state.Field)
 	add := func(label, indent string, f *state.Field) {
@@ -233,8 +238,8 @@ func renderStateDesc(m *work.Model, _ prompts.FeatureSet) string {
 			element(label+".<键>", ".", indent+"  ", f.Values)
 		}
 	}
-	for _, name := range m.State.Order {
-		walk(name, "", m.State.Fields[name])
+	for _, name := range schema.Order {
+		walk(name, "", schema.Fields[name])
 	}
 	return strings.Join(lines, "\n")
 }

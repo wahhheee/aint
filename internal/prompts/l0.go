@@ -32,12 +32,13 @@ var L0 = []Fragment{
 	{ID: "write.player", Section: "写作", Text: `- 玩家的输入代表玩家的意图；玩家角色的关键决定和关键台词，留给玩家来做（作品或玩家另有约定时，以约定为准）。`},
 
 	{ID: "state.usage", Section: "状态", When: Requires(FState),
-		Text: `- 作品状态是展示在界面上的结构化记录，含义见"状态说明"。阶段开始时的数值在阶段块的 <state> 中，之后以 update_state 的结果为准，需要确认时可以用 get_state 查看当前值。故事里相应的事情有了变化，可以用 update_state 同步更新。`},
+		Text: `- 作品状态是展示在界面上的结构化记录，含义见"状态说明"。以阶段块的 <state> 快照为起点，仅在本阶段开始之后发生的 update_state 结果继续更新它；保留的旧回合中的工具结果是当时的记录。需要确认时可以用 get_state 查看当前值。故事里相应的事情有了变化，可以用 update_state 同步更新。`},
 
 	{ID: "memory.when", Section: "记忆", Text: `- 这些时刻值得记下：确立了新的设定事实；人物的处境、关系或认知有了变化；埋下伏笔、许下承诺、留下悬念；玩家作出影响深远的选择。可以用 write / edit 记到 /memory。`},
-	{ID: "memory.how", Section: "记忆", Text: `- 记要点就好。优先更新已有文件，让每个文件保持简短，并维护 /memory/index.md；写上对应的回合号，方便以后回查原文。`},
+	{ID: "memory.how", Section: "记忆", Text: `- 记要点就好。优先更新已有文件，让每个文件保持简短；写上对应的回合号，方便以后回查原文。修改、合并或删除记忆后同步维护 /memory/index.md。`},
+	{ID: "memory.index", Section: "记忆", Text: "- " + MemoryIndexGuide},
 	// 平台默认的目录约定（D-24）；作品的补充约定在 L1"记忆约定"节
-	{ID: "memory.layout", Section: "记忆", Text: `- 可以这样组织：/memory/index.md 是总索引（每个文件一行说明）；chronicle/ 放章节纪要（关键事件与回合号）；characters/ 放人物的现状、关系与认知；threads/ 放伏笔、承诺与悬念（写明埋设回合与打算如何回收）；world/ 放游玩中新确立的设定；player.md 记玩家的偏好与选择倾向。{{if has "memory.guide"}}作品在"记忆约定"中另有安排时，以作品为准。{{end}}`},
+	{ID: "memory.layout", Section: "记忆", Text: `- 可以这样组织：/memory/index.md 是总索引；chronicle/ 放章节纪要（关键事件与回合号）；characters/ 放人物的现状、关系与认知；threads/ 放伏笔、承诺与悬念（写明埋设回合与打算如何回收）；world/ 放游玩中新确立的设定；player.md 记玩家的偏好与选择倾向。{{if has "memory.guide"}}作品在"记忆约定"中另有安排时，以作品为准。{{end}}`},
 
 	{ID: "handoff.choices", Section: "交还决定权",
 		Text: `- 一段叙事告一段落、需要玩家决定时，可以调用 offer_choices 给出 2–4 个各有区别、贴合情境的选项。{{if has "free_input"}}玩家也可以自由输入。{{else}}玩家通过选项{{if has "commands"}}和命令{{end}}行动。{{end}}`},

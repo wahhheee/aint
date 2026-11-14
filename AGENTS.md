@@ -12,7 +12,7 @@ AINT（AINT Is Not Tavern / Agentic Interactive Narrative Theatre）：以作品
 - `docs/progress.md`：**进度**——每个任务的状态、已有与缺口、建议的下一步、按功能找任务；搜任务编号找代码
 - `docs/architecture.md`：分层与依赖方向、回合生命周期、前后端契约、**扩展指南（想加 X 改哪里）**
 - `docs/development.md`：开发命令与**调试手册**
-- `docs/notes/decisions.md`：当前决策（D-01～D-73）；`docs/notes/open-questions.md`：待确认事项
+- `docs/notes/decisions.md`：当前决策（D-01～D-74）；`docs/notes/open-questions.md`：待确认事项
 - `docs/README.md`：公开文档索引与术语；`docs/usage.md`、`docs/authoring.md`：使用与创作指南
 - `skills/aint-work/`：作品创作技能；`references/format.md` 集中维护作品格式。`TODO(M3-6)` 这类编号对应 `docs/progress.md` 的任务明细
 

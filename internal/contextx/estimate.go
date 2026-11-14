@@ -138,7 +138,7 @@ func Analyze(m *work.Model, rep *work.Report, specs ToolSpecs) {
 	}
 	built, err := NewBuilder(tmpl.New(), nil).Build(context.Background(), BuildInput{
 		SaveID: "estimate", Work: m, Features: fs, Model: model, InitialState: st, InitialStateHash: "estimate",
-		Epoch: RenderEpoch0(fs, m.State, st, nil),
+		Epoch: RenderEpoch0(fs, m.State, st, save.MemoryIndex{}),
 		Tools: specs(fs, m), Turn: llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text("")}},
 	})
 	if err != nil {

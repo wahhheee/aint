@@ -483,7 +483,9 @@ func TestRewriteStagedCompaction(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(map[bool]string{true: "失败回滚", false: "整体提交"}[fail], func(t *testing.T) {
 			hit := false
-			e := setupWith(t, operationFailureProvider{Provider: fake.New(compactScript()), overflow: &hit, fail: fail})
+			script := compactScript()
+			script.Compact[0].ToolCalls = append(script.Compact[0].ToolCalls, fake.ToolCall{Name: "update_state", Args: map[string]any{"op": "inc", "path": "gold", "value": 1}})
+			e := setupWith(t, operationFailureProvider{Provider: fake.New(script), overflow: &hit, fail: fail})
 			sv, _ := operationSave(t, e)
 			id := play(t, e, sv.ID, save.TurnInput{Kind: save.InputOpening})
 			for range 5 {
@@ -512,6 +514,15 @@ func TestRewriteStagedCompaction(t *testing.T) {
 				if tl.Nodes[0].Versions.Count != 2 {
 					t.Fatal("紧急整理拆散了回合版本")
 				}
+			}
+			_, afterLine, _ := e.saves.ProgressLine(t.Context(), sv.ID)
+			st, err := e.saves.LoadState(t.Context(), afterLine[len(afterLine)-1].StateHash)
+			wantGold := float64(11)
+			if fail {
+				wantGold = 10
+			}
+			if err != nil || st["gold"] != wantGold {
+				t.Fatalf("暂存整理的状态应随重写一起提交或丢弃：%v %v", st, err)
 			}
 			sum, err := usage.Summarize(t.Context(), e.db.Read(), usage.Filter{SaveID: sv.ID})
 			if err != nil || sum.ByKind["compact"].Calls == 0 {

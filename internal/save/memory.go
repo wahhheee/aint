@@ -19,21 +19,39 @@ type MemoryEntry struct {
 	Summary string // frontmatter 的 summary 或首个非空行（≤ 60 字）
 }
 
+// MemoryIndex 是阶段开始时的记忆索引；Text 非 nil 时使用 /memory/index.md 的完整内容，
+// 文件不存在时使用 Entries 中的自动目录。
+type MemoryIndex struct {
+	Text    *string
+	Entries []MemoryEntry
+}
+
 // memoryIndexFold 是记忆目录逐个列出文件的上限：超过时按目录折叠。
 const memoryIndexFold = 80
 
-// MemoryIndex 生成记忆目录：每个文件一行说明；文件超过 80 个时，/memory 下第一层的文件照常列出，
-// 子目录折叠为"目录名（N 个文件）"。
-func (s *Service) MemoryIndex(ctx context.Context, memoryHash string) ([]MemoryEntry, error) {
+// MemoryIndex 优先读取 /memory/index.md；文件不存在时生成自动目录。
+func (s *Service) MemoryIndex(ctx context.Context, memoryHash string) (MemoryIndex, error) {
 	mf, err := s.LoadMemory(ctx, memoryHash)
 	if err != nil {
-		return nil, err
+		return MemoryIndex{}, err
 	}
 	return s.MemoryIndexOf(ctx, mf.Files, nil)
 }
 
 // MemoryIndexOf 同 MemoryIndex，作用于尚未提交的清单：data 中有内容的文件直接取内容，其余按 blob 读取。
-func (s *Service) MemoryIndexOf(ctx context.Context, files map[string]MemoryFile, data map[string][]byte) ([]MemoryEntry, error) {
+func (s *Service) MemoryIndexOf(ctx context.Context, files map[string]MemoryFile, data map[string][]byte) (MemoryIndex, error) {
+	if f, exists := files["/memory/index.md"]; exists {
+		content, ok := data["/memory/index.md"]
+		if !ok {
+			var err error
+			if content, err = s.Blob(ctx, f.Blob); err != nil {
+				return MemoryIndex{}, err
+			}
+		}
+		text := string(content)
+		return MemoryIndex{Text: &text}, nil
+	}
+	// 自动目录逐个列出文件；超过 80 个时保留根目录文件，子目录折叠为文件数。
 	paths := slices.Sorted(maps.Keys(files))
 	folded := map[string]int{}
 	var out []MemoryEntry
@@ -51,7 +69,7 @@ func (s *Service) MemoryIndexOf(ctx context.Context, files map[string]MemoryFile
 		if !ok {
 			var err error
 			if content, err = s.Blob(ctx, files[p].Blob); err != nil {
-				return nil, err
+				return MemoryIndex{}, err
 			}
 		}
 		out = append(out, MemoryEntry{Path: p, Summary: vfs.Summary(string(content))})
@@ -61,7 +79,7 @@ func (s *Service) MemoryIndexOf(ctx context.Context, files map[string]MemoryFile
 			out[i].Summary = fmt.Sprintf("%d 个文件", n)
 		}
 	}
-	return out, nil
+	return MemoryIndex{Entries: out}, nil
 }
 
 // topDir 返回 /memory 下的第一层目录（/memory/characters/lin.md → /memory/characters）；直接在 /memory 下的文件返回空。

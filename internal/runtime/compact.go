@@ -26,11 +26,11 @@ import (
 
 // 上下文整理的执行（《02-技术方案》第 13 节；参数与规则见 compact 包）。
 //
-// inline：在当前上下文（命中缓存）末尾接上整理指令，由主笔先把要紧的事写进 /memory，再输出交接摘要；
-// separate：用轻量模型单独整理，输入是上一份摘要、本阶段原文、当前状态与记忆目录，不复用主笔缓存。
+// inline：在当前上下文末尾接上整理指令，由主笔维护记忆与状态、同步索引，再输出交接摘要；
+// separate：用轻量模型单独整理，输入是上一份摘要、本阶段原文、状态说明与当前值、记忆索引，不复用主笔缓存。
 // 模型报上下文超限时，原上下文已经放不下，改用 separate 的输入方式（没有轻量模型时用主笔模型）。
 //
-// 整理产生 compaction 节点（阶段块 + keep_from + 落盘后的记忆清单），成为 head；之后的请求以新阶段块开头，
+// 整理产生 compaction 节点（阶段块 + keep_from + 状态快照与记忆清单），成为 head；之后的请求以新阶段块开头，
 // 后接保留的回合原文（loadContext）。整理过程中的消息存在节点上供排查，不进入之后的上下文。
 
 // errNothingToCompact 表示上下文中的回合都要保留，没有可以摘要掉的内容。
@@ -51,17 +51,17 @@ type CompactStats struct {
 	DurationMS   int64  `json:"duration_ms"`
 }
 
-// compactAllowed 是整理阶段可用的工具；其余工具（选项、状态、掷骰、助手）返回"整理阶段暂不使用这个工具"，
+// compactAllowed 是整理阶段可用的工具；其余工具（选项、掷骰、助手）返回"整理阶段暂不使用这个工具"，
 // 工具定义不变（前缀稳定）。
-var compactAllowed = map[string]bool{"read": true, "list": true, "search": true, "write": true, "edit": true, "remove": true, "get_state": true}
+var compactAllowed = map[string]bool{"read": true, "list": true, "search": true, "write": true, "edit": true, "remove": true, "get_state": true, "update_state": true}
 
 // compactVersion 对进度线执行整理；current 用于固定开发回合正在使用的作品快照，target 指定升级目标。
 func (m *Manager) compactVersion(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model) (*save.Node, *CompactStats, error) {
-	return m.compactWith(ctx, sv, line, reason, target, current, m.d.Saves.CommitCompaction)
+	return m.compactWith(ctx, sv, line, reason, target, current, nil, m.d.Saves.CommitCompaction)
 }
 
-// compactWith 通过提交函数选择立即采用或暂存整理结果。
-func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model, commit func(context.Context, save.CompactionCommit) (*save.Node, error)) (*save.Node, *CompactStats, error) {
+// compactWith 通过提交函数选择立即采用或暂存整理结果；pending 中本回合已修改的状态路径不参与整理。
+func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model, pending []state.Change, commit func(context.Context, save.CompactionCommit) (*save.Node, error)) (*save.Node, *CompactStats, error) {
 	start := time.Now()
 	head := line[len(line)-1]
 	if target != nil && lastTurn(line) == nil {
@@ -135,6 +135,15 @@ func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.N
 		return nil, nil, err
 	}
 
+	if len(pending) > 0 {
+		var paths []string
+		for _, change := range pending {
+			if !slices.Contains(paths, change.Path) {
+				paths = append(paths, change.Path)
+			}
+		}
+		task += "\n" + fmt.Sprintf(prompts.CompactionPendingState, strings.Join(paths, "、"))
+	}
 	var req *llm.Request
 	toolFS := features
 	if mode == compact.ModeInline {
@@ -166,14 +175,15 @@ func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.N
 	}
 	req.Purpose = "compact"
 
-	env := &compactEnv{features: toolFS, work: w, fs: fsys, state: headState, images: m.d.Images, model: model}
+	env := &compactEnv{features: toolFS, work: w, fs: fsys, state: headState, pending: pending, images: m.d.Images, model: model}
 	run := &compactCalls{m: m, provider: provider, model: model, save: sv, req: req, start: len(req.Messages) - 1, debugID: ids.New(), turnNo: head.TurnNo, env: env}
 	summary, err := run.loop(ctx, env, params)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// 阶段块：摘要 + 阶段开始时的状态 + 落盘后的记忆目录
+	// 阶段块采用整理后的摘要、状态与记忆索引。
+	headState = env.state
 	kept := ec.turns[idx:]
 	var keptFrom, keptTo int
 	var keepID string
@@ -195,7 +205,7 @@ func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.N
 		}
 	}
 	memWrite := memoryWrite(overlay)
-	var memIndex []save.MemoryEntry
+	var memIndex save.MemoryIndex
 	if memWrite != nil {
 		memIndex, err = m.d.Saves.MemoryIndexOf(ctx, memWrite.Files, memWrite.Data)
 	} else {
@@ -269,10 +279,10 @@ func compactionMessage(history []llm.Message, notes []string, task string) llm.M
 	return llm.Message{Role: llm.RoleUser, Parts: append(parts, llm.Text(b.String()))}
 }
 
-// separateRequest 组装 separate 模式的请求：整理专用的系统提示、记忆相关工具，user 消息中是上一份摘要、
-// 上下文中各回合的原文（放不下时从最早的回合起省略）、当前状态、记忆目录与整理指令。
+// separateRequest 组装独立整理请求：系统提示、可用工具与上一份摘要，
+// 各回合的原文（放不下时省略最早的回合）、状态说明与当前值、记忆索引和整理指令。
 func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Model, fs prompts.FeatureSet, model *llm.Model,
-	ec *epochContext, st map[string]any, memory []save.MemoryEntry, task string) (*llm.Request, error) {
+	ec *epochContext, st map[string]any, memory save.MemoryIndex, task string) (*llm.Request, error) {
 	var specs []llm.ToolSpec
 	for _, s := range m.d.Tools.Specs(fs, w) {
 		if compactAllowed[s.Name] {
@@ -292,6 +302,7 @@ func (m *Manager) separateRequest(ctx context.Context, sv *save.Save, w *work.Mo
 	}
 	var tail strings.Builder
 	if !w.State.Empty() {
+		fmt.Fprintf(&tail, "<state_schema>\n%s\n</state_schema>\n", contextx.RenderStateDesc(w.State))
 		if y, err := state.YAML(w.State, st); err == nil {
 			fmt.Fprintf(&tail, "<state>\n%s</state>\n", y)
 		}
@@ -372,7 +383,7 @@ type compactCalls struct {
 	nudged, shortened, emp bool
 }
 
-// loop 运行整理：模型调用工具时执行（只允许读写记忆与查阅资料）并继续；给出不带工具调用的文字时视为交接摘要，
+// loop 运行整理：模型调用工具时执行（查阅资料、维护记忆与状态）并继续；给出不带工具调用的文字时视为交接摘要，
 // 校验非空与长度。落盘调用次数用完时追问一次摘要；摘要超过硬上限时要求压缩一次。
 func (c *compactCalls) loop(ctx context.Context, env *compactEnv, p compact.Params) (string, error) {
 	c.msgs = append(c.msgs, c.req.Messages[c.start])
@@ -509,12 +520,13 @@ func (c *compactCalls) runTools(ctx context.Context, env *compactEnv, calls []ll
 	return msg
 }
 
-// compactEnv 是整理过程中的工具环境：可以查阅资料、读写记忆、读取状态，不改状态、不给选项、不出卡片。
+// compactEnv 是整理过程中的工具环境：可以查阅资料、维护记忆与状态，不给选项、不出卡片。
 type compactEnv struct {
 	features prompts.FeatureSet
 	work     *work.Model
 	fs       *vfs.Table
 	state    map[string]any
+	pending  []state.Change // 当前回合已有的修改；相同、祖先与后代路径均不允许整理写入
 	images   interface {
 		ForModel(ctx context.Context, hash string, maxEdge int) (llm.ImageRef, error)
 	}
@@ -529,8 +541,21 @@ func (e *compactEnv) OfferChoices(save.DisplayItem) {}
 func (e *compactEnv) ShowCard(save.DisplayItem)     {}
 func (e *compactEnv) VFS() vfs.FS                   { return e.fs }
 func (e *compactEnv) State() map[string]any         { return e.state }
-func (e *compactEnv) UpdateState([]state.Op) ([]state.Change, error) {
-	return nil, errors.New(prompts.CompactionToolUnavailable)
+func (e *compactEnv) UpdateState(ops []state.Op) ([]state.Change, error) {
+	for _, op := range ops {
+		p := strings.TrimSpace(op.Path)
+		for _, change := range e.pending {
+			if p == change.Path || strings.HasPrefix(p, change.Path+".") || strings.HasPrefix(change.Path, p+".") {
+				return nil, errs.Invalid("%s 与当前回合已修改的 %s 重叠，请保留该路径，待回合结束后再整理", p, change.Path)
+			}
+		}
+	}
+	next, changes, err := state.Apply(e.work.State, e.state, ops)
+	if err != nil {
+		return nil, err
+	}
+	e.state = next
+	return changes, nil
 }
 func (e *compactEnv) ModelImage(ctx context.Context, blob string) (llm.ImageRef, error) {
 	return e.images.ForModel(ctx, blob, e.model.Caps.ImageMaxEdge)
