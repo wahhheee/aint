@@ -39,7 +39,14 @@ export interface Settings {
   reading: ReadingSettings
   audio: { master: number; bgm: number; sfx: number; muted: boolean }
   models: { narrator: string; light: string }
-  play: { pace: Pace; reasoning: Reasoning; cache_ttl: 'short' | 'long'; title_on_exit: 'auto' | 'ask' | 'off'; helpers: boolean }
+  play: {
+    pace: Pace
+    reasoning: Reasoning
+    cache_ttl: 'short' | 'long'
+    title_on_exit: 'auto' | 'ask' | 'off'
+    helpers: boolean
+    auto_debug: boolean
+  }
   /** 上下文整理的默认参数（存档设置可覆盖） */
   context: ContextSettings
   /** 不再提示的类别，跨存档生效 */

@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch'
 
 import { SectionTitle, SettingGroup, SettingRow } from './SettingRow'
 
-/** 开发者选项（《04-交互与界面设计》9.9，D-31）。默认关闭：普通玩家看不到调试入口。 */
+/** 开发者选项：状态编辑工具与游玩调试记录的默认行为。 */
 export function DeveloperSection() {
   const { t } = useTranslation()
   const { data } = useSettings()
@@ -15,6 +15,13 @@ export function DeveloperSection() {
     <section>
       <SectionTitle description={t('settings.developer.intro')}>{t('settings.sections.developer')}</SectionTitle>
       <SettingGroup>
+        <SettingRow label={t('settings.developer.autoDebug')} hint={t('settings.developer.autoDebugHint')}>
+          <Switch
+            checked={data.play.auto_debug}
+            onCheckedChange={(auto_debug) => update.mutate({ play: { auto_debug } })}
+            aria-label={t('settings.developer.autoDebug')}
+          />
+        </SettingRow>
         <SettingRow label={t('settings.developer.enable')} hint={t('settings.developer.enableHint')}>
           <Switch
             checked={data.developer}

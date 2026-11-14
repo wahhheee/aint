@@ -88,7 +88,6 @@ test('阅读、选项、调试、设置、目录与分支', async ({ page, reque
   expect(submitted).toBe(false)
   releaseEvents()
   const debug = page.getByRole('button', { name: '调试', exact: true })
-  await debug.click()
   await expect(debug).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   const choice = page.locator('article button').filter({ hasText: '继续前行' }).last()

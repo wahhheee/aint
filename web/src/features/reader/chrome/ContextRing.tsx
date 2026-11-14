@@ -23,7 +23,6 @@ export function ContextRing({
   compactions,
   onCompact,
   busy,
-  onInspect,
 }: {
   saveId: string
   /** 进度线上最近的回合（时间线最后一个回合节点） */
@@ -35,7 +34,6 @@ export function ContextRing({
   onCompact: () => void
   /** 回合进行中：不能手动整理 */
   busy: boolean
-  onInspect?: () => void
 }) {
   const { t } = useTranslation()
   const ratio = used !== undefined && threshold ? Math.min(1, used / threshold) : 0
@@ -78,11 +76,6 @@ export function ContextRing({
         <UsageDetails saveId={saveId} lastTurnId={lastTurnId} used={used} threshold={threshold} compactions={compactions} />
         <p className="text-xs leading-5 text-ink-muted">{t('reader.contextHint')}</p>
         <div className="flex justify-end">
-          {onInspect && (
-            <Button size="xs" variant="ghost" className="mr-auto" onClick={onInspect}>
-              {t('reader.inspector')}
-            </Button>
-          )}
           <Button size="xs" variant="outline" disabled={compacting || busy} onClick={onCompact}>
             {compacting ? t('reader.compacting') : t('reader.compactNow')}
           </Button>

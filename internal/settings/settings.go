@@ -75,6 +75,7 @@ type Play struct {
 	CacheTTL    string `json:"cache_ttl"`     // short | long：缓存保留时长（llm.CacheShort / CacheLong）
 	TitleOnExit string `json:"title_on_exit"` // auto | ask | off
 	Helpers     bool   `json:"helpers"`
+	AutoDebug   bool   `json:"auto_debug"` // 进入游玩页时自动开启当前存档的调试记录。
 }
 
 // Context 是上下文整理的默认参数（《04-交互与界面设计》9.4）；存档设置可以单独覆盖（save.Settings）。
@@ -98,7 +99,7 @@ func Defaults() Settings {
 			Indent: "work", Typewriter: "normal", ReduceMotion: "system", StageIntensity: 0.6, ToolHints: true,
 		},
 		Audio:   Audio{Master: 0.6, BGM: 1, SFX: 1},
-		Play:    Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "off"},
+		Play:    Play{Pace: "medium", Reasoning: "low", CacheTTL: "short", TitleOnExit: "off", AutoDebug: true},
 		Context: Context{Budget: 256_000, KeepRecent: 24_000, Mode: "inline"},
 		Models:  ModelRoles{},
 	}

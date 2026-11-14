@@ -175,6 +175,7 @@ runtime ──► llm.Provider（中立类型）
   `GET/PATCH/DELETE /saves/{id}/debug` 管理开关与记录列表；`GET .../debug/calls/{cid}` 获取详情，`/file` 读取快照，`/images/{hash}` 只提供该调用实际引用的图片。
   调试响应不缓存，记录最多 100 次 / 64 MiB，单次 8 MiB；HTTP 头与 URL 的鉴权字段进入观察器前脱敏，正文内容不改写。
   前端只轮询轻量列表，打开面板后按修订号读取当前详情；调试内容不进入游玩 SSE 事件总线，也不写入存档。
+  全局设置 `play.auto_debug` 在开发预览阶段默认开启；前端每次进入存档时先通过调试接口开启记录，再挂载可发起开场与玩家操作的阅读视图。此偏好仅在进入时应用，游玩中可手动暂停；自动开启失败时提示错误并继续加载阅读页。
 - 测试：真实录制的 SSE 夹具回放（`llm/*/testdata/`）；真实调用冒烟测试 `provider/live_test.go`（默认跳过，D-45）；实测结论见
   [api-verification.md](notes/api-verification.md)。
 - 供应商与模型：`provider` 管理增删改、密钥（`secrets.json`）、价格倍率（运行时解析模型时乘好，D-48）、连接测试（模型列表 → 文本 →
