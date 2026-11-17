@@ -19,6 +19,7 @@ import (
 	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/pkg/errs"
 	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/netx"
 )
 
 const vertexTokenURL = "https://oauth2.googleapis.com/token" //nolint:gosec // G101：Google 官方 OAuth 端点，不包含凭据
@@ -58,7 +59,9 @@ func newVertexTokenSource(secret string, client *http.Client) (*vertexTokenSourc
 		return nil, errs.Invalid("服务账号私钥必须为 RSA 格式")
 	}
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.Proxy = netx.ProxyFromEnvironment
+		client = &http.Client{Transport: transport, Timeout: 30 * time.Second}
 	}
 	return &vertexTokenSource{account: account, key: key, client: client}, nil
 }

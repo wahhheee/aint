@@ -25,6 +25,12 @@ SHA-256 校验和在发布页的 `checksums.txt`。Windows 可用 `Get-FileHash 
 
 模型调用使用你配置的 API，服务商按其规则计费。可在模型设置中填写价格，用量环显示当前回合与存档累计费用；不同货币分别统计。尚未配置价格的模型会显示“未配置价格”。
 
+### 模型请求代理
+
+模型 API 和 Vertex AI 服务账号认证请求优先使用 `HTTP_PROXY`、`HTTPS_PROXY` 及 `NO_PROXY`（也接受小写名称）。设置了 HTTP 或 HTTPS 代理环境变量时，按这些环境变量选择代理。
+
+Windows 未设置代理环境变量时，使用当前用户的系统手动代理及其绕过列表；`NO_PROXY` 仍然生效，本机回环地址直接连接。代理配置在程序启动时读取，修改后重启 AINT。PAC 脚本与自动检测不在此范围。
+
 ### Google Vertex AI
 
 添加供应商时选择「Google Vertex AI」，按所持凭据选择认证方式，并在 API Key 中填写凭据：

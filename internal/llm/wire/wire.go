@@ -1,4 +1,4 @@
-// Package wire 是三家协议适配器共用的 HTTP 与 SSE 工具，只用标准库（D-44）。
+// Package wire 是三家协议适配器共用的 HTTP 与 SSE 工具。
 //
 // 职责：
 //   - Endpoint：拼接地址、加鉴权与额外请求头、发请求；非 2xx 统一转为 *llm.APIError
@@ -26,6 +26,7 @@ import (
 
 	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/pkg/jsonx"
+	"github.com/wahhheee/aint/internal/pkg/netx"
 )
 
 // maxErrorBody 是读取错误响应体的上限（错误信息只需要开头）。
@@ -34,7 +35,7 @@ const maxErrorBody = 64 << 10
 // defaultClient 不设整体超时（流式响应可能持续数分钟），只限制建连与首包等待。
 var defaultClient = &http.Client{
 	Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
+		Proxy:                 netx.ProxyFromEnvironment,
 		DialContext:           (&net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 		TLSHandshakeTimeout:   15 * time.Second,
 		ResponseHeaderTimeout: 3 * time.Minute, // 长上下文首包可能较慢
