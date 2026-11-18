@@ -10,7 +10,7 @@
  * 更早回合按页加载，加载时保留滚动锚点；目录支持回合号与正文片段检索。
  */
 import { useReducedMotion } from 'motion/react'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, RotateCcw } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -27,6 +27,7 @@ import { displayedInput } from './displayedInput'
 import { Notice, QuietLine, Waiting } from './Notice'
 import { TurnToolbar } from './TurnToolbar'
 import { TurnView } from './TurnView'
+import { OperationNotices } from './OperationNotices'
 
 const FOLLOW_THRESHOLD = 80
 
@@ -68,7 +69,6 @@ export function Stream({
   const pendingParent = useReader((s) => s.pendingParent)
   const compacting = useReader((s) => s.compacting)
   const helper = useReader((s) => s.helper)
-  const failure = useReader((s) => s.failure)
   const clearDraft = useReader((s) => s.clearDraft)
   const { reading, actions } = useReaderContext()
   const systemReduce = useReducedMotion()
@@ -195,7 +195,18 @@ export function Stream({
                       )}
                   </TurnFrame>
                 ) : (
-                  <MetaNode key={n.id} node={n} />
+                  <MetaNode
+                    key={n.id}
+                    node={n}
+                    onRedo={
+                      timeline?.head_id === n.id &&
+                      !busy &&
+                      !compacting &&
+                      (n.compact_reason === 'manual' || n.compact_reason === 'threshold')
+                        ? () => void actions.compact(n.id, true)
+                        : undefined
+                    }
+                  />
                 ),
               )}
 
@@ -237,11 +248,6 @@ export function Stream({
               )}
 
               {helper && <QuietLine>{t(helper === 'curate' ? 'reader.helperCurate' : 'reader.helperResearch')}</QuietLine>}
-              {failure && !busy && (
-                <Notice level="error" actions={failure.recoverable ? <RetryButton onClick={onRetry} /> : undefined}>
-                  {failure.message}
-                </Notice>
-              )}
             </div>
           </div>
 
@@ -258,6 +264,7 @@ export function Stream({
           )}
         </div>
         {floating}
+        <OperationNotices headId={timeline?.head_id} onRetry={onRetry} onContinue={onContinue} />
         <div className="shrink-0">{footer}</div>
       </div>
     </div>
@@ -363,7 +370,7 @@ function SmallButton({ onClick, children }: { onClick: () => void; children: Rea
 }
 
 /** 编辑节点（玩家修改了状态或记忆）与整理节点在正文流中的样子：一行注记、一条分隔线。 */
-function MetaNode({ node }: { node: TimelineNode }) {
+function MetaNode({ node, onRedo }: { node: TimelineNode; onRedo?: () => void }) {
   const { t } = useTranslation()
   if (node.kind === 'edit') {
     return (
@@ -383,17 +390,13 @@ function MetaNode({ node }: { node: TimelineNode }) {
     <div data-node={node.id} className="my-8 flex items-center gap-3 font-sans text-xs text-ink-faint" title={detail}>
       <span aria-hidden className="h-px flex-1 bg-rule" />
       <span>◇ {t('reader.compactionDivider')}</span>
+      {onRedo && (
+        <Button variant="ghost" size="sm" onClick={onRedo}>
+          <RotateCcw aria-hidden /> {t('reader.compactRedo')}
+        </Button>
+      )}
       <span aria-hidden className="h-px flex-1 bg-rule" />
     </div>
-  )
-}
-
-function RetryButton({ onClick }: { onClick: () => void }): ReactNode {
-  const { t } = useTranslation()
-  return (
-    <Button size="xs" variant="outline" onClick={onClick}>
-      {t('common.retry')}
-    </Button>
   )
 }
 

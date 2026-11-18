@@ -6,12 +6,11 @@
  *        ├─ turn.committed ──► 刷新时间线、存档信息、累计用量、书架"继续阅读"
  *        ├─ panels ──────────► 直接写入面板缓存（不额外请求）
  *        ├─ timeline.changed、compaction.done ─► 刷新时间线、累计用量、存档信息、记忆、分支
- *        ├─ compaction.failed ─► 有说明时提示
+ *        ├─ compaction.failed ─► 阅读状态保留未采用的整理提示
  *        └─ session.snapshot ─► 恢复完整会话状态并刷新已提交数据
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { toast } from 'sonner'
 
 import { qk } from '@/api/queries'
 import { openEventStream } from '@/api/sse'
@@ -63,9 +62,6 @@ export function useReaderSession(saveId: string) {
           case 'compaction.done':
             void refreshSave(ev.type === 'timeline.changed' && ev.data.reason === 'opening')
             void qc.invalidateQueries({ queryKey: qk.recentSaves })
-            break
-          case 'compaction.failed':
-            if (ev.data.message) toast(ev.data.message)
             break
         }
       },

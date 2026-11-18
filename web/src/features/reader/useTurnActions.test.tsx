@@ -168,9 +168,11 @@ describe('失败重试', () => {
   it('未提交内容的普通回合重新提交原选项', async () => {
     const a = actions()
     await a.current.choose({ id: 'a', label: '拆信' })
-    useReader
-      .getState()
-      .dispatch({ id: 1, type: 'turn.failed', data: { turn_id: 'failed', code: 'network', message: '上游失败', recoverable: true } })
+    useReader.getState().dispatch({
+      id: 1,
+      type: 'turn.failed',
+      data: { turn_id: 'failed', input: { kind: 'choice', choice_id: 'a' }, code: 'network', message: '上游失败', recoverable: true },
+    })
     await a.current.retry()
     expect(api.saves.submit).toHaveBeenCalledTimes(2)
     expect(api.saves.regenerate).not.toHaveBeenCalled()
@@ -178,9 +180,19 @@ describe('失败重试', () => {
   it('重新生成失败且未保存内容时仍重试同一分支', async () => {
     const a = actions()
     await a.current.regenerate('old', 'parent', { kind: 'free', text: '新输入' })
-    useReader
-      .getState()
-      .dispatch({ id: 1, type: 'turn.failed', data: { turn_id: 'failed', code: 'network', message: '上游失败', recoverable: true } })
+    useReader.getState().dispatch({
+      id: 1,
+      type: 'turn.failed',
+      data: {
+        turn_id: 'failed',
+        input: { kind: 'free', text: '新输入' },
+        regenerate_id: 'old',
+        parent_id: 'parent',
+        code: 'network',
+        message: '上游失败',
+        recoverable: true,
+      },
+    })
     await a.current.retry()
     expect(api.saves.regenerate).toHaveBeenLastCalledWith('save', 'old', { kind: 'free', text: '新输入' })
     expect(api.saves.submit).not.toHaveBeenCalled()
@@ -223,7 +235,17 @@ describe('回合操作命令', () => {
     await a.current.submitText('/choices')
     expect(api.saves.requestChoices).toHaveBeenCalledWith('save', 'story', 'edit')
     expect(useReader.getState().pendingParent).toBeNull()
-    useReader.getState().setPending(null)
+    useReader.getState().dispatch({
+      id: 1,
+      type: 'turn.failed',
+      data: {
+        turn_id: 'r',
+        code: 'network',
+        message: '上游失败',
+        recoverable: true,
+        operation: { kind: 'choices', instructions: '', node_id: 'story', expected_head: 'edit' },
+      },
+    })
     await a.current.retry()
     expect(api.saves.requestChoices).toHaveBeenCalledTimes(2)
     expect(api.saves.submit).not.toHaveBeenCalled()

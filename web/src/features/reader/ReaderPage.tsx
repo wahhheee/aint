@@ -120,6 +120,7 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
   const saveSettings = useCallback(() => dockRef.current?.saveSettings() ?? Promise.resolve(true), [])
   const actions = useTurnActions(saveId, ui.commands, timeline, saveSettings)
   const busy = useReader(selectBusy)
+  const failedOpening = useReader((s) => s.failure?.input?.kind === 'opening')
   const connection = useReader((s) => s.connection)
   const [helpOpen, setHelpOpen] = useState(false)
   const sidebarOpen = useUI((s) => s.sidebarOpen)
@@ -166,6 +167,7 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
     if (
       connection === 'open' &&
       presentation.needs_opening &&
+      !failedOpening &&
       !presentation.running_turn_id &&
       !busy &&
       !presentation.compacting &&
@@ -174,7 +176,16 @@ function ReaderView({ loadEarlier, loadingEarlier, saveId, presentation, timelin
       openedRef.current = save.head_node_id
       void actions.submit({ kind: 'opening', expected_head_id: save.head_node_id })
     }
-  }, [connection, presentation.needs_opening, presentation.running_turn_id, presentation.compacting, busy, save.head_node_id, actions])
+  }, [
+    connection,
+    presentation.needs_opening,
+    presentation.running_turn_id,
+    presentation.compacting,
+    busy,
+    failedOpening,
+    save.head_node_id,
+    actions,
+  ])
 
   // 快捷键：Esc 停止；/ 聚焦输入栏并打开命令面板
   useEffect(() => {

@@ -3,7 +3,7 @@
  * 所有提交都经过这里（统一的等待态与错误提示）。
  */
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -22,9 +22,6 @@ import type { SubmitOptions } from './input/InputDock'
 export function useTurnActions(saveId: string, commands: Command[], timeline?: Timeline, beforeAction?: () => Promise<boolean>) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const lastOperation = useRef<TurnOperation | null>(null)
-  const lastInput = useRef<TurnInput | null>(null)
-  const lastRegeneration = useRef<{ nodeId: string; parentId: string; input?: TurnInput; shown?: TurnInput } | null>(null)
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: qk.timeline(saveId) })
@@ -57,9 +54,6 @@ export function useTurnActions(saveId: string, commands: Command[], timeline?: T
       const { setPending } = useReader.getState()
       if (!connected() || busy()) return false
       if (beforeAction && (!(await beforeAction()) || !connected() || busy())) return false
-      lastOperation.current = null
-      lastInput.current = input
-      lastRegeneration.current = null
       setPending(input)
       try {
         await api.saves.submit(saveId, input)
@@ -79,18 +73,20 @@ export function useTurnActions(saveId: string, commands: Command[], timeline?: T
   )
 
   /** 手动整理上下文（/compact 与用量环中的按钮）。 */
-  const compact = useCallback(async () => {
-    if (!connected()) return false
-    if (beforeAction && (!(await beforeAction()) || !connected())) return false
-    try {
-      await api.saves.compact(saveId)
-      toast(t('reader.compactStarted'))
-      return true
-    } catch (err) {
-      reportError(err)
-      return false
-    }
-  }, [saveId, t, connected, reportError, beforeAction])
+  const compact = useCallback(
+    async (head?: string, redo = false) => {
+      if (!connected()) return false
+      if (beforeAction && (!(await beforeAction()) || !connected())) return false
+      try {
+        await api.saves.compact(saveId, head, redo)
+        return true
+      } catch (err) {
+        reportError(err)
+        return false
+      }
+    },
+    [saveId, connected, reportError, beforeAction],
+  )
 
   const operate = useCallback(
     async (kind: TurnOperation['kind'], instructions = '', nodeId?: string) => {
@@ -102,7 +98,6 @@ export function useTurnActions(saveId: string, commands: Command[], timeline?: T
         return false
       }
       const operation: TurnOperation = { kind, node_id: node.id, instructions, expected_head: timeline.head_id }
-      lastOperation.current = operation
       const { setPending } = useReader.getState()
       setPending(displayedInput(node.display) ?? { kind: 'opening' }, kind === 'rewrite' ? node.parent_id : undefined, operation)
       try {
@@ -183,8 +178,6 @@ export function useTurnActions(saveId: string, commands: Command[], timeline?: T
       const { setPending } = useReader.getState()
       if (!connected() || busy()) return false
       if (beforeAction && (!(await beforeAction()) || !connected() || busy())) return false
-      lastOperation.current = null
-      lastRegeneration.current = { nodeId, parentId, input, shown }
       const presentation = qc.getQueryData<Presentation>(qk.save(saveId))
       if (presentation && presentation.save.branch_count <= 1 && !sessionStorage.getItem('aint.branchHint')) {
         toast(t('reader.firstBranchHint'), { duration: 8000 })
@@ -204,15 +197,13 @@ export function useTurnActions(saveId: string, commands: Command[], timeline?: T
   )
 
   const retry = useCallback(() => {
-    const { failure, draft } = useReader.getState()
-    const operation = failure?.operation ?? lastOperation.current
+    const { failure } = useReader.getState()
+    if (!failure || !failure.recoverable) return Promise.resolve(false)
+    const { operation, input, nodeId, parentId, regenerateId } = failure
     if (operation) return operate(operation.kind, operation.instructions, operation.node_id)
-    if (failure?.nodeId && failure.parentId) {
-      return regenerate(failure.nodeId, failure.parentId, undefined, draft?.input ?? lastInput.current ?? undefined)
-    }
-    const previous = lastRegeneration.current
-    if (previous) return regenerate(previous.nodeId, previous.parentId, previous.input, previous.shown)
-    return lastInput.current ? submit(lastInput.current) : Promise.resolve(false)
+    if (nodeId && parentId) return regenerate(nodeId, parentId, undefined, input)
+    if (regenerateId && parentId && input) return regenerate(regenerateId, parentId, input.kind === 'opening' ? undefined : input, input)
+    return input ? submit(input) : Promise.resolve(false)
   }, [regenerate, submit, operate])
 
   /** 不调用模型、直接改存档的操作：成功后刷新时间线（同一存档的其他标签页经 timeline.changed 刷新）。 */
