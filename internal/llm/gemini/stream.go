@@ -302,8 +302,5 @@ func stopReason(finish, block string, hasCall bool) llm.StopReason {
 	case "SAFETY", "RECITATION", "LANGUAGE", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT":
 		return llm.StopRefusal
 	}
-	if hasCall && finish == "" {
-		return llm.StopToolUse
-	}
 	return llm.StopError // MALFORMED_FUNCTION_CALL、MISSING_THOUGHT_SIGNATURE、OTHER 等
 }

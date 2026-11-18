@@ -17,6 +17,8 @@ const (
 	ErrAuth            ErrorKind = "auth"             // 鉴权失败 / 余额不足
 	ErrInvalidRequest  ErrorKind = "invalid_request"  // 请求不合法（多为适配器缺陷，需看 trace）
 	ErrContextOverflow ErrorKind = "context_overflow" // 上下文超限
+	ErrRefusal         ErrorKind = "refusal"          // 拒答或内容过滤
+	ErrProtocol        ErrorKind = "protocol"         // 缺少结束事件、停止原因未知或与载荷矛盾
 	ErrUnsupported     ErrorKind = "unsupported"      // 模型不支持该能力
 	ErrCanceled        ErrorKind = "canceled"         // 玩家停止
 	ErrUnknown         ErrorKind = "unknown"

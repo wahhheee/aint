@@ -354,11 +354,6 @@ func stopReason(r string, hasTool bool) llm.StopReason {
 		return llm.StopRefusal
 	case "model_context_window_exceeded":
 		return llm.StopContextOverflow
-	case "":
-		return llm.StopError
 	}
-	if hasTool {
-		return llm.StopToolUse
-	}
-	return llm.StopEnd
+	return llm.StopError
 }

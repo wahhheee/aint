@@ -21,6 +21,8 @@ func TestProtocolStreamEdges(t *testing.T) {
 	}{
 		{"Responses拒答", llm.ProtocolOpenAIResponses, `{"type":"response.completed","response":{"status":"completed","output":[{"type":"message","content":[{"type":"refusal","refusal":"不能回答"}]}]}}`, llm.StopRefusal, ""},
 		{"Responses过滤", llm.ProtocolOpenAIResponses, `{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"content_filter"}}}`, llm.StopRefusal, ""},
+		{"未知终止夹带工具", llm.ProtocolOpenAIResponses, `{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"new_reason"},"output":[{"type":"function_call","call_id":"c","name":"write","arguments":"{}"}]}}`, llm.StopError, ""},
+		{"终止事件与状态矛盾", llm.ProtocolOpenAIResponses, `{"type":"response.incomplete","response":{"status":"completed"}}`, llm.StopError, ""},
 		{"Responses限流", llm.ProtocolOpenAIResponses, `{"type":"error","code":"rate_limit_exceeded","message":"限流"}`, "", llm.ErrRateLimited},
 		{"Responses余额不足", llm.ProtocolOpenAIResponses, `{"type":"response.failed","response":{"error":{"code":"insufficient_quota","message":"余额不足"}}}`, "", llm.ErrAuth},
 		{"Gemini提示拒答", llm.ProtocolGemini, `{"promptFeedback":{"blockReason":"SAFETY"}}`, llm.StopRefusal, ""},

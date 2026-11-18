@@ -100,6 +100,7 @@ type usage struct {
 // item 是输出项中用到的字段。
 type item struct {
 	Type      string `json:"type"`
+	Status    string `json:"status"`
 	CallID    string `json:"call_id"`
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
@@ -157,7 +158,11 @@ func (s *stream) handle(data []byte) error {
 		}
 	case "response.completed", "response.incomplete":
 		s.done = true
-		s.queue.Push(s.finish(ev.Response))
+		result := s.finish(ev.Response)
+		if ev.Response == nil || ev.Type != "response."+ev.Response.Status {
+			result.Stop = llm.StopError
+		}
+		s.queue.Push(result)
 	case "response.failed":
 		msg, code := "响应失败", ""
 		if ev.Response != nil && ev.Response.Error != nil {
@@ -173,6 +178,8 @@ func (s *stream) handle(data []byte) error {
 func failure(code, msg string) error {
 	kind := llm.ErrUnknown
 	switch code {
+	case "content_filter":
+		kind = llm.ErrRefusal
 	case "rate_limit_exceeded":
 		kind = llm.ErrRateLimited
 	case "server_error", "server_is_overloaded":
@@ -191,12 +198,15 @@ func failure(code, msg string) error {
 
 // finish 组装 Done。输出项以 output_item.done 为准，缺失时用终止事件中的 output 补齐。
 func (s *stream) finish(r *response) llm.Done {
+	incompleteItem := false
 	if r != nil {
 		for i, raw := range r.Output {
 			if st := s.items[i]; st == nil || st.raw == nil {
 				var it item
 				if jsonx.Unmarshal(raw, &it) == nil {
 					s.items[i] = &itemState{typ: it.Type, callID: it.CallID, name: it.Name, raw: raw}
+				} else {
+					incompleteItem = true
 				}
 			}
 		}
@@ -213,11 +223,15 @@ func (s *stream) finish(r *response) llm.Done {
 	for _, i := range idx {
 		st := s.items[i]
 		if st.raw == nil {
+			incompleteItem = true
 			continue
 		}
 		native = append(native, st.raw)
 		var it item
 		_ = jsonx.Unmarshal(st.raw, &it)
+		if it.Status != "" && it.Status != "completed" {
+			incompleteItem = true
+		}
 		switch it.Type {
 		case "message":
 			for _, c := range it.Content {
@@ -273,11 +287,13 @@ func (s *stream) finish(r *response) llm.Done {
 		done.Raw += ":" + reason
 	}
 	switch {
-	case status == "incomplete" && reason == "max_output_tokens":
-		done.Stop = llm.StopMaxTokens
 	case status == "incomplete" && reason == "content_filter", refused:
 		done.Stop = llm.StopRefusal
-	case hasTool:
+	case status == "incomplete" && reason == "max_output_tokens":
+		done.Stop = llm.StopMaxTokens
+	case status == "completed" && (reason != "" || incompleteItem):
+		done.Stop = llm.StopError
+	case status == "completed" && hasTool:
 		done.Stop = llm.StopToolUse
 	case status == "completed":
 		done.Stop = llm.StopEnd

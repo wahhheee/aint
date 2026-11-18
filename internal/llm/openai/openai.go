@@ -351,6 +351,11 @@ func effort(caps llm.Caps, level llm.ReasoningLevel) string {
 
 // classify 细化错误种类：上下文超限、余额不足。
 func classify(status int, body []byte, msg string) llm.ErrorKind {
+	if status != 0 {
+		if _, code := wire.ErrorMessage(body); code == "content_filter" {
+			return llm.ErrRefusal
+		}
+	}
 	low := strings.ToLower(msg + " " + string(body))
 	switch {
 	case strings.Contains(low, "context_length_exceeded"), strings.Contains(low, "maximum context length"),

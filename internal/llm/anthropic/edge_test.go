@@ -18,6 +18,7 @@ func TestStreamEdgeCases(t *testing.T) {
 		{"截断工具参数", `{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"a","name":"read","input":{}}}
 {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":"}}`, "max_tokens", "", llm.StopMaxTokens, 0},
 		{"拒答", `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":"无法回答"}}`, "refusal", "无法回答", llm.StopRefusal, 0},
+		{"未知终止", `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":"钥匙在"}}`, "new_reason", "钥匙在", llm.StopError, 0},
 		{"隐藏推理与暂停", `{"type":"content_block_start","index":0,"content_block":{"type":"redacted_thinking","data":"OPAQUE"}}
 {"type":"content_block_stop","index":0}
 {"type":"content_block_start","index":1,"content_block":{"type":"server_tool_use","id":"srv","name":"web_search","input":{}}}
