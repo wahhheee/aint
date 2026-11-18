@@ -67,3 +67,10 @@
 
 - 测试包：Android/arm64 本地开发快照，NDK r30、API 24、`CGO_ENABLED=1`。从压缩包内的可执行文件核对了系统解析器符号 `getaddrinfo@LIBC`。
 - 在此前查询 `[::1]:53` 时出现 `connection refused` 的设备上运行该快照，Termux 中成功拉取 DeepSeek 模型列表。本项验证覆盖域名解析和供应商连接，不计作完整游玩验收。
+
+## 2026-11-18 v0.2.1-alpha.1 发布记录
+
+- [v0.2.1-alpha.1](https://github.com/wahhheee/aint/releases/tag/v0.2.1-alpha.1) 已发布为 Pre-release，标签对应 `6886ff7ea0bfa8952147c1706e2e9653dce44b08`。
+- 本地 `task check`（含前端 450 项测试）、前端生产构建与七平台发布快照通过。[CI](https://github.com/wahhheee/aint/actions/runs/44300098388) 与[标签发布构建](https://github.com/wahhheee/aint/actions/runs/44300098634) 均通过。
+- 七份发布压缩包均包含对应程序、许可证、使用说明、创作指南、10 个 Schema、完整 aint-work 技能和两部示例作品。
+- Windows/amd64 发布包在独立数据目录启动，版本与提交正确。静态页面与资源、示例书架和两部作品包校验通过；使用假模型在《第一个故事》中生成了开场正文与选项。
