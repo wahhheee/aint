@@ -36,7 +36,7 @@ func (m *Manager) Upgrade(ctx context.Context, saveID, versionID string) error {
 	if target.VersionID == sv.WorkVersionID {
 		return errs.Invalid("存档已经使用此版本")
 	}
-	m.startCompactionLocked(saveID, s, compact.ReasonUpgrade, target)
+	m.startCompactionLocked(saveID, s, compact.ReasonUpgrade, target, false)
 	return nil
 }
 

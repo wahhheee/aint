@@ -42,10 +42,11 @@ const (
 )
 
 type TurnStartedData struct {
-	Operation any    `json:"operation,omitempty"` // *save.TurnOperation；非故事行动
-	TurnID    string `json:"turn_id"`
-	ParentID  string `json:"parent_id"`
-	Input     any    `json:"input"` // save.TurnInput
+	RegenerateID string `json:"-"`                   // 用于未提交内容时的重试
+	Operation    any    `json:"operation,omitempty"` // *save.TurnOperation；非故事行动
+	TurnID       string `json:"turn_id"`
+	ParentID     string `json:"parent_id"`
+	Input        any    `json:"input"` // save.TurnInput
 }
 
 type TurnTextData struct {
@@ -101,8 +102,11 @@ type TurnCommittedData struct {
 }
 
 type TurnFailedData struct {
-	TurnID string `json:"turn_id"`
-	// NodeID / ParentID 非空表示已保存中断回合，重试应在其父节点重新生成。
+	Input        any    `json:"input,omitempty"` // save.TurnInput，供其他设备重试
+	Operation    any    `json:"operation,omitempty"`
+	RegenerateID string `json:"regenerate_id,omitzero"` // 未保存的新版本应重试哪个原节点
+	TurnID       string `json:"turn_id"`
+	// NodeID 非空表示已保存中断回合；ParentID 是原输入对应的父节点。
 	NodeID      string `json:"node_id,omitzero"`
 	ParentID    string `json:"parent_id,omitzero"`
 	Code        string `json:"code"`
@@ -136,7 +140,11 @@ type CompactionDoneData struct {
 }
 
 type CompactionFailedData struct {
-	Message string `json:"message"` // 给玩家的说明；为空表示不需要提示（自动触发但没有可以整理的内容）
+	Reason    string `json:"reason,omitzero"`
+	AttemptID string `json:"attempt_id,omitzero"`
+	RetryHead string `json:"retry_head,omitzero"` // 后台整理原进度；进度变化后不能重试这次操作
+	Redo      bool   `json:"redo,omitzero"`
+	Message   string `json:"message"` // 给玩家的说明；为空表示不需要提示（自动触发但没有可以整理的内容）
 }
 
 type HelperProgressData struct {

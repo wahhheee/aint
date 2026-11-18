@@ -16,6 +16,8 @@ export interface EventMap {
       tools_running: number
     } | null
     compacting: boolean
+    failure?: EventMap['turn.failed']
+    compact_failure?: EventMap['compaction.failed']
     helper?: string
     usage?: EventMap['turn.usage']
   }
@@ -39,13 +41,23 @@ export interface EventMap {
     context: { used: number; threshold: number }
   }
   'turn.committed': { turn_id: string; node_id: string; status: 'committed' | 'interrupted' }
-  'turn.failed': { turn_id: string; node_id?: string; parent_id?: string; code: string; message: string; recoverable: boolean }
+  'turn.failed': {
+    turn_id: string
+    node_id?: string
+    parent_id?: string
+    input?: TurnInput
+    operation?: TurnOperation
+    regenerate_id?: string
+    code: string
+    message: string
+    recoverable: boolean
+  }
   panels: { panels: PanelRender[] }
   /** 回合以外的操作改了存档（移动 head、修改正文、丢弃、删除分支、编辑记忆或状态、整理）：重新拉取时间线 */
   'timeline.changed': { head_id: string; reason: string }
   'compaction.started': { reason: string }
   'compaction.done': { node_id: string; stats: CompactStats }
-  'compaction.failed': { message: string }
+  'compaction.failed': { reason?: string; message: string; attempt_id?: string; retry_head?: string; redo?: boolean }
   'helper.progress': { turn_id: string; kind: 'research' | 'curate'; phase: string }
   'work.reloaded': { work_id: string; report: unknown }
   'save.title_failed': { save_id: string }

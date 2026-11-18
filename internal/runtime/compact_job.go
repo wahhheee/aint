@@ -26,15 +26,36 @@ import (
 
 // Compact 手动整理存档的上下文（后台进行，结果经 compaction.* 事件推送）。有任务在运行时返回 Conflict。
 func (m *Manager) Compact(ctx context.Context, saveID string) error {
-	if _, err := m.d.Saves.Get(ctx, saveID); err != nil {
-		return err
-	}
+	return m.CompactAt(ctx, saveID, "", false)
+}
+
+// CompactAt 限定手动整理的当前进度。重新整理从指定整理节点的父节点创建兄弟版本，不提前移动 head。
+func (m *Manager) CompactAt(ctx context.Context, saveID, expectedHead string, redo bool) error {
 	s := m.lockSession(saveID)
-	defer s.mu.Unlock()
+	defer func() { s.mu.Unlock(); m.dropIdle(saveID, s) }()
 	if err := busyError(s); err != nil {
 		return err
 	}
-	m.startCompactionLocked(saveID, s, compact.ReasonManual, nil)
+	sv, err := m.d.Saves.Get(ctx, saveID)
+	if err != nil {
+		return err
+	}
+	if expectedHead != "" && expectedHead != sv.HeadNodeID {
+		return errs.Conflict("存档进度已改变，未开始整理。")
+	}
+	if redo {
+		if expectedHead == "" {
+			return errs.Invalid("重新整理需要指定原整理节点。")
+		}
+		n, err := m.d.Saves.Node(ctx, saveID, expectedHead)
+		if err != nil {
+			return err
+		}
+		if !canRedoCompaction(n) {
+			return errs.Invalid("只能重新整理手动或回合后自动产生的整理节点。")
+		}
+	}
+	m.startCompactionLocked(saveID, s, compact.ReasonManual, nil, redo)
 	return nil
 }
 
@@ -46,11 +67,11 @@ func (m *Manager) handoffCompaction(saveID string, slot *turnSlot) {
 	if s.running != slot.job {
 		return
 	}
-	m.startCompactionLocked(saveID, s, compact.ReasonThreshold, nil)
+	m.startCompactionLocked(saveID, s, compact.ReasonThreshold, nil, false)
 }
 
 // startCompactionLocked 在写者槽位上开始一个整理任务（调用方持有 s.mu，且槽位空闲或属于即将让出的回合）。
-func (m *Manager) startCompactionLocked(saveID string, s *session, reason compact.Reason, target *work.Model) {
+func (m *Manager) startCompactionLocked(saveID string, s *session, reason compact.Reason, target *work.Model, redo bool) {
 	ctx, cancel := context.WithTimeout(m.base, m.d.Budget.WallClock)
 	j := newJob(ids.New(), jobCompaction, cancel)
 	s.running = j
@@ -67,12 +88,12 @@ func (m *Manager) startCompactionLocked(saveID string, s *session, reason compac
 				m.publish(saveID, event.CompactionFailed, event.CompactionFailedData{Message: "整理上下文时出错（详见日志）"})
 			}
 		}()
-		m.runCompactionJob(ctx, saveID, reason, target, release)
+		m.runCompactionJob(ctx, saveID, reason, target, redo, j.id, release)
 	})
 }
 
 // runCompactionJob 对 head 所在的进度线执行整理。先让出槽位（排队的回合随即开始），再发布结果。
-func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason compact.Reason, target *work.Model, release func()) {
+func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason compact.Reason, target *work.Model, redo bool, attemptID string, release func()) {
 	sv, line, err := m.d.Saves.ProgressLine(ctx, saveID)
 	if err != nil {
 		release()
@@ -80,7 +101,10 @@ func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason co
 		m.publish(saveID, event.CompactionFailed, event.CompactionFailedData{Message: "整理上下文时出错（详见日志）"})
 		return
 	}
-	node, stats, err := m.compactVersion(ctx, sv, line, reason, target, nil)
+	if redo {
+		line = line[:len(line)-1]
+	}
+	node, stats, err := m.compactWith(ctx, attemptID, sv, line, reason, target, nil, nil, m.d.Saves.CommitCompaction)
 	if err == nil {
 		m.publishPanels(ctx, saveID)
 	}
@@ -94,29 +118,37 @@ func (m *Manager) runCompactionJob(ctx context.Context, saveID string, reason co
 		} else {
 			slog.WarnContext(ctx, "上下文整理失败", "reason", reason, "err", err)
 		}
-		m.publish(saveID, event.CompactionFailed, event.CompactionFailedData{Message: msg})
+		failure := event.CompactionFailedData{AttemptID: attemptID, Reason: string(reason), Message: msg, Redo: redo}
+		if target == nil && !errors.Is(err, errNothingToCompact) {
+			failure.RetryHead = sv.HeadNodeID
+		}
+		m.publish(saveID, event.CompactionFailed, failure)
 		return
 	}
 	m.publish(saveID, event.CompactionDone, event.CompactionDoneData{NodeID: node.ID, Stats: stats})
 	m.publish(saveID, event.TimelineChanged, event.TimelineChangedData{HeadID: node.ID, Reason: "compaction"})
 }
 
+func canRedoCompaction(n *save.Node) bool {
+	return n.Kind == save.KindCompaction && (n.Meta.CompactReason == string(compact.ReasonThreshold) || n.Meta.CompactReason == string(compact.ReasonManual))
+}
+
 // compactionError 把整理失败写成给玩家的一句话。
 func compactionError(err error) string {
-	if e, ok := errs.As(err); ok {
-		return e.Message
-	}
 	_, msg, _ := describeError(err)
-	return "整理上下文没有成功：" + msg
+	return msg
 }
 
 // compactInTurn 在回合内整理（13.2 第 2、3 点）：对本回合之前的历史执行整理，整理节点成为本回合的父节点，
 // 再以新阶段块 + 保留的回合 + 本回合已有的消息重建请求；本回合的状态与记忆写入保留在整理后的快照上。
 func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Reason) error {
+	d.compactionAttempted = true
 	line, err := m.d.Saves.ProgressLineAt(ctx, d.save.ID, d.parent.ID)
 	if err != nil {
+		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{Message: compactionError(err)})
 		return err
 	}
+	attemptID := ids.New()
 	m.publish(d.save.ID, event.CompactionStarted, event.CompactionStartedData{Reason: string(reason)})
 	var merged map[string]any
 	commit := func(ctx context.Context, c save.CompactionCommit) (*save.Node, error) {
@@ -135,13 +167,23 @@ func (m *Manager) compactInTurn(ctx context.Context, d *draft, reason compact.Re
 		}
 		return m.d.Saves.CommitCompaction(ctx, c)
 	}
-	node, stats, err := m.compactWith(ctx, d.save, line, reason, nil, d.work, d.stateLog, commit)
+	node, stats, err := m.compactWith(ctx, attemptID, d.save, line, reason, nil, d.work, d.stateLog, commit)
 	if err != nil {
-		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{Message: compactionError(err)})
+		msg := compactionError(err)
+		if errors.Is(err, errNothingToCompact) {
+			msg = ""
+		}
+		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{AttemptID: attemptID, Reason: string(reason), Message: msg})
 		return err
 	}
-	m.publish(d.save.ID, event.CompactionDone, event.CompactionDoneData{NodeID: node.ID, Stats: stats})
-	d.compacted, d.parent = true, node
+	result := event.CompactionDoneData{NodeID: node.ID, Stats: stats}
+	if d.staged != nil {
+		d.stagedResult = &result
+		d.stagedAttempt = attemptID
+	} else {
+		m.publish(d.save.ID, event.CompactionDone, result)
+	}
+	d.parent = node
 	var changed []state.Change
 	for _, name := range d.work.State.Order {
 		if !reflect.DeepEqual(d.state[name], merged[name]) {

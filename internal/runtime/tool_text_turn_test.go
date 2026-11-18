@@ -39,7 +39,7 @@ func TestToolTextRecovery(t *testing.T) {
 		{name: "纠正后没有实际调用", responses: []fake.Response{bad, {Text: "灯光很暗。"}}, calls: 2, stop: "tool_format"},
 		{name: "漏掉状态操作", responses: []fake.Response{{Text: story + badState + badChoices}, good}, calls: 2, stop: "tool_format"},
 		{name: "截断伪调用直接纠正", responses: []fake.Response{{Text: story + `<offer_choices choices="`, Stop: "max_tokens"}, good}, calls: 2, stop: "choices"},
-		{name: "拒答不重试", responses: []fake.Response{{Text: story + badChoices, Stop: "refusal"}}, calls: 1, stop: "tool_format"},
+		{name: "拒答不重试", responses: []fake.Response{{Text: story + badChoices, Stop: "refusal"}}, calls: 1, stop: "refusal"},
 		{name: "纠正受总预算限制", responses: []fake.Response{bad, good}, maxCalls: 1, calls: 1, stop: "budget"},
 		{name: "纠正请求失败保留正文", responses: []fake.Response{bad, {Error: string(llm.ErrNetwork)}}, calls: 2, stop: "error"},
 		{name: "正常标签与调用", responses: []fake.Response{{Text: story, ToolCalls: good.ToolCalls}}, calls: 1, stop: "choices", clean: true},

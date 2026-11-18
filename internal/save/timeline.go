@@ -28,9 +28,10 @@ type TimelineNode struct {
 	EditedFrom string        `json:"edited_from,omitzero"` // 修改正文得到的版本：原回合的节点 ID
 	Versions   Versions      `json:"versions"`
 	// 整理节点：写成交接摘要的回合区间与保留原文的起点
-	SummaryFrom  int `json:"summary_from,omitzero"`
-	SummaryTo    int `json:"summary_to,omitzero"`
-	KeepFromTurn int `json:"keep_from_turn,omitzero"`
+	SummaryFrom   int    `json:"summary_from,omitzero"`
+	CompactReason string `json:"compact_reason,omitzero"`
+	SummaryTo     int    `json:"summary_to,omitzero"`
+	KeepFromTurn  int    `json:"keep_from_turn,omitzero"`
 }
 
 // Timeline 是当前分支的时间线（分页，向前加载）。
@@ -68,7 +69,7 @@ func (s *Service) Timeline(ctx context.Context, saveID, before string, limit int
 		tn := TimelineNode{
 			ID: n.ID, ParentID: n.ParentID, Kind: n.Kind, Status: n.Status, TurnNo: n.TurnNo, CreatedAt: n.CreatedAt,
 			Display: []DisplayItem{}, Notes: n.Notes, Stop: n.Meta.Stop, Error: n.Meta.Error, EditedFrom: n.Meta.EditedFrom,
-			SummaryFrom: n.Meta.SummaryFrom, SummaryTo: n.Meta.SummaryTo, KeepFromTurn: n.Meta.KeepFromTurn,
+			SummaryFrom: n.Meta.SummaryFrom, SummaryTo: n.Meta.SummaryTo, KeepFromTurn: n.Meta.KeepFromTurn, CompactReason: n.Meta.CompactReason,
 		}
 		if n.Kind == KindTurn {
 			if tn.Display, err = s.TurnDisplay(ctx, line, n); err != nil {

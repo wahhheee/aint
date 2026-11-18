@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wahhheee/aint/internal/contextx"
+	"github.com/wahhheee/aint/internal/event"
 	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/markup"
 	"github.com/wahhheee/aint/internal/media"
@@ -25,6 +26,8 @@ type draft struct {
 	operation       *save.TurnOperation
 	reference       string // 仅供本次重写使用的原文与选项，不进入新分支的故事历史
 	staged          *save.PreparedCompaction
+	stagedResult    *event.CompactionDoneData
+	stagedAttempt   string
 	versionParent   string
 	reviewing       bool // 核对新版记忆时，普通回复不进入正文
 	contextMessages int  // 本轮玩家输入之前的消息数
@@ -74,7 +77,7 @@ type draft struct {
 	// lastInput / lastOutput 是最近一次调用的实际用量，提交时记为节点的上下文规模。
 	threshold, hardLimit  int
 	lastInput, lastOutput int
-	compacted             bool // 本回合已经在回合内整理过一次（每回合至多一次）
+	compactionAttempted   bool // 单回合仅尝试一次，即便交接失败也不反复调用
 	sinceCompaction       int  // 上次整理之后的回合数（含本回合）；还没有整理过时为全部回合数
 
 	// 计数与结果
@@ -83,7 +86,7 @@ type draft struct {
 	continuing                      bool // 下一次调用是截断后的续写（只对紧接着的那一次调用有效）
 	completingChoices               bool // 补选项阶段的助手文字不进入正文与故事历史，工具往返保留
 	usage                           llm.Usage
-	stop, stopRaw, errMsg           string
+	stop, stopRaw, errMsg, notice   string
 	err                             error // 原始错误（保留类型，用于给玩家的错误分类）；errMsg 是它的文字
 	status                          save.NodeStatus
 }
@@ -158,7 +161,20 @@ func (d *draft) addToolSummary(n int) {
 }
 
 func (d *draft) addNotice(level, text string) {
+	d.notice = text
 	d.display = append(d.display, save.DisplayItem{T: "notice", Level: level, Text: text})
+}
+
+// interruption 同时说明停止原因与保存结果；有节点时可从同一父节点重新生成。
+func (d *draft) interruption(node *save.Node) event.TurnFailedData {
+	f := event.TurnFailedData{TurnID: d.id, Code: d.stop, Message: d.notice, Recoverable: true}
+	if d.err != nil {
+		f.Code, f.Message, f.Recoverable = describeError(d.err)
+	}
+	if node != nil {
+		f.NodeID, f.ParentID = node.ID, node.ParentID
+	}
+	return f
 }
 
 // hasContent 表示本回合是否产生了值得保留的内容（中断时决定是否提交）。

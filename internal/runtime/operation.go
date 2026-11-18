@@ -65,7 +65,7 @@ func (m *Manager) Operate(ctx context.Context, saveID string, op save.TurnOperat
 		parent, input = sv.HeadNodeID, save.TurnInput{Kind: save.InputContinue}
 	}
 	input.ExpectedHeadID, input.ChoiceLabel = op.ExpectedHead, ""
-	return m.submitOperation(ctx, saveID, parent, input, &op, "")
+	return m.submitOperation(ctx, saveID, parent, input, &op, "", "")
 }
 
 func operationValue(op *save.TurnOperation) any {
@@ -158,9 +158,12 @@ func (m *Manager) abortOperation(ctx context.Context, d *draft) {
 	if d.stop == "canceled" {
 		msg = "已取消，当前正文和状态保持不变。"
 	}
-	if d.err != nil {
-		_, detail, _ := describeError(d.err)
-		msg += detail
+	if d.stagedResult != nil {
+		m.publish(d.save.ID, event.CompactionFailed, event.CompactionFailedData{AttemptID: d.stagedAttempt, Message: "重写未采用，暂存的整理结果已丢弃。"})
+	}
+	if d.err != nil || (d.notice != "" && d.stop != "canceled") {
+		failure := d.interruption(nil)
+		code, msg = failure.Code, msg+failure.Message
 	}
 	d.release()
 	m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: code, Message: msg, Recoverable: d.stop != "canceled"})

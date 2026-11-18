@@ -67,10 +67,10 @@ func TestForceChoices(t *testing.T) {
 		{name: "纯场外回应不补调", features: enabled, kind: save.InputOOC, responses: []fake.Response{{Text: "<ooc>接下来放慢节奏。</ooc>"}}, calls: 1, stop: "end"},
 		{name: "场外后有正文仍补选项", features: enabled, kind: save.InputOOC, responses: []fake.Response{{Text: "<ooc>接下来放慢节奏。</ooc>\n\n" + story.Text}, choiceResponse()}, calls: 2, nudgeAt: 1, stop: "choices", choices: true},
 		{name: "空回复不补调", features: enabled, responses: []fake.Response{{}}, calls: 1, stop: "end"},
-		{name: "拒答不补调", features: enabled, responses: []fake.Response{{Text: story.Text, Stop: "refusal"}}, calls: 1, stop: "refusal"},
+		{name: "拒答不补调", features: enabled, responses: []fake.Response{{Text: story.Text, Stop: "refusal"}}, calls: 1, stop: "refusal", interrupted: true},
 		{name: "补调用失败保留正文", features: enabled, responses: []fake.Response{story, {Error: string(llm.ErrNetwork)}}, calls: 2, nudgeAt: 1, stop: "error", interrupted: true},
 		{name: "补调用受回合预算限制", features: enabled, responses: []fake.Response{story, choiceResponse()}, maxCalls: 1, calls: 1, stop: "budget", interrupted: true, warning: "已达本回合模型调用上限"},
-		{name: "空工具调用按自然结束处理", features: enabled, responses: []fake.Response{{Text: story.Text, Stop: "tool_use"}, choiceResponse()}, calls: 2, nudgeAt: 1, stop: "choices", choices: true},
+		{name: "空工具调用中断", features: enabled, responses: []fake.Response{{Text: story.Text, Stop: "tool_use"}, choiceResponse()}, calls: 1, stop: "error", interrupted: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for i := range tc.responses {

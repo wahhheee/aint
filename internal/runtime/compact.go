@@ -14,7 +14,6 @@ import (
 	"github.com/wahhheee/aint/internal/contextx"
 	"github.com/wahhheee/aint/internal/llm"
 	"github.com/wahhheee/aint/internal/pkg/errs"
-	"github.com/wahhheee/aint/internal/pkg/ids"
 	"github.com/wahhheee/aint/internal/prompts"
 	"github.com/wahhheee/aint/internal/save"
 	"github.com/wahhheee/aint/internal/state"
@@ -55,13 +54,8 @@ type CompactStats struct {
 // 工具定义不变（前缀稳定）。
 var compactAllowed = map[string]bool{"read": true, "list": true, "search": true, "write": true, "edit": true, "remove": true, "get_state": true, "update_state": true}
 
-// compactVersion 对进度线执行整理；current 用于固定开发回合正在使用的作品快照，target 指定升级目标。
-func (m *Manager) compactVersion(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model) (*save.Node, *CompactStats, error) {
-	return m.compactWith(ctx, sv, line, reason, target, current, nil, m.d.Saves.CommitCompaction)
-}
-
 // compactWith 通过提交函数选择立即采用或暂存整理结果；pending 中本回合已修改的状态路径不参与整理。
-func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model, pending []state.Change, commit func(context.Context, save.CompactionCommit) (*save.Node, error)) (*save.Node, *CompactStats, error) {
+func (m *Manager) compactWith(ctx context.Context, attemptID string, sv *save.Save, line []*save.Node, reason compact.Reason, target, current *work.Model, pending []state.Change, commit func(context.Context, save.CompactionCommit) (*save.Node, error)) (*save.Node, *CompactStats, error) {
 	start := time.Now()
 	head := line[len(line)-1]
 	if target != nil && lastTurn(line) == nil {
@@ -176,9 +170,14 @@ func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.N
 	req.Purpose = "compact"
 
 	env := &compactEnv{features: toolFS, work: w, fs: fsys, state: headState, pending: pending, images: m.d.Images, model: model}
-	run := &compactCalls{m: m, provider: provider, model: model, save: sv, req: req, start: len(req.Messages) - 1, debugID: ids.New(), turnNo: head.TurnNo, env: env}
+	run := &compactCalls{m: m, provider: provider, model: model, save: sv, req: req, start: len(req.Messages) - 1, debugID: attemptID, turnNo: head.TurnNo, env: env}
 	summary, err := run.loop(ctx, env, params)
 	if err != nil {
+		if len(run.records) > 0 {
+			if recErr := m.d.Saves.RecordAttempt(context.WithoutCancel(ctx), sv.ID, run.records); recErr != nil {
+				slog.ErrorContext(ctx, "保存整理尝试用量失败", "err", recErr)
+			}
+		}
 		return nil, nil, err
 	}
 
@@ -252,7 +251,7 @@ func (m *Manager) compactWith(ctx context.Context, sv *save.Save, line []*save.N
 	if stats.After >= threshold {
 		slog.WarnContext(ctx, "整理后的上下文仍不低于整理阈值：预算可能小于常驻部分加保留原文", "after", stats.After, "threshold", threshold)
 	}
-	slog.InfoContext(ctx, "上下文整理完成", "reason", reason, "mode", mode, "summary_turns", fmt.Sprintf("%d-%d", stats.SummaryFrom, stats.SummaryTo),
+	slog.InfoContext(ctx, "交接摘要已生成", "reason", reason, "mode", mode, "summary_turns", fmt.Sprintf("%d-%d", stats.SummaryFrom, stats.SummaryTo),
 		"keep_from", stats.KeepFromTurn, "summary_chars", stats.SummaryChars, "memory_writes", stats.MemoryWrites,
 		"before", stats.Before, "after", stats.After, "calls", stats.Calls, "duration", time.Since(start).Round(time.Millisecond))
 	return node, stats, nil
@@ -383,14 +382,14 @@ type compactCalls struct {
 	nudged, shortened, emp bool
 }
 
-// loop 运行整理：模型调用工具时执行（查阅资料、维护记忆与状态）并继续；给出不带工具调用的文字时视为交接摘要，
+// loop 仅在协议正常结束、没有工具调用时接受交接摘要。工具写入留在草稿，输出上限可有界续写，
 // 校验非空与长度。落盘调用次数用完时追问一次摘要；摘要超过硬上限时要求压缩一次。
 func (c *compactCalls) loop(ctx context.Context, env *compactEnv, p compact.Params) (string, error) {
 	c.msgs = append(c.msgs, c.req.Messages[c.start])
 	var partial strings.Builder // 截断续写时累积的摘要
 	for {
 		if c.calls >= p.FlushMaxCalls+3 {
-			return "", errors.New("整理没有完成：模型没有给出交接摘要")
+			return "", errs.New(errs.CodeUnavailable, "整理没有完成：模型没有给出交接摘要。")
 		}
 		if c.calls == p.FlushMaxCalls && !c.nudged {
 			c.nudged = true
@@ -400,26 +399,42 @@ func (c *compactCalls) loop(ctx context.Context, env *compactEnv, p compact.Para
 		if err != nil {
 			return "", err
 		}
-		if len(msg.Parts) > 0 {
+		if len(msg.Parts) > 0 || len(msg.Native) > 0 {
 			c.append(msg)
 		}
-		if calls := msg.ToolCalls(); len(calls) > 0 {
+		switch stop {
+		case llm.StopToolUse:
+			if partial.Len() != 0 {
+				return "", errs.New(errs.CodeUnavailable, "摘要续写意外返回了工具调用。")
+			}
+			calls := msg.ToolCalls()
 			c.toolCalls += len(calls)
-			partial.Reset()
 			c.append(c.runTools(ctx, env, calls))
 			continue
-		}
-		partial.WriteString(msg.TextOf())
-		if stop == llm.StopMaxTokens && partial.Len() > 0 {
+		case llm.StopPause:
+			partial.WriteString(msg.TextOf())
+			continue
+		case llm.StopMaxTokens:
+			if strings.TrimSpace(msg.TextOf()) == "" {
+				return "", errs.New(errs.CodeUnavailable, "整理输出已达上限，没有可续写的摘要。")
+			}
+			partial.WriteString(msg.TextOf())
 			c.append(llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ContinueNotice)}})
 			continue
+		case llm.StopEnd:
+			if partial.Len() != 0 && strings.TrimSpace(msg.TextOf()) == "" {
+				return "", errs.New(errs.CodeUnavailable, "交接摘要续写未返回内容。")
+			}
+			partial.WriteString(msg.TextOf())
+		default:
+			return "", errs.New(errs.CodeUnavailable, "整理未正常结束：%s。", stop)
 		}
 		summary := strings.TrimSpace(partial.String())
 		partial.Reset()
 		switch p.SummaryProblem(summary, contextx.EstimateTokens(summary)) {
 		case "empty":
 			if c.emp {
-				return "", errors.New("整理没有完成：模型给出的交接摘要是空的")
+				return "", errs.New(errs.CodeUnavailable, "整理没有完成：模型给出的交接摘要是空的。")
 			}
 			c.emp = true
 			c.append(llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.CompactionSummaryEmpty)}})
@@ -453,7 +468,6 @@ func (c *compactCalls) call(ctx context.Context) (llm.Message, llm.StopReason, e
 	}
 	defer func() { _ = stream.Close() }()
 	var done *llm.Done
-	var text strings.Builder
 	for {
 		ev, err := stream.Next()
 		if errors.Is(err, io.EOF) {
@@ -462,23 +476,15 @@ func (c *compactCalls) call(ctx context.Context) (llm.Message, llm.StopReason, e
 		if err != nil {
 			return llm.Message{}, "", err
 		}
-		switch ev := ev.(type) {
-		case llm.TextDelta:
-			text.WriteString(ev.Text)
-		case llm.Done:
+		if ev, ok := ev.(llm.Done); ok {
 			done = &ev
 		}
 	}
+	if ctx.Err() != nil {
+		return llm.Message{}, "", ctx.Err()
+	}
 	if done == nil {
-		if ctx.Err() != nil {
-			return llm.Message{}, "", ctx.Err()
-		}
-		// 流中途断开：保留已收到的文字，按截断处理
-		msg := llm.Message{Role: llm.RoleAssistant}
-		if text.Len() > 0 {
-			msg.Parts = []llm.Part{llm.Text(text.String())}
-		}
-		return msg, llm.StopMaxTokens, nil
+		return llm.Message{}, "", &llm.APIError{Kind: llm.ErrProtocol, Message: "整理响应缺少结束事件"}
 	}
 	u := done.Usage
 	c.usage = c.usage.Add(u)
@@ -490,7 +496,7 @@ func (c *compactCalls) call(ctx context.Context) (llm.Message, llm.StopReason, e
 		rec.CostMicros, rec.Currency = &cost, c.model.Price.CurrencyOrDefault()
 	}
 	c.records = append(c.records, rec)
-	return done.Message, done.Stop, nil
+	return done.Message, done.Stop, responseError(done.Stop, done.Raw, done.Message)
 }
 
 // runTools 执行整理过程中的工具调用：允许的工具照常执行，其余返回"整理阶段暂不使用这个工具"。结果按原顺序。

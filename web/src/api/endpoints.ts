@@ -143,7 +143,8 @@ export const api = {
     discard: (id: string, nodeId: string) => http.post<{ head_id: string }>(`/saves/${id}/nodes/${nodeId}/discard`),
     deleteBranch: (id: string, nodeId: string) => http.del(`/saves/${id}/branches/${nodeId}`),
     copy: (id: string, nodeId: string) => http.post<Save>(`/saves/${id}/nodes/${nodeId}/copy`),
-    compact: (id: string) => http.post<void>(`/saves/${id}/compact`),
+    compact: (id: string, head?: string, redo = false) =>
+      http.post<void>(`/saves/${id}/compact${head ? `?expected_head=${encodeURIComponent(head)}&redo=${redo}` : ''}`),
     // 记忆与状态（修改产生编辑节点，下一回合告知执笔者）
     memory: (id: string) => http.get<MemoryView>(`/saves/${id}/memory`),
     memoryFile: (id: string, path: string) => http.get<MemoryFile>(`/saves/${id}/memory/${memoryPath(path)}`),

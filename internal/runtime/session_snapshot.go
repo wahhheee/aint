@@ -4,20 +4,24 @@ import (
 	"slices"
 
 	"github.com/wahhheee/aint/internal/event"
+	"github.com/wahhheee/aint/internal/pkg/ids"
 	"github.com/wahhheee/aint/internal/save"
 )
 
-// SessionSnapshot 是已发布事件的当前会话投影，仅在回合或整理进行期间保留。
+// SessionSnapshot 是已发布事件的当前会话投影，保留正在运行的操作和最近的中断提示。
 // 它不读取回合 goroutine 的可变草稿；新连接可从快照继续消费事件。
 type SessionSnapshot struct {
-	Turn       *LiveTurn            `json:"turn"`
-	Compacting bool                 `json:"compacting"`
-	Helper     string               `json:"helper,omitzero"`
-	Usage      *event.TurnUsageData `json:"usage,omitempty"`
+	Failure        *event.TurnFailedData       `json:"failure,omitempty"`
+	CompactFailure *event.CompactionFailedData `json:"compact_failure,omitempty"`
+	Turn           *LiveTurn                   `json:"turn"`
+	Compacting     bool                        `json:"compacting"`
+	Helper         string                      `json:"helper,omitzero"`
+	Usage          *event.TurnUsageData        `json:"usage,omitempty"`
 }
 
 // LiveTurn 包含排队、准备或生成中的回合。Started 为 false 时尚无正文与确定的父节点。
 type LiveTurn struct {
+	RegenerateID string             `json:"-"`
 	Operation    any                `json:"operation,omitempty"`
 	TurnID       string             `json:"turn_id"`
 	ParentID     string             `json:"parent_id"`
@@ -51,7 +55,7 @@ func (m *Manager) SubscribeEvents(saveID string, lastID uint64) (*event.Subscrip
 }
 
 // updateSnapshot 的调用方持有 liveMu。显示项的嵌套内容与用量载荷在发布后不可修改。
-func (m *Manager) updateSnapshot(saveID string, data any, typ string) {
+func (m *Manager) updateSnapshot(saveID string, data any, typ string) any {
 	s := m.live[saveID]
 	if s == nil {
 		s = &SessionSnapshot{}
@@ -59,7 +63,15 @@ func (m *Manager) updateSnapshot(saveID string, data any, typ string) {
 	}
 	switch v := data.(type) {
 	case event.TurnStartedData:
+		s.Failure = nil
+		if typ == event.TurnPending && !s.Compacting {
+			s.CompactFailure = nil
+		}
+		if typ == event.TurnStarted && s.Turn != nil && s.Turn.TurnID == v.TurnID {
+			v.RegenerateID = s.Turn.RegenerateID
+		}
 		s.Turn = &LiveTurn{TurnID: v.TurnID, ParentID: v.ParentID, Input: v.Input.(save.TurnInput), Operation: v.Operation, Started: typ == event.TurnStarted, Items: []save.DisplayItem{}}
+		s.Turn.RegenerateID = v.RegenerateID
 		s.Helper, s.Usage = "", nil
 	case event.TurnTextData:
 		if d := s.Turn; d != nil && d.TurnID == v.TurnID {
@@ -102,15 +114,40 @@ func (m *Manager) updateSnapshot(saveID string, data any, typ string) {
 			s.Turn, s.Usage, s.Helper = nil, nil, ""
 		}
 	case event.TurnFailedData:
+		if s.Turn != nil && s.Turn.TurnID != v.TurnID {
+			break
+		}
 		if s.Turn != nil && s.Turn.TurnID == v.TurnID {
+			v.Input, v.Operation, v.RegenerateID = s.Turn.Input, s.Turn.Operation, s.Turn.RegenerateID
+			if v.NodeID == "" {
+				v.ParentID = s.Turn.ParentID
+			}
 			s.Turn, s.Usage, s.Helper = nil, nil, ""
 		}
+		if v.Message != "" {
+			s.Failure = &v
+		}
+		data = v
+	case event.TimelineChangedData:
+		s.Failure, s.CompactFailure = nil, nil
 	case event.CompactionStartedData:
+		s.CompactFailure = nil
 		s.Compacting = true
-	case event.CompactionDoneData, event.CompactionFailedData:
+	case event.CompactionDoneData:
+		s.CompactFailure = nil
+		s.Compacting = false
+	case event.CompactionFailedData:
+		if v.Message != "" {
+			if v.AttemptID == "" {
+				v.AttemptID = ids.New()
+			}
+			s.CompactFailure = &v
+			data = v
+		}
 		s.Compacting = false
 	}
-	if s.Turn == nil && !s.Compacting {
+	if s.Turn == nil && !s.Compacting && s.Failure == nil && s.CompactFailure == nil {
 		delete(m.live, saveID)
 	}
+	return data
 }

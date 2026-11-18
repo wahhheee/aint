@@ -196,15 +196,15 @@ func (m *Manager) Regenerate(ctx context.Context, saveID, nodeID string, in *sav
 	}
 	input.ChoiceLabel = ""    // 由 prepare 依据父节点的选项重新补全
 	input.ExpectedHeadID = "" // 重新生成使用显式父节点，不沿用自动开场时的 head
-	return m.submitOperation(ctx, saveID, n.ParentID, input, nil, n.Meta.VersionParent)
+	return m.submitOperation(ctx, saveID, n.ParentID, input, nil, n.Meta.VersionParent, nodeID)
 }
 
 // submit 在后台开始一个回合。parentID 为空时以 head 为父节点。
 func (m *Manager) submit(ctx context.Context, saveID, parentID string, in save.TurnInput) (string, error) {
-	return m.submitOperation(ctx, saveID, parentID, in, nil, "")
+	return m.submitOperation(ctx, saveID, parentID, in, nil, "", "")
 }
 
-func (m *Manager) submitOperation(ctx context.Context, saveID, parentID string, in save.TurnInput, op *save.TurnOperation, versionParent string) (string, error) {
+func (m *Manager) submitOperation(ctx context.Context, saveID, parentID string, in save.TurnInput, op *save.TurnOperation, versionParent, regenerateID string) (string, error) {
 	if err := validateInput(in); err != nil {
 		return "", err
 	}
@@ -247,7 +247,7 @@ func (m *Manager) submitOperation(ctx context.Context, saveID, parentID string, 
 	} else {
 		s.running = j
 	}
-	m.publish(saveID, event.TurnPending, event.TurnStartedData{TurnID: turnID, ParentID: parentID, Input: in, Operation: operationValue(op)})
+	m.publish(saveID, event.TurnPending, event.TurnStartedData{TurnID: turnID, ParentID: parentID, Input: in, Operation: operationValue(op), RegenerateID: regenerateID})
 
 	// release 让出单一写者槽位。必须先于终态事件（turn.committed / turn.failed）发布：
 	// 客户端收到终态事件后可能立即提交下一回合，此时不应再得到 409。
@@ -351,6 +351,10 @@ func (m *Manager) Exclusive(ctx context.Context, saveID, reason string, fn func(
 			// 结构变更先于下一回合的 pending/started，客户端据此清除旧开场草稿。
 			m.publish(saveID, event.TimelineChanged, event.TimelineChangedData{HeadID: sv.HeadNodeID, Reason: reason})
 			refreshPanels = true
+		} else if errs.Is(getErr, errs.CodeNotFound) {
+			m.liveMu.Lock()
+			delete(m.live, saveID)
+			m.liveMu.Unlock()
 		}
 	}
 	s.mu.Unlock()
@@ -424,7 +428,7 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 func (m *Manager) publish(saveID, typ string, data any) {
 	m.liveMu.Lock()
 	defer m.liveMu.Unlock()
-	m.updateSnapshot(saveID, data, typ)
+	data = m.updateSnapshot(saveID, data, typ)
 	m.d.Bus.Publish(event.SaveTopic(saveID), typ, data)
 }
 

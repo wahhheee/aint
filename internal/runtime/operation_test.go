@@ -497,7 +497,10 @@ func TestRewriteStagedCompaction(t *testing.T) {
 			if _, err := e.mgr.Operate(t.Context(), sv.ID, save.TurnOperation{Kind: "rewrite", NodeID: id, ExpectedHead: before.HeadNodeID, Instructions: "让气氛更安静"}); err != nil {
 				t.Fatal(err)
 			}
-			waitFor(t, sub, event.CompactionDone)
+			result := waitAny(t, sub, event.CompactionDone, event.CompactionFailed)
+			if (result.Type == event.CompactionFailed) != fail {
+				t.Fatalf("暂存整理终态不符：%s", result.Type)
+			}
 			if fail {
 				waitFor(t, sub, event.TurnFailed)
 				after, got, _ := e.saves.ProgressLine(t.Context(), sv.ID)

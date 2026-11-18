@@ -357,6 +357,9 @@ func (r *debugRecorder) Event(ev llm.Event) {
 			r.toolCall(llm.ToolCall(e))
 		case llm.Done:
 			r.data.Stop, r.data.Usage = string(e.Stop), e.Usage
+			if err := responseError(e.Stop, e.Raw, e.Message); err != nil {
+				r.data.Error = r.text(err.Error())
+			}
 			if !slices.ContainsFunc(r.data.Steps, func(s DebugStep) bool { return s.Kind == "text" }) {
 				r.appendText("text", e.Message.TextOf())
 			}
@@ -409,6 +412,9 @@ func (r *debugRecorder) Finish(err error) {
 	r.update(func() {
 		r.data.DurationMS = time.Since(r.data.Started).Milliseconds()
 		r.data.Status = "complete"
+		if r.data.Error != "" {
+			r.data.Status = "error"
+		}
 		if err != nil {
 			r.data.Status, r.data.Error = "error", r.text(err.Error())
 			if u := llm.UsageOf(err); u != (llm.Usage{}) {

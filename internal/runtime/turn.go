@@ -262,14 +262,14 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			return
 		}
 		// 硬上限：下一次调用的上下文估算达到 窗口 − 预留 时，先在回合内整理（每回合至多一次）
-		if !d.isChoices() && !d.compacted && m.estimate(d.model, d.req) >= d.hardLimit {
+		if !d.isChoices() && !d.compactionAttempted && m.estimate(d.model, d.req) >= d.hardLimit {
 			if err := m.compactInTurn(ctx, d, compact.ReasonLimit); err != nil && !errors.Is(err, errNothingToCompact) {
 				slog.WarnContext(ctx, "回合内整理失败，照常继续", "err", err)
 			}
 		}
 		res, err := m.callOnce(ctx, d)
 		// 模型报上下文超限：紧急整理后重试一次（13.2 第 3 点）
-		if err != nil && ctx.Err() == nil && llm.KindOf(err) == llm.ErrContextOverflow && !d.compacted && !d.isChoices() {
+		if err != nil && ctx.Err() == nil && llm.KindOf(err) == llm.ErrContextOverflow && !d.compactionAttempted && !d.isChoices() {
 			if cerr := m.compactInTurn(ctx, d, compact.ReasonOverflow); cerr == nil {
 				continue
 			} else {
@@ -278,6 +278,14 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 		}
 		if res != nil {
 			d.stopRaw = res.raw
+			// 异常终止的工具没有执行或结果，不能把它们连同原生载荷带入下一回合。
+			if err != nil && len(res.msg.ToolCalls()) != 0 {
+				text := res.msg.TextOf()
+				res.msg = llm.Message{Role: llm.RoleAssistant}
+				if text != "" {
+					res.msg.Parts = []llm.Part{llm.Text(text)}
+				}
+			}
 			if len(res.msg.Parts) > 0 || len(res.msg.Native) > 0 {
 				d.req.Messages = append(d.req.Messages, res.msg)
 				msg := res.msg
@@ -295,6 +303,9 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 				d.stopCanceled(ctx)
 			} else {
 				d.stop, d.err, d.errMsg = "error", err, err.Error()
+				if llm.KindOf(err) == llm.ErrRefusal {
+					d.stop = string(llm.StopRefusal)
+				}
 				_, msg, _ := describeError(err)
 				d.addNotice("error", msg)
 			}
@@ -323,7 +334,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			notice.Parts = append(notice.Parts, llm.Text(fmt.Sprintf(prompts.ToolTextRepairNotice, strings.Join(pending, "、"))))
 			d.req.Messages = append(d.req.Messages, notice)
 			d.turnMsgs = append(d.turnMsgs, notice)
-			if toolTextRepairs >= 2 || res.stop == llm.StopRefusal {
+			if toolTextRepairs >= 2 {
 				d.stopToolText()
 				return
 			}
@@ -352,7 +363,6 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 				}
 				continue
 			}
-			fallthrough
 		case llm.StopEnd:
 			if len(unrepaired) > 0 {
 				d.stopToolText()
@@ -378,7 +388,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			return
 		case llm.StopMaxTokens:
 			if d.continuations >= m.d.Budget.MaxContinuations {
-				d.stop = "length"
+				d.stop, d.status = "length", save.StatusInterrupted
 				d.addNotice("warn", "本回合篇幅已达上限，可以点“继续”接着写。")
 				return
 			}
@@ -389,7 +399,7 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 			d.turnMsgs = append(d.turnMsgs, notice)
 		case llm.StopContextOverflow:
 			// 输出写到了窗口上限：紧急整理后接着写（与截断续写相同），每回合一次
-			if !d.compacted && !d.isChoices() {
+			if !d.compactionAttempted && !d.isChoices() {
 				if err := m.compactInTurn(ctx, d, compact.ReasonOverflow); err == nil {
 					d.continuing = true
 					notice := llm.Message{Role: llm.RoleUser, Parts: []llm.Part{llm.Text(prompts.ContinueNotice)}}
@@ -404,17 +414,11 @@ func (m *Manager) loop(ctx context.Context, d *draft) {
 		case llm.StopPause:
 			// 原生响应随历史回传，不追加续写指令；调用次数与时长仍受回合预算约束。
 			continue
-		case llm.StopError:
+		default:
 			d.stop, d.status = "error", save.StatusInterrupted
-			d.err = &llm.APIError{Kind: llm.ErrUnknown, Message: "模型未正常完成响应：" + res.raw}
-			d.errMsg = d.err.Error()
-			d.addNotice("error", d.errMsg)
-			return
-		default: // refusal
-			d.stop = string(res.stop)
-			if res.stop == llm.StopRefusal {
-				d.addNotice("warn", "模型拒绝继续这段内容，可以换一种写法再试。")
-			}
+			d.err = &llm.APIError{Kind: llm.ErrProtocol, Message: res.raw}
+			_, msg, _ := describeError(d.err)
+			d.addNotice("error", msg)
 			return
 		}
 	}
@@ -579,22 +583,27 @@ func (m *Manager) callOnce(ctx context.Context, d *draft) (*callResult, error) {
 		if text.Len() > 0 {
 			res.msg.Parts = append(res.msg.Parts, llm.Text(text.String()))
 		}
-		res.stop = llm.StopMaxTokens
-		if streamErr == nil && ctx.Err() != nil {
-			streamErr = ctx.Err()
+		if streamErr == nil {
+			streamErr = &llm.APIError{Kind: llm.ErrProtocol, Message: "流中缺少响应结束事件"}
 		}
-		if streamErr != nil && (ctx.Err() != nil || text.Len() == 0) {
-			m.recordUsage(d, purpose, u, start, "interrupted")
-			return res, streamErr
+		// 普通正文的网络断流允许有界续写；过滤、协议错误与主动停止均不走此分支。
+		if text.Len() > 0 && ctx.Err() == nil && llm.KindOf(streamErr) == llm.ErrNetwork {
+			res.stop = llm.StopMaxTokens
+			streamErr = nil
 		}
-		// 已有正文的断流按"截断"处理：交给续写逻辑接着写（计入续写次数）。
-		slog.WarnContext(ctx, "模型流中途断开，按截断续写处理", "err", streamErr, "chars", text.Len())
+	}
+	if ctx.Err() != nil {
+		streamErr = ctx.Err()
+	}
+	if streamErr != nil {
+		m.recordUsage(d, purpose, u, start, "interrupted")
+		return res, streamErr
 	}
 	if in := u.InputTotal(); in > 0 {
 		m.calibrate(d.model.ID, raw, in)
 	}
 	m.recordUsage(d, purpose, u, start, string(res.stop))
-	return res, nil
+	return res, responseError(res.stop, res.raw, res.msg)
 }
 
 func (m *Manager) recordUsage(d *draft, purpose string, u llm.Usage, start time.Time, stop string) {
@@ -631,18 +640,9 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	}
 	if d.status == save.StatusInterrupted && !d.hasContent() {
 		// 什么也没生成：不产生节点，head 不变。
-		code, msg, recoverable := "canceled", "已停止", true
-		switch d.stop {
-		case "error":
-			code, msg, recoverable = describeError(d.err)
-		case "budget":
-			code, msg, recoverable = describeError(errTurnTimeout)
-		case "tool_format":
-			code, msg, recoverable = "tool_format", "模型未能正确调用工具，请重试或更换模型。", true
-		}
 		slog.InfoContext(ctx, "回合未产生内容，不提交", "stop", d.stop, "err", d.errMsg)
 		d.release()
-		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, Code: code, Message: msg, Recoverable: recoverable})
+		m.publish(d.save.ID, event.TurnFailed, d.interruption(nil))
 		return
 	}
 	if d.choices != nil {
@@ -689,6 +689,9 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 	// 上次整理之后至少要有 3 个回合（整理至少保留 2 个回合，才有可以摘要掉的内容）：预算小于常驻部分加保留原文时，
 	// 不会每个回合都整理一次；出错或中断的回合不触发，停止与超时后让出存档。
 	compacting := !d.isChoices() && err == nil && d.status != save.StatusInterrupted && d.stop != "error" && contextTokens >= d.threshold && d.sinceCompaction >= 3
+	if err == nil && d.stagedResult != nil {
+		m.publish(d.save.ID, event.CompactionDone, *d.stagedResult)
+	}
 	if compacting {
 		slog.InfoContext(ctx, "上下文达到整理阈值", "context_tokens", contextTokens, "threshold", d.threshold)
 		m.handoffCompaction(d.save.ID, d.slot)
@@ -708,9 +711,8 @@ func (m *Manager) commit(ctx context.Context, d *draft) {
 		m.publish(d.save.ID, event.TimelineChanged, event.TimelineChangedData{HeadID: node.ID, Reason: "choices"})
 	}
 	m.publish(d.save.ID, event.TurnCommitted, event.TurnCommittedData{TurnID: d.id, NodeID: node.ID, Status: string(node.Status)})
-	if d.stop == "error" {
-		code, msg, recoverable := describeError(d.err)
-		m.publish(d.save.ID, event.TurnFailed, event.TurnFailedData{TurnID: d.id, NodeID: node.ID, ParentID: node.ParentID, Code: code, Message: msg, Recoverable: recoverable})
+	if d.status == save.StatusInterrupted {
+		m.publish(d.save.ID, event.TurnFailed, d.interruption(node))
 	}
 	m.publishPanels(ctx, d.save.ID)
 	slog.InfoContext(ctx, "回合结束", "stop", d.stop, "status", d.status, "calls", d.calls, "tool_calls", d.toolCalls,

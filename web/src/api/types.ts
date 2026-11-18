@@ -390,6 +390,7 @@ export interface TimelineNode {
   /** 同一父节点下的各版本（重新生成、修改得到）；ids 只在有多个版本时给出 */
   versions: { index: number; count: number; ids?: string[] }
   /** 整理节点：写成交接摘要的回合区间与保留原文的起点 */
+  compact_reason?: string
   summary_from?: number
   summary_to?: number
   keep_from_turn?: number

@@ -61,6 +61,9 @@ func TestPrefixStableAcrossTurns(t *testing.T) {
 			}
 		}
 		waitFor(t, sub, event.TurnCommitted)
+		if cancel {
+			waitFor(t, sub, event.TurnFailed)
+		}
 	}
 	run(save.TurnInput{Kind: save.InputChoice, ChoiceID: "a"}, false) // 静态开场的选项
 	run(save.TurnInput{Kind: save.InputChoice, ChoiceID: "b"}, false)

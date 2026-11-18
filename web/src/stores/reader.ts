@@ -9,11 +9,13 @@
  */
 import { create } from 'zustand'
 
-import type { AnyEvent } from '@/api/events'
+import type { AnyEvent, EventMap } from '@/api/events'
 import type { StreamStatus } from '@/api/sse'
 import type { DisplayItem, TurnInput, TurnOperation, Usage } from '@/api/types'
 
 export interface TurnFailure {
+  input?: TurnInput
+  regenerateId?: string
   operation?: TurnOperation
   turnId: string
   nodeId?: string
@@ -61,6 +63,7 @@ export interface ReaderState {
   /** 服务端已接受的排队或准备中回合，可在开始生成前停止 */
   pendingTurnId?: string
   failure: TurnFailure | null
+  compactFailure?: EventMap['compaction.failed']
   context: { used: number; threshold: number } | null
   /** 最近一个回合的用量：新回合开始时清空，本页面没有进行过回合时为 null */
   turnUsage: TurnUsage | null
@@ -89,6 +92,7 @@ type Snapshot = Pick<
   | 'pendingParent'
   | 'pendingTurnId'
   | 'failure'
+  | 'compactFailure'
   | 'context'
   | 'turnUsage'
   | 'compacting'
@@ -118,7 +122,8 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         pendingOperation: turn && !turn.started ? turn.operation : undefined,
         pendingParent: turn && !turn.started ? turn.parent_id || null : null,
         pendingTurnId: turn && !turn.started ? turn.turn_id : undefined,
-        failure: null,
+        failure: ev.data.failure ? turnFailure(ev.data.failure) : null,
+        compactFailure: ev.data.compact_failure,
         compacting,
         helper,
         turnUsage: usage ? { turnId: usage.turn_id, usage: usage.usage, costs: usage.costs, unpriced: usage.unpriced } : null,
@@ -128,6 +133,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
     case 'turn.pending':
       return {
         ...s,
+        compactFailure: s.compacting ? s.compactFailure : undefined,
         draft: null,
         pending: ev.data.input,
         pendingOperation: ev.data.operation,
@@ -197,7 +203,7 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
       return { ...s, draft: { ...d, status: ev.data.status, nodeId: ev.data.node_id, toolsRunning: 0 } }
     }
     case 'timeline.changed':
-      if (ev.data.reason !== 'opening') return s
+      if (ev.data.reason !== 'opening') return { ...s, failure: null, compactFailure: undefined }
       return {
         ...s,
         draft: null,
@@ -209,13 +215,14 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         helper: undefined,
         turnUsage: null,
         context: null,
+        compactFailure: undefined,
       }
     case 'compaction.started':
-      return { ...s, compacting: true }
+      return { ...s, compacting: true, compactFailure: undefined }
     case 'compaction.done':
-      return { ...s, compacting: false, context: s.context && { ...s.context, used: ev.data.stats.after } }
+      return { ...s, compacting: false, compactFailure: undefined, context: s.context && { ...s.context, used: ev.data.stats.after } }
     case 'compaction.failed':
-      return { ...s, compacting: false }
+      return { ...s, compacting: false, compactFailure: ev.data.message ? ev.data : undefined }
     case 'turn.failed':
       if (s.pendingTurnId && s.pendingTurnId !== ev.data.turn_id) return s
       if (s.draft?.status === 'streaming' && s.draft.turnId !== ev.data.turn_id) return s
@@ -228,18 +235,24 @@ export function reduceEvent(s: Snapshot, ev: AnyEvent): Snapshot {
         pendingTurnId: undefined,
         // 后端在有内容时先发 committed 再发 failed；仍在 streaming 说明这一回合没有留下任何内容，草稿可以移除
         draft: s.draft?.turnId === ev.data.turn_id && s.draft.status === 'streaming' ? null : s.draft,
-        failure: {
-          operation: s.draft?.operation ?? s.pendingOperation,
-          turnId: ev.data.turn_id,
-          nodeId: ev.data.node_id,
-          parentId: ev.data.parent_id,
-          code: ev.data.code,
-          message: ev.data.message,
-          recoverable: ev.data.recoverable,
-        },
+        failure: turnFailure(ev.data),
       }
     default:
       return s
+  }
+}
+
+function turnFailure(f: EventMap['turn.failed']): TurnFailure {
+  return {
+    operation: f.operation,
+    input: f.input,
+    regenerateId: f.regenerate_id,
+    turnId: f.turn_id,
+    nodeId: f.node_id,
+    parentId: f.parent_id,
+    code: f.code,
+    message: f.message,
+    recoverable: f.recoverable,
   }
 }
 
@@ -260,6 +273,7 @@ export const useReader = create<ReaderState>((set) => ({
   reset: (saveId) =>
     set({
       saveId,
+      compactFailure: undefined,
       draft: null,
       pending: null,
       pendingParent: null,

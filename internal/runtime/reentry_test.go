@@ -72,6 +72,7 @@ func TestReentryCanCancelRunningTurn(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, second, event.TurnCommitted)
+	waitFor(t, second, event.TurnFailed)
 	if _, err := e.mgr.Submit(ctx, sv.ID, save.TurnInput{Kind: save.InputContinue}); err != nil {
 		t.Fatal(err)
 	}
@@ -131,6 +132,9 @@ func TestTurnDeadlineReleasesWriter(t *testing.T) {
 				}
 				if !found {
 					t.Fatal("超时后正文丢失")
+				}
+				if f := waitFor(t, sub, event.TurnFailed).Data.(event.TurnFailedData); f.NodeID != id || f.Code != "budget" {
+					t.Fatalf("超时中断提示：%+v", f)
 				}
 			}
 			if e.mgr.Running(sv.ID) != "" {

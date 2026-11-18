@@ -169,7 +169,10 @@ describe('回合操作恢复', () => {
       }),
     )
     expect(s.draft?.operation).toEqual(operation)
-    s = reduceEvent(s, ev({ type: 'turn.failed', data: { turn_id: 'new', code: 'network', message: '失败', recoverable: true } }))
+    s = reduceEvent(
+      s,
+      ev({ type: 'turn.failed', data: { turn_id: 'new', operation, code: 'network', message: '失败', recoverable: true } }),
+    )
     expect(s.draft).toBeNull()
     expect(s.failure?.operation).toEqual(operation)
   })
