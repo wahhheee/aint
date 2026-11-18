@@ -8,7 +8,7 @@ Windows/amd64 发布包已通过运行验证。Android/arm64 开发快照已在 
 
 Windows 选择 `windows`，macOS 选择 `darwin`，Linux 选择 `linux`；Intel / AMD 常见电脑使用 `amd64`，Apple 芯片与 ARM 设备使用 `arm64`。
 
-Android 的 Termux 使用 `android_arm64` 包（Android 7.0 / API 24 起，arm64 设备）。解压到 Termux 的家目录，运行 `./aint`。程序使用 Android 系统解析域名，无需安装 NDK 或配置 DNS 服务器。
+Android 7.0 及以上版本的 arm64 设备请选择 `android_arm64.tar.gz` 压缩包。这是供 Termux 运行的命令行程序，不是 APK。在 Termux 中解压后，进入 `aint` 所在目录，运行 `./aint`。程序使用 Android 系统解析域名，无需安装 NDK 或配置 DNS 服务器。
 
 解压到可写的普通目录。Windows 双击 `aint.exe`，或在 PowerShell 运行 `./aint.exe`。macOS / Linux 在终端进入解压目录后运行 `./aint`，必要时先执行 `chmod +x aint`。程序会打开浏览器；没有自动打开时访问终端显示的地址。关闭终端或按 Ctrl+C 停止服务。
 
