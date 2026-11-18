@@ -11,7 +11,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 30000,
-  use: { baseURL: 'http://127.0.0.1:5179', trace: 'retain-on-failure' },
+  use: { baseURL: 'http://127.0.0.1:5179', trace: { mode: 'retain-on-failure', screenshots: false } },
   projects: [
     { name: 'narrow', use: { ...devices['iPhone SE'], viewport: { width: 320, height: 740 }, defaultBrowserType: 'chromium' } },
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },

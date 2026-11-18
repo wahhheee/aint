@@ -9,7 +9,7 @@ test.beforeEach(async ({ request }) => {
   await request.patch('/api/v1/settings', { data: { reading: { typewriter: 'instant' }, theme: 'light', onboarded: true } })
 })
 
-test('开局选择、静态与生成式来回切换、重进及跨页面同步', async ({ page, request, context }, info) => {
+test('开局选择、静态与生成式来回切换、重进及跨页面同步', async ({ page, request, context }) => {
   await page.goto('/works/aint.misty-harbor')
   await page.getByRole('button', { name: '开始新故事', exact: true }).click()
   const dialog = page.getByRole('dialog')
@@ -33,9 +33,7 @@ test('开局选择、静态与生成式来回切换、重进及跨页面同步',
   expect(state.state.trust['林舟']).toBe(2)
   await page.reload()
   await expect(page.getByRole('button', { name: '切换开场', exact: true })).toBeEnabled()
-  await page.screenshot({ path: info.outputPath('opening-static.png'), fullPage: true })
   await page.getByRole('button', { name: '切换开场', exact: true }).click()
-  await page.screenshot({ path: info.outputPath('opening-picker.png'), fullPage: true })
   await page
     .getByRole('dialog')
     .getByRole('radio', { name: /乘船入港/ })

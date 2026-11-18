@@ -51,7 +51,7 @@ test('开场提交期间首次时间线仍在加载时显示回合菜单', async
   }
 })
 
-test('重写原位替换、刷新后取消恢复、补选项与选择续写', async ({ page, request }, info) => {
+test('重写原位替换、刷新后取消恢复、补选项与选择续写', async ({ page, request }) => {
   await request.patch('/api/v1/settings', { data: { reading: { typewriter: 'instant' }, theme: 'light', onboarded: true } })
   const created = await request.post('/api/v1/saves', { data: { work_id: 'aint.first-story' } })
   expect(created.ok()).toBeTruthy()
@@ -62,7 +62,6 @@ test('重写原位替换、刷新后取消恢复、补选项与选择续写', as
   await page.getByRole('menuitem', { name: '按要求重写', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox').fill('放慢脚步，多写雨声。')
-  await page.screenshot({ path: info.outputPath('rewrite-dialog.png'), fullPage: true })
   await dialog.getByRole('button', { name: '按要求重写', exact: true }).click()
   await expect(page.getByRole('button', { name: '停止', exact: true })).toBeVisible()
   await expect(page.getByText('雨声还在继续。', { exact: true })).toBeVisible()
@@ -104,7 +103,6 @@ test('重写原位替换、刷新后取消恢复、补选项与选择续写', as
   await expect(page.getByText('好的，我来生成选项。', { exact: false })).toHaveCount(0)
   const after = await request.get(`/api/v1/saves/${save.id}/state`).then((r) => r.json())
   expect(after.state).toEqual(before.state)
-  await page.screenshot({ path: info.outputPath('requested-choices.png'), fullPage: true })
   expect(await page.locator('body').evaluate((e) => e.scrollWidth <= innerWidth)).toBe(true)
   await choice.click()
   await expect(page.locator('[data-turn]')).toHaveCount(2)

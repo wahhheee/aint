@@ -8,7 +8,7 @@ test.afterEach(async ({ request }) => {
   await request.patch('/api/v1/settings', { data: { play: { auto_debug: true } } })
 })
 
-test('默认记录覆盖生成式开场，检查器位于用量环右侧且保留回合入口', async ({ page, request }, info) => {
+test('默认记录覆盖生成式开场，检查器位于用量环右侧且保留回合入口', async ({ page, request }) => {
   const settings = await request.get('/api/v1/settings').then((r) => r.json())
   expect(settings.play.auto_debug).toBe(true)
   const save = await request.post('/api/v1/saves', { data: { work_id: 'aint.first-story' } }).then((r) => r.json())
@@ -46,7 +46,6 @@ test('默认记录覆盖生成式开场，检查器位于用量环右侧且保�
   expect(placement.iconLeft).toBeGreaterThanOrEqual(placement.ringRight)
   expect(placement.separatorLeft).toBeGreaterThanOrEqual(placement.iconRight)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await page.screenshot({ path: info.outputPath('debug-toolbar.png'), fullPage: true })
   await inspector.click()
   await expect(page.getByRole('dialog', { name: '游玩调试' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -70,11 +69,10 @@ test('默认记录覆盖生成式开场，检查器位于用量环右侧且保�
   await expect(page.getByRole('button', { name: '立即整理', exact: true })).toBeVisible()
 })
 
-test('自动记录设置持久化，关闭后可手动记录并查看空检查器', async ({ page, request }, info) => {
+test('自动记录设置持久化，关闭后可手动记录并查看空检查器', async ({ page, request }) => {
   await page.goto('/settings/developer')
   const autoDebug = page.getByRole('switch', { name: '游玩时自动开启调试记录', exact: true })
   await expect(autoDebug).toBeChecked()
-  await page.screenshot({ path: info.outputPath('debug-settings.png'), fullPage: true })
   await autoDebug.click()
   await expect(autoDebug).not.toBeChecked()
   await page.reload()

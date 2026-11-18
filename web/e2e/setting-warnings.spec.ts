@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-test('不再提示分别记忆模型与预算，刷新和其他存档仍生效', async ({ page, request, browser }, info) => {
+test('不再提示分别记忆模型与预算，刷新和其他存档仍生效', async ({ page, request, browser }) => {
   const original = await request.get('/api/v1/settings').then((r) => r.json())
   const saves: string[] = []
   const otherContext = await browser.newContext()
@@ -48,7 +48,6 @@ test('不再提示分别记忆模型与预算，刷新和其他存档仍生效',
     const confirm = page.getByRole('alertdialog')
     await expect(confirm).toContainText('文风')
     await confirm.getByRole('checkbox', { name: '不再提示' }).check()
-    await page.screenshot({ path: info.outputPath('remember-model-warning.png'), fullPage: true })
     await confirm.getByRole('button', { name: '确定', exact: true }).click()
     await expect(confirm).toHaveCount(0)
     await expect(page.getByRole('slider')).toHaveCount(0)

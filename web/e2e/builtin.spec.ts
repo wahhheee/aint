@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('倒悬的街角的三个开场与面板', async ({ page, request }, info) => {
+test('倒悬的街角的三个开场与面板', async ({ page, request }) => {
   await request.patch('/api/v1/settings', { data: { onboarded: true, reading: { typewriter: 'instant' } } })
   for (const [opening, silver, location] of [
     ['alley-after-rain', 45, '灰羽街区 · 鸦羽巷7号'],
@@ -20,6 +20,5 @@ test('倒悬的街角的三个开场与面板', async ({ page, request }, info) 
     await expect(page.getByText(location, { exact: false }).first()).toBeVisible()
     await expect(page.getByText('面板渲染失败', { exact: false })).toHaveCount(0)
     await expect(page.locator('body')).toHaveJSProperty('scrollWidth', await page.locator('body').evaluate((e) => e.clientWidth))
-    await page.screenshot({ path: info.outputPath(`${opening}.png`), fullPage: true })
   }
 })

@@ -4,7 +4,7 @@ test.beforeEach(async ({ request }) => {
   await request.patch('/api/v1/settings', { data: { onboarded: true, theme: 'dark', reading: { typewriter: 'instant' } } })
 })
 
-test('上下文档位、费用确认与持久化', async ({ page, request }, info) => {
+test('上下文档位、费用确认与持久化', async ({ page, request }) => {
   const original = await request.get('/api/v1/settings').then((r) => r.json())
   expect(original.context.budget).toBe(256000)
   expect(original.context.keep_recent).toBe(24000)
@@ -30,13 +30,11 @@ test('上下文档位、费用确认与持久化', async ({ page, request }, inf
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
     await budget.scrollIntoViewIfNeeded()
-    await page.screenshot({ path: info.outputPath('context-settings.png'), fullPage: true })
 
     await budget.getByRole('radio', { name: '512k', exact: true }).click()
     const confirm = page.getByRole('alertdialog')
     await expect(confirm).toContainText('超出 256K 的上下文进行双倍收费')
     expect(mutations).toHaveLength(0)
-    await page.screenshot({ path: info.outputPath('context-confirm.png'), fullPage: true })
     await confirm.getByRole('button', { name: '取消', exact: true }).click()
     await expect(budget.getByRole('radio', { name: '256k', exact: true })).toBeChecked()
     expect(mutations).toHaveLength(0)

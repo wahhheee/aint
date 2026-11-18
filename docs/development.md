@@ -156,7 +156,8 @@ task test
   交还选项、状态维护与面板渲染，并以场外提问检查事实召回（答案写进报告，人工核对）：
   `AINT_EVAL=<live.json 的绝对路径> AINT_EVAL_MODEL=<名称> go test ./internal/runtime -run TestEval -v -timeout 60m`；
   报告在 `.local/eval/<时间>/story.md`（`AINT_EVAL_OUT` 可指定），`AINT_EVAL_TRACE=<目录>` 录制原始报文。
-- Playwright 端到端：在 `web/` 首次执行 `pnpm exec playwright install chromium`，之后在仓库根执行 `task test:e2e`。测试使用独立临时目录、7879 / 5179 端口与假模型，不读取真实密钥；失败追踪位于 `web/test-results/`，CI 会上传。
+- Playwright 端到端：在 `web/` 首次执行 `pnpm exec playwright install chromium`，之后在仓库根执行 `task test:e2e`。测试使用独立临时目录、7879 / 5179 端口与假模型，不读取真实密钥；仅失败时保留 Playwright 追踪供 CI 上传，位置为 `web/test-results/`。追踪保留操作和 DOM 快照，不采集屏幕图像。
+- 阅读页中断与整理：在 `web/` 执行 `pnpm exec playwright test operation-notices.spec.ts interruption.spec.ts`。断言检查三种视口下提示的位置、宽度与可用操作。停止、关闭、检查器和整理操作使用测试存档；过滤、协议中断等状态通过会话事件重放。
 - 《雾港来信》位于 `testdata/works/misty-harbor/`，由 Go 测试装配和 Playwright 全局准备导入；程序内嵌示例位于 `examples/works/`。
 - 尚缺：测试作品 T2 与真实模型 100 回合评测（M3-11）。完整情况见 [progress.md](progress.md) 第 6 节。
 - DeepSeek 工具纠正真实评测：`AINT_TOOL_TEXT_LIVE=<live.json 的绝对路径> go test ./internal/runtime -run '^TestToolTextLive$' -count=1 -v -timeout 35m`；默认跳过，覆盖两种接口与 off / low 推理的生成式开场、选项作答和状态更新，记录各回合纠正次数并检查发送历史。预算与报告见 [验证说明](notes/tool-text-recovery.md)。

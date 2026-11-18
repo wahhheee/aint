@@ -43,7 +43,6 @@ test('阅读版心随两侧栏自适应，目录支持桌面折叠与手机侧�
           await expect(sidebar).toHaveCSS('width', panels ? '320px' : '0px')
           await expectCentered(page)
           if (!index) await expect(nav).toHaveCount(0)
-          if (width === 1600) await page.screenshot({ path: `test-results/layout-${width}-${panels}-${index}.png`, animations: 'disabled' })
         }
       }
     }
@@ -95,12 +94,10 @@ test('阅读版心随两侧栏自适应，目录支持桌面折叠与手机侧�
     await expect(toggle).toBeFocused()
     await toggle.click()
     await nav.getByRole('textbox').fill('')
-    await page.screenshot({ path: `test-results/layout-index-${info.project.name}.png`, animations: 'disabled', scale: 'css' })
     await nav.getByRole('button').first().click()
     await expect(dialog).toHaveCount(0)
     await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await expectCentered(page)
-    await page.screenshot({ path: `test-results/layout-${info.project.name}.png`, animations: 'disabled', scale: 'css' })
   }
   await page.goto('/')
   await request.delete(`/api/v1/saves/${save.id}`)

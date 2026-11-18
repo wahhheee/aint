@@ -49,7 +49,6 @@ test('开发目录预览、重载、版本导出和删除', async ({ page, reque
   await page.getByRole('link', { name: '导出 zip' }).click()
   expect((await download).suggestedFilename()).toMatch(/\.zip$/)
   await expect(page.locator('body')).toHaveJSProperty('scrollWidth', await page.locator('body').evaluate((e) => e.clientWidth))
-  await page.screenshot({ path: info.outputPath('versions.png'), fullPage: true })
   await page.getByRole('button', { name: '删除作品', exact: true }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: '确定', exact: true }).click()
   await expect(page).toHaveURL('/')
@@ -84,7 +83,6 @@ test('存档升级与迁移记录', async ({ page, request }, info) => {
   await page.getByRole('button', { name: '更多操作' }).click()
   await page.getByRole('menuitem', { name: '状态迁移记录' }).click()
   await expect(page.getByRole('dialog')).toContainText('旧值')
-  await page.screenshot({ path: info.outputPath('migration.png') })
   expect((await request.delete(`/api/v1/works/${id}/versions/${old.version_id}`)).status()).toBe(409)
   await page.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).click()
   await page.getByRole('tab', { name: '版本', exact: true }).click()
@@ -93,7 +91,6 @@ test('存档升级与迁移记录', async ({ page, request }, info) => {
   await expect(confirmation).toContainText('所有存档（当前 1 个）')
   await expect(confirmation).toContainText('全部历史分支与游玩记录')
   await expect(confirmation).toContainText('此操作无法撤销')
-  await page.screenshot({ path: info.outputPath('delete-work-confirm.png') })
   await confirmation.getByRole('button', { name: '取消', exact: true }).click()
   expect((await request.get(`/api/v1/saves/${save.id}`)).ok()).toBeTruthy()
   expect((await request.get(`/api/v1/works/${id}`)).ok()).toBeTruthy()
@@ -105,7 +102,7 @@ test('存档升级与迁移记录', async ({ page, request }, info) => {
   await expect(page.locator(`a[href="/play/${save.id}"]`)).toHaveCount(0)
 })
 
-test('设置密码、登录与撤销其他设备', async ({ page, request, browser }, info) => {
+test('设置密码、登录与撤销其他设备', async ({ page, request, browser }) => {
   const password = 'test-access-password'
   await request.patch('/api/v1/settings', { data: { onboarded: true, theme: 'light' } })
   const other = await browser.newContext()
@@ -122,7 +119,6 @@ test('设置密码、登录与撤销其他设备', async ({ page, request, brows
     const device = await other.newPage()
     await device.goto(page.url())
     await expect(device.getByRole('heading', { name: '进入 AINT' })).toBeVisible()
-    await page.screenshot({ path: info.outputPath('login.png'), fullPage: true })
     await page.getByLabel('访问密码', { exact: true }).fill(password)
     await page.getByRole('button', { name: '登录', exact: true }).click()
     await expect(page.getByRole('button', { name: '退出所有设备' })).toBeVisible()
