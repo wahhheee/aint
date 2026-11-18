@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -37,6 +37,7 @@ jobs:
         working-directory: web
       - run: pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm build
         working-directory: web
+      - uses: ./.github/actions/android-ndk
       - uses: goreleaser/goreleaser-action@v7
         with:
           version: v2.19.0

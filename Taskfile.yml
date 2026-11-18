@@ -143,13 +143,22 @@ tasks:
     desc: 构建 Android/arm64（Termux）程序到 dist/（含前端）
     deps: [build:web]
     cmds:
-      - GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "{{.LDFLAGS}}" -o dist/aint-android-arm64 ./cmd/aint
+      - task: build:android-bin
+
+  build:android-bin:
+    internal: true
+    preconditions:
+      - sh: aarch64-linux-android24-clang --version
+        msg: "未找到 Android NDK 编译器；将 NDK 的 bin 目录加入 PATH（见 docs/development.md 第 5 节）"
+    cmds:
+      - GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-android24-clang go build -trimpath -ldflags "{{.LDFLAGS}}" -o dist/aint-android-arm64 ./cmd/aint
 
   build:cross:
     desc: 交叉编译七个目标平台（发布打包见 docs/development.md 第 5 节）
     deps: [build:web]
     cmds:
-      - for: [windows/amd64, windows/arm64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, android/arm64]
+      - task: build:android-bin
+      - for: [windows/amd64, windows/arm64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64]
         cmd: |
           GOOS=$(echo {{.ITEM}} | cut -d/ -f1) GOARCH=$(echo {{.ITEM}} | cut -d/ -f2) CGO_ENABLED=0 \
             go build -trimpath -ldflags "{{.LDFLAGS}}" -o "dist/aint-$(echo {{.ITEM}} | tr / -)$( [ "$(echo {{.ITEM}} | cut -d/ -f1)" = windows ] && echo .exe)" ./cmd/aint

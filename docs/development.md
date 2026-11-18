@@ -190,20 +190,32 @@ Gemini 开场选项验证：`AINT_GEMINI_LIVE=<配置绝对路径> go test ./int
 task build
 ```
 
-- `CGO_ENABLED=0`，纯 Go（`modernc.org/sqlite`），七个目标平台可交叉编译：`task build:cross`（Windows / macOS / Linux 的 amd64 / arm64，以及 Android/arm64）。
-- 单独构建 Android/arm64：`task build:android`，包含前端，产物为 `dist/aint-android-arm64`。使用 `GOOS=android GOARCH=arm64 CGO_ENABLED=0`，不需要 Android NDK；其他 Android 架构需要外部链接工具链，暂未纳入。
-- Termux 使用独立的 Android 构建。Go 标准库在 Android 目标下跳过 `faccessat2`，Linux 构建会尝试调用该系统调用。
+- `task build` 构建本机桌面程序，不需要 Android NDK。Windows、macOS、Linux 的 amd64 / arm64 均关闭 CGO；七个平台共用 `modernc.org/sqlite`。
+- Android/arm64 启用 CGO，以 Android API 24 为编译目标，域名由 Android 系统的 `getaddrinfo` 解析。Termux 使用独立的 Android 构建，不使用 Linux/arm64 包。
+- `task build:android` 单独构建 Android，包含前端，产物为 `dist/aint-android-arm64`；`task build:cross` 构建全部七个目标。两者都需要先配置下方的 NDK。
 - 版本号由 `git describe` 注入 `internal/buildinfo`。
+
+**Android 构建机**：安装 Android NDK r30（SDK Manager：`sdkmanager --install 'ndk;30.0.16248370'`），将其中的 `toolchains/llvm/prebuilt/<宿主>/bin` 加到 `PATH`。Linux、macOS、Windows 的宿主目录分别为 `linux-x86_64`、`darwin-x86_64`、`windows-x86_64`。例如：
+
+```bash
+# Linux，NDK 由 SDK Manager 安装
+export PATH="$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+task build:android
+```
+
+Windows PowerShell：`$env:Path = "$env:ANDROID_HOME\ndk\30.0.16248370\toolchains\llvm\prebuilt\windows-x86_64\bin;$env:Path"`。使用独立下载的 NDK 时，替换为解压后的目录。CI 和发布优先使用运行器中此版本的 NDK，缺失时通过 SDK Manager 安装；运行发布包的手机不需要 NDK。
 
 ### 5.1 发布包
 
-`.goreleaser.yaml` 定义 Windows、macOS、Linux 的 amd64 / arm64，以及 Android/arm64 共七种产物，全部关闭 CGO。Android 包名为 `aint_<版本>_android_arm64.tar.gz`，面向 Termux。每份压缩包包含可执行文件、许可证、使用说明、创作指南、作品 Schema、aint-work 技能和两部示例 zip；`checksums.txt` 覆盖发布压缩包。
+`.goreleaser.yaml` 定义 Windows、macOS、Linux 的 amd64 / arm64，以及 Android/arm64 共七种产物。Android 包名为 `aint_<版本>_android_arm64.tar.gz`，面向 Termux。每份压缩包包含可执行文件、许可证、使用说明、创作指南、作品 Schema、aint-work 技能和两部示例 zip；`checksums.txt` 覆盖发布压缩包。
 
 ### 5.2 本地验证
 
 使用 GoReleaser 2.19.0 和仓库规定的 Go / pnpm 版本。先运行 `task check` 和 `task build:web`，再运行 `goreleaser check` 与 `goreleaser release --snapshot --clean`。快照不会上传发布页，不需要模型密钥。构建产物位于 `dist/`，示例暂存于 `.release/`。Schema 变更后运行 `go run ./cmd/schema-gen`；测试会检查定义与已提交的文件一致。
 
 验证七份包均有可执行文件、使用与创作说明、10 个 Schema、完整技能与两部示例 zip。在本机解压后使用临时数据目录启动，确认静态页面、`version` 和示例导入可用。其他系统的实际运行与发布候选版验收属于 M6-11。
+
+Android CI 检查可执行文件的 `GOOS=android`、`GOARCH=arm64`、`CGO_ENABLED=1` 以及对系统 `getaddrinfo` 的动态引用，并上传 `aint-android-arm64` 测试产物。真机验收：在 Termux 中停止旧进程，解包，用 `GODEBUG=netdns=2 ./aint serve --no-browser` 启动。在同一网络下直连拉取 DeepSeek 模型列表，确认列表返回且终端显示 `hostLookupOrder(api.deepseek.com) = cgo`。如需排除环境代理，可仅对该进程设置 `NO_PROXY='*'`。
 
 ### 5.3 GitHub Actions
 

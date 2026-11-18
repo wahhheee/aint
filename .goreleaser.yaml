@@ -11,10 +11,15 @@ builds:
     env: [CGO_ENABLED=0]
     goos: [windows, darwin, linux, android]
     goarch: [amd64, arm64]
-    # Android/amd64 需要外部链接；当前 Android 构建只提供无需 CGO 的 arm64。
     ignore:
       - goos: android
         goarch: amd64
+    overrides:
+      - goos: android
+        goarch: arm64
+        env:
+          - CGO_ENABLED=1
+          - CC=aarch64-linux-android24-clang
     flags: [-trimpath]
     ldflags:
       - >-

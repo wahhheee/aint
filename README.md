@@ -10,7 +10,7 @@ AINT 是在本机运行的 AI 互动小说运行时。玩家导入作品，配�
 
 **当前为开发预览。** 已支持 Anthropic Messages、OpenAI Responses、Gemini，以及 Google Vertex AI 渠道，作品导入与更新、开发目录、分支、重写、音频、用量与费用、调试检查器和访问密码。后续工作包括长篇真实模型评测、示例定稿和发布候选版验收，见[项目进度](docs/progress.md)。
 
-目前仅验证 Windows 平台的实际运行，具体为 Windows/amd64；其他平台与架构的实际运行待验证。当前版本暂不支持程序自动更新和存档导出。版本内容与下载说明见 [v0.2.0-alpha.1 发布说明](docs/releases/v0.2.0-alpha.1.md)。
+Windows/amd64 发布包已通过运行验证；Android/arm64 开发快照已在 Termux 真机上成功拉取 DeepSeek 模型列表。其他平台与架构的实际运行待验证。当前版本暂不支持程序自动更新和存档导出。版本内容与下载说明见 [v0.2.0-alpha.1 发布说明](docs/releases/v0.2.0-alpha.1.md)。
 
 ## 开始使用
 

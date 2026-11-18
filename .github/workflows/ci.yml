@@ -99,7 +99,7 @@ jobs:
   cross:
     name: 交叉编译
     needs: [web]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         target: [windows/amd64, windows/arm64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, android/arm64]
@@ -113,11 +113,36 @@ jobs:
           name: web-dist
           path: web/dist
       - name: go build
+        if: matrix.target != 'android/arm64'
         env:
+          TARGET: ${{ matrix.target }}
           CGO_ENABLED: "0"
         run: |
           export GOOS=${TARGET%/*} GOARCH=${TARGET#*/}
           go build -trimpath -ldflags "-s -w" -o /tmp/aint ./cmd/aint
         shell: bash
-    env:
-      TARGET: ${{ matrix.target }}
+      - uses: ./.github/actions/android-ndk
+        if: matrix.target == 'android/arm64'
+      - name: 使用发布配置构建 Android 程序
+        if: matrix.target == 'android/arm64'
+        uses: goreleaser/goreleaser-action@v7
+        env:
+          GOOS: android
+          GOARCH: arm64
+        with:
+          version: v2.19.0
+          args: build --snapshot --single-target --skip=before --output /tmp/aint
+      - name: 检查 Android 系统解析器并打包真机测试产物
+        if: matrix.target == 'android/arm64'
+        run: |
+          go version -m /tmp/aint | tee /tmp/aint.buildinfo
+          for setting in GOOS=android GOARCH=arm64 CGO_ENABLED=1; do
+            grep -Fx $'\tbuild\t'"$setting" /tmp/aint.buildinfo
+          done
+          llvm-readelf --dyn-syms --wide /tmp/aint | grep -E 'UND getaddrinfo(@LIBC)?$'
+          tar -czf /tmp/aint-android-arm64.tar.gz -C /tmp aint
+      - uses: actions/upload-artifact@v4
+        if: matrix.target == 'android/arm64'
+        with:
+          name: aint-android-arm64
+          path: /tmp/aint-android-arm64.tar.gz

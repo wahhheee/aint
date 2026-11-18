@@ -62,3 +62,8 @@
 - 发布代码的本地 `task check` 通过，包含 Go 全量测试与静态检查、前端 448 项测试；[CI](https://github.com/wahhheee/aint/actions/runs/42033295071) 与[标签发布构建](https://github.com/wahhheee/aint/actions/runs/42035429437) 全部通过。
 - 发布正文包含游玩设置自动保存、模型选择与滑条交互、确认偏好、重复设置清理、补选项旁白隔离、示例标注及更新下载说明。
 - M6-11 保持部分完成，其他平台与架构的实际运行、完整成功标准及发布候选版验收待做。
+
+## 2026-11-18 Termux 真机 DNS 验证
+
+- 测试包：Android/arm64 本地开发快照，NDK r30、API 24、`CGO_ENABLED=1`。从压缩包内的可执行文件核对了系统解析器符号 `getaddrinfo@LIBC`。
+- 在此前查询 `[::1]:53` 时出现 `connection refused` 的设备上运行该快照，Termux 中成功拉取 DeepSeek 模型列表。本项验证覆盖域名解析和供应商连接，不计作完整游玩验收。

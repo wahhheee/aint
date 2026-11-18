@@ -1,0 +1,15 @@
+name: 准备 Android NDK
+description: 将固定版本的 NDK 工具链加入 Ubuntu 构建环境
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        NDK_VERSION: 30.0.16248370
+      run: |
+        bin="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        if [[ ! -x "$bin/aarch64-linux-android24-clang" ]]; then
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION"
+        fi
+        "$bin/aarch64-linux-android24-clang" --version
+        echo "$bin" >> "$GITHUB_PATH"
